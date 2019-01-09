@@ -45,9 +45,8 @@ the previously specified channels will be used.
 	last iteration.
 -	`L` - Set loop point (segno). Playback is resumed at this point.
 -	`{/}` - Conditional block. Using this block you can specify commands to
-	run on each	individual track, when multiple tracks are specified. Example
-	below:
-		ABC {c/d+/g} {d/f/a}
+	run on each	individual track, when multiple tracks are specified. Example:
+	`ABC {c/d+/g} {d/f/a}`
 -	`;` - Comment. The rest of the line is skipped.
 -	`|` - Divider. This has no effect and can be used to divide measures or
 	bars, for aesthetics.
