@@ -5,6 +5,7 @@
 struct atom
 {
 	enum {
+		ATOM_CMD_INVALID = -1,
 		ATOM_NOP = 0,
 		ATOM_REST, // read durations (off time probably best)
 		ATOM_NOTE, // read durations (on time and off time)
@@ -18,12 +19,18 @@ struct atom
 		ATOM_CMD_TRANSPOSE,
 		ATOM_CMD_TRANSPOSE_REL,
 		ATOM_CMD_DETUNE,
+		ATOM_CMD_PAN,
+		ATOM_CMD_VOL_ENVELOPE,
+		ATOM_CMD_PITCH_ENVELOPE,
+		ATOM_CMD_PAN_ENVELOPE,
 		ATOM_CMD_LOOP_START,
 		ATOM_CMD_LOOP_BREAK,
 		ATOM_CMD_LOOP_END,
+		ATOM_CMD_DRUM_MODE,
 		ATOM_CMD_TEMPO_BPM,
 		ATOM_CMD_TEMPO,
 		ATOM_CMD_SEGNO,
+		ATOM_CMD_JUMP,
 		ATOM_CMD_END
 	} type;
 	int16_t param;
@@ -33,7 +40,7 @@ struct atom
 
 struct track
 {
-	uint8_t flag; // 0x80 if track is used
+	uint8_t flag; // 0x80 if track is used, 0x01 for drum mode
 	uint8_t ch;
 	int atom_count;
 	int atom_alloc;
@@ -70,6 +77,7 @@ int  track_slur(struct track* track);
 void track_tie(struct track* track, int duration);
 void track_rest(struct track* track, int duration);
 void track_quantize(struct track* track, int param);
+void track_drum_mode(struct track* track, int param);
 void track_octave(struct track* track, int octave);
 void track_octave_up(struct track* track);
 void track_octave_down(struct track* track);

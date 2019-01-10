@@ -35,7 +35,7 @@ static void track_atom_add(struct track* track, int type, uint16_t param,
 	if(track->atom_count == track->atom_alloc)
 	{
 		track->atom_alloc *= 2;
-		track->atom = realloc(track->atom, track->atom_alloc);
+		track->atom = realloc(track->atom, sizeof(track->atom)*track->atom_alloc);
 	}
 }
 
@@ -154,6 +154,15 @@ void track_atom(struct track* track, int type, int16_t param)
 	DEBUG_PRINT("atom %d = %d\n", type, param);
 }
 
+void track_drum_mode(struct track* track, int param)
+{
+	if(!param)
+		track->flag &= ~(0x01);
+	else
+		track->flag |= 0x01;
+	track_atom(track, ATOM_CMD_DRUM_MODE, param);
+}
+
 void track_enable(struct track* track, int ch)
 {
 	track->flag |= 0x80;
@@ -163,6 +172,11 @@ void track_enable(struct track* track, int ch)
 int track_is_enabled(struct track* track)
 {
 	return (track->flag & 0x80);
+}
+
+int track_in_drum_mode(struct track* track)
+{
+	return (track->flag & 0x01);
 }
 
 void track_finalize(struct track* track)

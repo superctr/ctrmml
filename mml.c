@@ -36,13 +36,15 @@ static void error(char* error_msg, int column, int fatal)
 	else
 		fprintf(stderr,"%s:%d: %s%s\n", fn, line, error_s, error_msg);
 	fprintf(stderr,"%s", buffer);
+	// add a newline if missing
 	if(strlen(buffer) > 0 && buffer[strlen(buffer)-1] != '\n')
 		putc('\n', stderr);
 	if(column)
 	{
-		column = curr_pos;
-		while(--column > line_pos)
-			putc(' ', stderr);
+		// display an arrow pointing to the problematic column
+		column = curr_pos-line_pos;
+		while(--column)
+			putc((buffer[column-1] == '\t') ? '\t' : ' ', stderr);
 		fputs("^\n",stderr);
 	}
 	if(fatal)
@@ -51,6 +53,7 @@ static void error(char* error_msg, int column, int fatal)
 		fseek(f, curr_pos, SEEK_SET);
 }
 
+// return 1 if eol (or EOF). should handle windows newlines as well (untested yet)
 static int iseol(int c)
 {
 	if(c == '\r')
@@ -107,6 +110,7 @@ static void mml_default_duration()
 
 	trk->duration = duration;
 }
+
 static int get_duration()
 {
 	int duration = 0, c = 0;
@@ -125,7 +129,7 @@ static int get_duration()
 
 static void mml_note(int c)
 {
-	static const int note_values[8] = {9,11,0,2,4,5,7}; // abcdefg
+	static const int note_values[8] = {9,11,0,2,4,5,7,11}; // abcdefgh
 	int val = note_values[c - 'a'];
 	c = my_getc(f);
 	if(c == '+') // sharp
@@ -171,7 +175,16 @@ static void mml_quantize()
 		PARSE_ERROR("missing parameter");
 }
 
-static void mml_generic(int type)
+static void mml_drum_mode()
+{
+	int param;
+	if(scannum(&param) == 1)
+		track_drum_mode(trk, param);
+	else
+		PARSE_ERROR("missing parameter");
+}
+
+static void mml_atom(int type)
 {
 	int param;
 	if(scannum(&param) == 1)
@@ -180,7 +193,26 @@ static void mml_generic(int type)
 		PARSE_ERROR("missing parameter");
 }
 
-static void mml_generic_default(int type, int param)
+static void mml_atom_relative(int type, int subtype)
+{
+	int param, c=my_getc(f);
+	if(c == '+' || c == '-')
+		type == subtype;
+	else
+		ungetc(c,f);
+	if(scannum(&param) == 1)
+	{
+		if(type == ATOM_CMD_INVALID)
+			PARSE_ERROR("parameter must be relative (+ or - prefix)");
+		if(c == '-')
+			param = -param;
+		track_atom(trk, type, param);
+	}
+	else
+		PARSE_ERROR("missing parameter");
+}
+
+static void mml_atom_default(int type, int param)
 {
 	scannum(&param);
 	track_atom(trk, type, param);
@@ -223,7 +255,7 @@ static void parse_mml(int conditional_block)
 		if(c == ';')
 			break;
 
-		if(c >= 'a' && c <= 'g')
+		if(c >= 'a' && c <= 'h')
 			mml_note(c);
 		else if(c == 'r')
 			mml_rest();
@@ -242,23 +274,25 @@ static void parse_mml(int conditional_block)
 		else if(c == 'q')
 			mml_quantize();
 		else if(c == 't')
-			mml_generic(ATOM_CMD_TEMPO_BPM);
+			mml_atom(ATOM_CMD_TEMPO_BPM);
 		else if(c == 'T')
-			mml_generic(ATOM_CMD_TEMPO);
+			mml_atom(ATOM_CMD_TEMPO);
 		else if(c == '@') // may handle alnum ids in the future...
-			mml_generic(ATOM_CMD_INS);
+			mml_atom(ATOM_CMD_INS);
 		else if(c == 'k')
-			mml_generic(ATOM_CMD_TRANSPOSE);
+			mml_atom(ATOM_CMD_TRANSPOSE);
 		else if(c == 'K')
-			mml_generic(ATOM_CMD_DETUNE);
+			mml_atom_relative(ATOM_CMD_DETUNE, ATOM_CMD_DETUNE);
 		else if(c == 'v')
-			mml_generic(ATOM_CMD_VOL);
+			mml_atom(ATOM_CMD_VOL);
 		else if(c == '(')
 			mml_volume_rel(-1);
 		else if(c == ')')
 			mml_volume_rel(1);
 		else if(c == 'V')
-			mml_generic(ATOM_CMD_VOL_FINE);
+			mml_atom_relative(ATOM_CMD_VOL_FINE, ATOM_CMD_VOL_FINE_REL);
+		else if(c == 'D')
+			mml_drum_mode();
 		else if((c == '/' || c == '}') && conditional_block)
 			break;
 		else if(c == '{')
@@ -268,7 +302,7 @@ static void parse_mml(int conditional_block)
 		else if(c == '/')
 			track_atom(trk, ATOM_CMD_LOOP_BREAK, 0);
 		else if(c == ']')
-			mml_generic_default(ATOM_CMD_LOOP_END,2);
+			mml_atom_default(ATOM_CMD_LOOP_END,2);
 		else if(c == 'L')
 			track_atom(trk, ATOM_CMD_SEGNO, 0);
 
@@ -356,7 +390,6 @@ static void parse_line()
 			return;
 		if(last_cmd)
 		{
-			printf("now on %s\n", trk_list);
 			last_cmd(); // also responsible for advancing to the next line
 			return;
 		}
