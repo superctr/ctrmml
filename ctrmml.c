@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "ctrmml.h"
 
 void print_usage(char* exename)

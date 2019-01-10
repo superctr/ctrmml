@@ -1,38 +1,49 @@
 #ifndef CTRMML_H
 #include <stdint.h>
 
+enum atom_command {
+	// basic commands
+	ATOM_NOP = 0,
+	ATOM_REST, // read durations (off time probably best)
+	ATOM_NOTE, // read durations (on time and off time)
+	ATOM_TIE, // param is ignored, read durations
+	// track commands
+	ATOM_CMD_LOOP_START,
+	ATOM_CMD_LOOP_BREAK,
+	ATOM_CMD_LOOP_END,
+	ATOM_CMD_SEGNO,
+	ATOM_CMD_JUMP,
+	ATOM_CMD_END,
+	ATOM_CMD_SLUR, // flag to indicate the next note is legato
+	// special channel commands. These affect the same memory as another command
+	ATOM_CMD_TRANSPOSE_REL,
+	ATOM_CMD_VOL,
+	ATOM_CMD_VOL_REL,
+	ATOM_CMD_VOL_FINE_REL,
+	ATOM_CMD_TEMPO_BPM,
+	// channel commands
+	ATOM_CMD_CHANNEL_MODE, // always the first channel command
+	ATOM_CMD_INS,
+	ATOM_CMD_TRANSPOSE,
+	ATOM_CMD_DETUNE,
+	ATOM_CMD_VOL_FINE,
+	ATOM_CMD_PAN,
+	ATOM_CMD_VOL_ENVELOPE,
+	ATOM_CMD_PITCH_ENVELOPE,
+	ATOM_CMD_PAN_ENVELOPE,
+	ATOM_CMD_DRUM_MODE,
+	ATOM_CMD_TEMPO,
+	// special
+	ATOM_CMD_COUNT, // last command ID
+	ATOM_CHANNEL_CMD = ATOM_CMD_CHANNEL_MODE, // first channel cmd ID
+	ATOM_CHANNEL_CMD_COUNT = ATOM_CMD_COUNT - ATOM_CHANNEL_CMD, // channel command count
+	ATOM_CMD_INVALID = -1,
+};
+
 // MML intermediatory language
 struct atom
 {
-	enum {
-		ATOM_CMD_INVALID = -1,
-		ATOM_NOP = 0,
-		ATOM_REST, // read durations (off time probably best)
-		ATOM_NOTE, // read durations (on time and off time)
-		ATOM_TIE, // param is ignored, read durations
-		ATOM_CMD_SLUR, // flag to indicate the next note is legato
-		ATOM_CMD_INS,
-		ATOM_CMD_VOL_FINE,
-		ATOM_CMD_VOL_FINE_REL,
-		ATOM_CMD_VOL,
-		ATOM_CMD_VOL_REL,
-		ATOM_CMD_TRANSPOSE,
-		ATOM_CMD_TRANSPOSE_REL,
-		ATOM_CMD_DETUNE,
-		ATOM_CMD_PAN,
-		ATOM_CMD_VOL_ENVELOPE,
-		ATOM_CMD_PITCH_ENVELOPE,
-		ATOM_CMD_PAN_ENVELOPE,
-		ATOM_CMD_LOOP_START,
-		ATOM_CMD_LOOP_BREAK,
-		ATOM_CMD_LOOP_END,
-		ATOM_CMD_DRUM_MODE,
-		ATOM_CMD_TEMPO_BPM,
-		ATOM_CMD_TEMPO,
-		ATOM_CMD_SEGNO,
-		ATOM_CMD_JUMP,
-		ATOM_CMD_END
-	} type;
+	enum atom_command type;
 	int16_t param;
 	uint16_t on_duration; // only for note and rest
 	uint16_t off_duration;
@@ -52,21 +63,40 @@ struct track
 	int quantize;
 };
 
+struct tag
+{
+	uint8_t *value;
+	struct tag *child;
+	struct tag *next;
+};
+
 struct song
 {
 	struct track *track[256];
 	uint8_t track_map[256];
+	struct tag *tag;
 };
 
-// stuff to remember when looping
-struct atom_state
+// atom replayer status
+struct atom_player_channel
 {
-	int vol;
-	int ins;
-	int pan;
-	int transpose;
+	enum {
+		CHANNEL_INACTIVE,
+		CHANNEL_ACTIVE,
+		CHANNEL_ACTIVE_KEYON
+	} state;
+	int delay;
+	int position;
+	uint32_t track_flag;
+	int track_state[ATOM_CHANNEL_CMD_COUNT];
+	struct {
+		int loop_count;
+		int position;
+		int end_position;
+	} stack[8];
+	int stack_frame;
+	int accumulated_length;
 };
-
 
 // functions
 struct track* track_init();
@@ -76,6 +106,7 @@ void track_note(struct track* track, int note, int duration);
 int  track_slur(struct track* track);
 void track_tie(struct track* track, int duration);
 void track_rest(struct track* track, int duration);
+int  track_reverse_rest(struct track* track, int duration);
 void track_quantize(struct track* track, int param);
 void track_drum_mode(struct track* track, int param);
 void track_octave(struct track* track, int octave);
@@ -84,6 +115,7 @@ void track_octave_down(struct track* track);
 void track_finalize(struct track* track);
 void track_enable(struct track* track, int ch);
 int track_is_enabled(struct track* track);
+int track_in_drum_mode(struct track* track);
 
 struct song* song_convert_mml(char* filename);
 void song_free(struct song* song);

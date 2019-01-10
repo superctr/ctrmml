@@ -1,14 +1,32 @@
 MML reference
 =============
 
+### Meta commands
+Lines starting with # or @ defines a meta command. `#` parameters are always
+assumed to be a string, whereas `@` commands define a table of comma-separated
+values. Strings can be enclosed in double quotes if needed.
+-	`#title`, `#composer`, `#author`, `#date`, `#comment' - Song metadata.
+-	`#platform` - Sets the MML target platform.
+	- todo: available platforms
+-	`@<num>` - Defines an instrument. Parameters are platform-specific.
+-	`@E<num>` - Defines an envelope.
+-	`@M<num>` - Defines a pitch envelope.
+-	`@P<num>` - Defines a pan envelope.
+
 ### Addressing tracks
 A span of characters at the beginning of a line selects tracks. You can
 specify channels in any order (important later).
+
+#### Macros
+`*<num>` can be used to specify a track by its number. Since tracks 32 and
+above are unlikely to be used by sound channels, you can use them as macros
+with the `*` command.
 
 #### Example:
 -	`A` - use track A
 -	`ABC` - use tracks A, B, C
 -	`ACB` - use tracks in a different order
+-	`*0` - use track number 0.
 
 ### Adding notes and commands
 After specifying channels and adding spaces, you can enter MML commands. It is
@@ -20,7 +38,8 @@ the previously specified channels will be used.
 			bagfedc ; both use track A
 
 ### Command reference
--	`cdefgabh' - Notes. Optionally set duration after each note.
+-	`cdefgabh` - Notes. Optionally set duration after each note. If no
+	duration is set, the duration set by the `l` command is used.
 	- Durations are calculated by dividing the value with the length of a
 	measure. Optionally a dot `.` can be specified to extend the duration by
 	half.
@@ -28,8 +47,8 @@ the previously specified channels will be used.
 -	`^` - Tie. Extends duration of previous note.
 -	`&` - Slur. Used to connect two notes (legato).
 -	`r` - Rest. Optionally set duration after the rest.
--	`l<1..256>` - Set default duration, used if not explicitly specified after
-	a note.
+-	`l<duration>` - Set default duration, used if not specified by notes,
+	rests, `R` or `G` commands.
 -	`q<1..8>` - Quantize. Used to set articulation.
 -	`>`, `<` - Octave up and down, respectively.
 -	`o<0..7>` - Set octave.
@@ -46,12 +65,16 @@ the previously specified channels will be used.
 -	`P<0..255>` - Set pan envelope. 0 to disable. (*)
 -	`D<0..255>` - If D is set to a non-zero value, enable drum mode and set the
 	index to the parameter value. Notes `abcdefgh` represent 0-7 and is added
-	to the index and commands are read from that track before playing a note
-	c4 with duration set as usual.
--	`R<1..256>` - Reverse rest. This subtracts the value from the previous note
+	to the index and commands are read from that macro track before playing a
+	note c with duration set as usual.
+-	`*<0..255` - Play commands from another track before resuming at the
+	current position.
+-	`R<duration>` - Reverse rest. This subtracts the value from the previous note
 	or rest. If unable (such as if the previous note was at the end of a loop,
 	a warning is thrown. This can be used to bring back tracks in unison after
 	a delayed echo track.
+-	`G<note><duration>` - Grace note. Basically similar to above, except a
+	note is added with the same duration as the borrow.
 -	`t<0..255>` - Set tempo in BPM.
 -	`T<0..255>` - Set tempo using the platform's native timer values. (*)
 -	`[/]<0..255>` - Loop block. The section after the `/` is skipped at the

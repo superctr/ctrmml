@@ -92,11 +92,54 @@ void track_rest(struct track *track, int duration)
 	track_atom_add(track, ATOM_REST, 0, 0, duration);
 }
 
-// backtrack in order to disable the articulation of the previous note (or tie)
-// return 0 if successful or -1 if unable to backtrack
-static int track_slur_backtrack(struct track *track)
+// backtrack in order to shorten previous note
+// return 0 if successful or -1 if unable to backtrack, -2 if overflow
+int track_reverse_rest(struct track *track, int duration)
 {
 	int index = track->atom_count;
+	while(index > 0)
+	{
+		int type = track->atom[--index].type;
+		if(type == ATOM_NOTE || type == ATOM_TIE || type == ATOM_REST)
+		{
+			if(duration > track->atom[index].off_duration)
+			{
+				duration -= track->atom[index].off_duration;
+				track->atom[index].off_duration = 0;
+			}
+			else
+			{
+				track->atom[index].off_duration -= duration;
+				DEBUG_PRINT("shortened off_duration to %d\n", track->atom[index].off_duration);
+				return 0;
+			}
+			if(duration > track->atom[index].on_duration)
+			{
+				duration -= track->atom[index].on_duration;
+				track->atom[index].on_duration = 0;
+			}
+			else
+			{
+				track->atom[index].on_duration -= duration;
+				DEBUG_PRINT("shortened on_duration to %d\n", track->atom[index].on_duration);
+				return 0;
+			}
+			return -2;
+		}
+		// don't bother read past loop points, as effects are unpredictable
+		else if(type == ATOM_CMD_SEGNO ||  type == ATOM_CMD_LOOP_END)
+			return -1;
+	}
+	return -1;
+}
+
+// backtrack in order to disable the articulation of the previous note (or tie)
+// return 0 if successful or -1 if unable to backtrack
+// you may run into problems if you don't put this command immediately after another note.
+int track_slur(struct track* track)
+{
+	int index = track->atom_count;
+	track_atom_add(track, ATOM_CMD_SLUR, 0, 0, 0);
 	while(index > 0)
 	{
 		int type = track->atom[--index].type;
@@ -111,14 +154,6 @@ static int track_slur_backtrack(struct track *track)
 			return -1;
 	}
 	return -1;
-}
-
-// keep in mind that this command backtracks to remove articulation on the previous note, therefore
-// you may run into problems if you don't put this command immediately after another note.
-int track_slur(struct track* track)
-{
-	track_atom_add(track, ATOM_CMD_SLUR, 0, 0, 0);
-	return track_slur_backtrack(track);
 }
 
 void track_quantize(struct track* track, int param)
