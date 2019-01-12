@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include "ctrmml.h"
 
+// todo: move these to struct
 // globals for the MML module
 	static FILE* f;
 	static char* fn; // filename
@@ -75,6 +76,11 @@ static int my_getc(FILE *f)
 	return c;
 }
 
+static int my_ungetc(int c, FILE *f)
+{
+	return ungetc(c,f);
+}
+
 // wrapper around scanf to make sure newlines are not skipped
 // also allows hex prefix
 static int scannum(int* num)
@@ -82,7 +88,7 @@ static int scannum(int* num)
 	int c = my_getc(f); // skips spaces, but not newlines
 	if(isdigit(c))
 	{
-		ungetc(c,f);
+		my_ungetc(c,f);
 		return fscanf(f,"%d",num);
 	}
 	else if(c == '$' || c == 'x')
@@ -91,7 +97,7 @@ static int scannum(int* num)
 	}
 	else
 	{
-		ungetc(c,f);
+		my_ungetc(c,f);
 		return -1;
 	}
 }
@@ -109,7 +115,7 @@ static int get_duration()
 	if(c == '.') // dotted duration
 		duration += duration>>1;
 	else
-		ungetc(c, f);
+		my_ungetc(c, f);
 
 	return duration;
 }
@@ -131,11 +137,12 @@ static int expect_parameter()
 		PARSE_ERROR("missing parameter");
 }
 
+// Read signed parameter
 static int expect_signed()
 {
 	int param, c=my_getc(f);
 	if(c != '+' && c != '-')
-		ungetc(c,f);
+		my_ungetc(c,f);
 	if(scannum(&param) == 1)
 	{
 		if(c == '-')
@@ -159,10 +166,11 @@ static int note(int c)
 	else if(c == '-') // flat
 		val--;
 	else
-		ungetc(c, f);
+		my_ungetc(c, f);
 	return val;
 }
 
+// Handlers for MML commands
 static void mml_slur()
 {
 	if(track_slur(trk))
@@ -186,13 +194,15 @@ static void mml_grace()
 	track_note(trk, c, duration);
 }
 
-static void mml_atom_relative(int type, int subtype)
+// combination command that allows for two atom_types depending on
+// if sign prefix is found.
+static void mml_atom_relative(enum atom_command type, enum atom_command subtype)
 {
 	int param, c=my_getc(f);
 	if(c == '+' || c == '-')
 		type == subtype;
 	else
-		ungetc(c,f);
+		my_ungetc(c,f);
 	if(scannum(&param) == 1)
 	{
 		if(type == ATOM_CMD_INVALID)
@@ -309,7 +319,7 @@ static void parse_mml(int conditional_block)
 	{
 		// skip to terminator
 		while(!iseol(c) && c != '}' && c != ';')
-			c = getc(f);
+			c = my_getc(f);
 		if(c != '}')
 			ERROR("unterminated conditional block");
 		return;
@@ -317,7 +327,7 @@ static void parse_mml(int conditional_block)
 
 	// comment found, skipping to eol
 	while(!iseol(c))
-		c = getc(f);
+		c = my_getc(f);
 }
 
 static void parse_trk_list()
@@ -377,7 +387,7 @@ static void parse_line()
 	}
 	else if(c == '#' || c == '@')
 	{
-		ungetc(c, f);
+		my_ungetc(c, f);
 		fgets(buffer,1024,f);
 		WARN("meta commands unhandled right now");
 		return;
@@ -388,9 +398,8 @@ static void parse_line()
 	if(isblank(c))
 	{
 		// skip all non blank characters
-		while(isblank(c))
-			c = getc(f);
-		ungetc(c, f);
+		c = my_getc(f);
+		my_ungetc(c, f);
 
 		if(iseol(c))
 			return;
@@ -406,15 +415,9 @@ static void parse_line()
 		c = getc(f);
 }
 
-static void finalize_tracks()
+//struct song* song_convert_mml(char* filename)
+int song_convert_mml(struct song* s, char* filename)
 {
-	for(trk_id=0; trk_id<256; trk_id++)
-		track_finalize(song->track[trk_id]);
-}
-
-struct song* song_convert_mml(char* filename)
-{
-	int i;
 	fn = filename;
 	f = fopen(filename, "r");
 	if(!f)
@@ -423,10 +426,7 @@ struct song* song_convert_mml(char* filename)
 		exit(-1);
 	}
 
-	song = calloc(1, sizeof(*song));
-
-	for(i=0; i<256; i++)
-		song->track[i] = track_init();
+	song = s;
 
 	last_cmd = NULL;
 	trk_count = 0;
@@ -435,14 +435,5 @@ struct song* song_convert_mml(char* filename)
 	while(!feof(f))
 		parse_line();
 
-	finalize_tracks();
-
-	return song;
-}
-
-void song_free(struct song* song)
-{
-	int i;
-	for(i=0; i<256; i++)
-		track_free(song->track[i]);
+	return 0;
 }

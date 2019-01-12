@@ -65,8 +65,8 @@ struct track
 
 struct tag
 {
-	uint8_t *value;
-	struct tag *child;
+	uint8_t *key;
+	struct tag *property;
 	struct tag *next;
 };
 
@@ -98,10 +98,11 @@ struct atom_player_channel
 	int accumulated_length;
 };
 
-// functions
+// Functions for use by song parsers
+// track module
 struct track* track_init();
 void track_free(struct track* track);
-void track_atom(struct track* track, int type, int16_t param);
+void track_atom(struct track* track, enum atom_command type, int16_t param);
 void track_note(struct track* track, int note, int duration);
 int  track_slur(struct track* track);
 void track_tie(struct track* track, int duration);
@@ -117,8 +118,22 @@ void track_enable(struct track* track, int ch);
 int track_is_enabled(struct track* track);
 int track_in_drum_mode(struct track* track);
 
-struct song* song_convert_mml(char* filename);
+// song module
+struct tag* tag_create(char* value, char* key);
+void tag_delete_recursively(struct tag* tag);
+struct tag* tag_get_next(struct tag* tag);
+struct tag* tag_append(struct tag* tag, struct tag* new);
+struct tag* tag_get_property(struct tag* tag);
+struct tag* tag_add_property(struct tag* tag, struct tag* new);
+struct tag* tag_set_property(struct tag* tag, struct tag* new);
+struct tag* tag_find(struct tag* tag, char* key);
+
+struct song* song_create();
+int song_open(struct song* song, char* filename);
+int song_finalize(struct song* song);
 void song_free(struct song* song);
+
+int song_convert_mml(struct song* song, char* filename);
 
 #define CTRMML_H
 #endif

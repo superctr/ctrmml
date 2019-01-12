@@ -26,7 +26,7 @@ void track_free(struct track* track)
 	free(track);
 }
 
-static void track_atom_add(struct track* track, int type, uint16_t param,
+static void track_atom_add(struct track* track, enum atom_command type, uint16_t param,
 		uint16_t on_time, uint16_t off_time)
 {
 	struct atom a = {type, param, on_time, off_time};
@@ -99,7 +99,7 @@ int track_reverse_rest(struct track *track, int duration)
 	int index = track->atom_count;
 	while(index > 0)
 	{
-		int type = track->atom[--index].type;
+		enum atom_command type = track->atom[--index].type;
 		if(type == ATOM_NOTE || type == ATOM_TIE || type == ATOM_REST)
 		{
 			if(duration > track->atom[index].off_duration)
@@ -142,7 +142,7 @@ int track_slur(struct track* track)
 	track_atom_add(track, ATOM_CMD_SLUR, 0, 0, 0);
 	while(index > 0)
 	{
-		int type = track->atom[--index].type;
+		enum atom_command type = track->atom[--index].type;
 		if(type == ATOM_NOTE || type == ATOM_TIE)
 		{
 			track->atom[index].on_duration += track->atom[index].off_duration;
@@ -176,7 +176,7 @@ void track_octave_down(struct track* track)
 	track->octave -= 1;
 }
 
-void track_atom(struct track* track, int type, int16_t param)
+void track_atom(struct track* track, enum atom_command type, int16_t param)
 {
 	struct atom a = {type, param, 0, 0};
 	track->atom[track->atom_count++] = a;

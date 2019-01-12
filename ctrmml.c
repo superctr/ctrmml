@@ -19,6 +19,10 @@ int main(int argc, char* argv[])
 		exit(-1);
 	}
 
-	song = song_convert_mml(argv[1]);
+	song = song_create();
+	song_open(song, argv[1]);
+	song_finalize(song);
+	song_free(song);
+
 	return 0;
 }
