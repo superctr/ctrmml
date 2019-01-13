@@ -1,16 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "ctrmml.h"
 
 // return pointer to new tag
-struct tag* tag_create(char* value, char* key)
+struct tag* tag_create(char* key, struct tag* property)
 {
 	struct tag *p = malloc(sizeof(*p));
 	if(!p)
 		return NULL;
 	p->key = strdup(key);
-	p->property = NULL;
+	p->property = property;
 	p->next = NULL;
 	return p;
 }
@@ -56,7 +57,7 @@ struct tag* tag_get_property(struct tag* tag)
 }
 
 // set a tag as a 'child'. Deletes previous property
-struct tag* tag_add_property(struct tag* tag, struct tag* new)
+struct tag* tag_set_property(struct tag* tag, struct tag* new)
 {
 	if(tag == NULL)
 		return NULL;
@@ -66,7 +67,7 @@ struct tag* tag_add_property(struct tag* tag, struct tag* new)
 }
 
 // add a tag to the list of properties
-struct tag* tag_set_property(struct tag* tag, struct tag* new)
+struct tag* tag_add_property(struct tag* tag, struct tag* new)
 {
 	if(tag == NULL)
 		return NULL;
@@ -88,6 +89,91 @@ struct tag* tag_find(struct tag* tag, char* key)
 	return NULL;
 }
 
+// add tag
+void add_tag(struct tag* tag, char* s)
+{
+	// trim space at end of the string
+	while(strlen(s) > 0)
+	{
+		if(isspace(s[strlen(s)-1]))
+			s[strlen(s)-1] = 0;
+		else
+			break;
+	}
+	tag_add_property(tag, tag_create(s, NULL));
+	return;
+}
+
+// add double-quote-enclosed string
+static char* add_tag_enclosed(struct tag* tag, char* s)
+{
+	// process string first
+	char *head = s, *tail = s;
+	while(*head)
+	{
+		if(*head == '\\' && *++head)
+		{
+			if(*head == 'n')
+				*head = '\n';
+			else if(*head == 't')
+				*head = '\t';
+		}
+		else if(*head == '"')
+		{
+			head++;
+			break;
+		}
+		*tail++ = *head++;
+	}
+	*tail++ = 0;
+	tag_add_property(tag, tag_create(s, NULL));
+	return head;
+}
+
+// add a tag list
+// list can be separated by commas OR spaces, but comma always forces a tag to be added
+void add_tag_list(struct tag* tag, char* s)
+{
+	int last_char = 0;
+	while(*s)
+	{
+		char* nexts = strpbrk(s, " \t\r\n\",;");
+		char c = *nexts;
+		if(nexts == NULL)
+		{
+			// full string
+			add_tag(tag, s);
+			return;
+		}
+		else if(c == '\"')
+		{
+			// enclosed string
+			nexts = add_tag_enclosed(tag, s+1);
+			last_char = c;
+		}
+		else
+		{
+			// separator
+			*nexts++ = 0;
+			if(strlen(s))
+			{
+				add_tag(tag, s);
+				last_char = c;
+			}
+			else if(c == ',') // empty , block adds an empty tag
+			{
+				if(last_char == c)
+					add_tag(tag, s);
+				else
+					last_char = c;
+			}
+			if(c == ';')
+				return;
+		}
+		s = nexts;
+	}
+}
+
 void song_free(struct song* song)
 {
 	int i;
@@ -103,7 +189,41 @@ struct song* song_create()
 		exit(-1);
 	for(i=0; i<256; i++)
 		song->track[i] = track_init();
+	song->tag = tag_create("#format",tag_create("ctrmml", NULL));
 	return song;
+}
+
+// dumps tags
+static void dump_tags(struct tag* tag, int child)
+{
+	if(tag == NULL)
+		return;
+	while(tag)
+	{
+		struct tag* property = tag_get_property(tag);
+		if(child)
+			printf(" ");
+		if(strpbrk(tag->key, " \"\\") || !strlen(tag->key))
+		{
+			char* c = tag->key;
+			printf("\"");
+			while(*c)
+			{
+				if(*c == '\"' || *c == '\\')
+					printf("\\");
+				printf("%c", *c++);
+			}
+			printf("\"");
+		}
+		else
+			printf("%s", tag->key);
+		if(!child && property)
+		{
+			dump_tags(tag_get_property(tag), 1);
+		}
+		tag = tag_get_next(tag);
+		printf("%s", (!child) ? "\n" : "");
+	}
 }
 
 int song_finalize(struct song* song)
@@ -111,6 +231,8 @@ int song_finalize(struct song* song)
 	int i;
 	for(i=0; i<256; i++)
 		track_finalize(song->track[i]);
+	dump_tags(song->tag, 0);
+	return 0;
 }
 
 int song_open(struct song* song, char* filename)

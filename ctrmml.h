@@ -65,7 +65,7 @@ struct track
 
 struct tag
 {
-	uint8_t *key;
+	char *key;
 	struct tag *property;
 	struct tag *next;
 };
@@ -119,7 +119,7 @@ int track_is_enabled(struct track* track);
 int track_in_drum_mode(struct track* track);
 
 // song module
-struct tag* tag_create(char* value, char* key);
+struct tag* tag_create(char* value, struct tag* property);
 void tag_delete_recursively(struct tag* tag);
 struct tag* tag_get_next(struct tag* tag);
 struct tag* tag_append(struct tag* tag, struct tag* new);
@@ -127,6 +127,9 @@ struct tag* tag_get_property(struct tag* tag);
 struct tag* tag_add_property(struct tag* tag, struct tag* new);
 struct tag* tag_set_property(struct tag* tag, struct tag* new);
 struct tag* tag_find(struct tag* tag, char* key);
+
+void add_tag(struct tag* tag, char* s);
+void add_tag_list(struct tag* tag, char* s);
 
 struct song* song_create();
 int song_open(struct song* song, char* filename);

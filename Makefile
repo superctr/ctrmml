@@ -1,5 +1,6 @@
 SRC = .
 OBJ = obj
+CFLAGS = -g -Wall
 
 CTRMML_OBJS = \
 			  $(OBJ)/ctrmml.o \

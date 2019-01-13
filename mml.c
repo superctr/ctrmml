@@ -14,13 +14,15 @@ struct mml_file {
 	char buffer[1024];
 
 	struct song *song; // working area
-	void (*last_cmd)();
+	void (*last_cmd)(struct mml_file*);
 
 	struct track *trk;
 	int trk_id;
 	int trk_offset; // will be used for the {} command
 	char trk_list[256]; // track batching
 	int trk_count; // tracks in the batch list
+
+	struct tag* tag;
 };
 
 #define PARSE_ERROR(mml,msg) error(mml, msg, 1, 1)
@@ -133,6 +135,7 @@ static int expect_parameter(struct mml_file* mml)
 		return param;
 	else
 		PARSE_ERROR(mml,"missing parameter");
+	return 0;
 }
 
 // Read signed parameter
@@ -149,6 +152,7 @@ static int expect_signed(struct mml_file* mml)
 	}
 	else
 		PARSE_ERROR(mml,"missing parameter");
+	return 0;
 }
 
 // Convert note and read sharps / flats
@@ -198,7 +202,7 @@ static void atom_relative(struct mml_file *mml, enum atom_command type, enum ato
 {
 	int param, c=my_getc(mml);
 	if(c == '+' || c == '-')
-		type == subtype;
+		type = subtype;
 	else
 		my_ungetc(c,mml);
 	if(scannum(mml, &param) == 1)
@@ -349,6 +353,15 @@ static void parse_trk_list(struct mml_file *mml)
 	}
 }
 
+static void parse_tag(struct mml_file *mml)
+{
+	fgets(mml->buffer,1024,mml->file);
+	if(mml->tag->key[0] == '#')
+		add_tag(mml->tag, mml->buffer);
+	else
+		add_tag_list(mml->tag, mml->buffer);
+}
+
 static int get_track_id(char c)
 {
 	if(c >= 'A' && c <= 'Z')
@@ -386,9 +399,13 @@ static void parse_line(struct mml_file *mml)
 	else if(c == '#' || c == '@')
 	{
 		my_ungetc(c, mml);
-		fgets(mml->buffer,1024,mml->file);
-		WARN(mml, "meta commands unhandled right now");
-		return;
+		fscanf(mml->file, "%s", mml->buffer);
+		mml->tag = tag_find(mml->song->tag, mml->buffer);
+		if(!mml->tag)
+			mml->tag = tag_append(mml->song->tag, tag_create(mml->buffer, NULL));
+		mml->last_cmd = parse_tag;
+		c = getc(mml->file); // get the last character
+		my_ungetc(c, mml);
 	}
 	else if(iseol(mml, c))
 		return;
@@ -403,7 +420,7 @@ static void parse_line(struct mml_file *mml)
 			return;
 		if(mml->last_cmd)
 		{
-			mml->last_cmd(); // also responsible for advancing to the next line
+			mml->last_cmd(mml); // also responsible for advancing to the next line
 			return;
 		}
 	}
