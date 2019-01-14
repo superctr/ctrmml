@@ -6,7 +6,10 @@ CTRMML_OBJS = \
 			  $(OBJ)/ctrmml.o \
 			  $(OBJ)/mml.o \
 			  $(OBJ)/track.o \
-			  $(OBJ)/song.o
+			  $(OBJ)/song.o \
+			  $(OBJ)/playback.o \
+			  $(OBJ)/vgm.o \
+			  $(OBJ)/fileio.o
 
 CTRMML_HEADERS = \
 				 $(SRC)/ctrmml.h
