@@ -302,6 +302,8 @@ static void atom_send_cb(struct track_player *player, struct atom* atom)
 		player->atom_callback(player->cb_state, atom);
 }
 
+// step the track player. this should work for both file generation and playback/logging
+// by setting the "expand jump/loop" bits as needed and using the callback.
 int track_player_step(struct track_player *player)
 {
 	struct atom* atom = &player->track->atom[player->position];
