@@ -52,17 +52,17 @@ the previously specified channels will be used.
 -	`q<1..8>` - Quantize. Used to set articulation.
 -	`>`, `<` - Octave up and down, respectively.
 -	`o<0..7>` - Set octave.
--	`k<-128..127>` - Set transpose. (*)
--	`K<-128..127>` - Set detune. (*)
--	`v<0-15>` - Set volume. (*)
+-	`k<-128..127>` - Set transpose. &ast;
+-	`K<-128..127>` - Set detune. &ast;
+-	`v<0-15>` - Set volume. &ast;
 -	`)`, `(` - Volume up and down, respectively. You may specify the increment
 	or decrement, if you want.
--	`V<0..255>` - Set volume (fine). (*)
--	`p<-128..127>` - Set panning. (*)
--	`@<0..65535>` - Set instrument. (*)
--	`E<0..255>` - Set envelope. 0 to disable. (*)
--	`M<0..255>` - Set pitch envelope. 0 to disable. (*)
--	`P<0..255>` - Set pan envelope. 0 to disable. (*)
+-	`V<0..255>` - Set volume (fine). &ast;
+-	`p<-128..127>` - Set panning. &ast;
+-	`@<0..65535>` - Set instrument. &ast;
+-	`E<0..255>` - Set envelope. 0 to disable. &ast;
+-	`M<0..255>` - Set pitch envelope. 0 to disable. &ast;
+-	`P<0..255>` - Set pan envelope. 0 to disable. &ast;
 -	`D<0..255>` - If D is set to a non-zero value, enable drum mode and set the
 	index to the parameter value. Notes `abcdefgh` represent 0-7 and is added
 	to the index and commands are read from that macro track before playing a
@@ -75,8 +75,10 @@ the previously specified channels will be used.
 	a delayed echo track.
 -	`G<note><duration>` - Grace note. Basically similar to above, except a
 	note is added with the same duration as the borrow.
+-	`S<duration>,<value>` - Shuffle. When enabled, vary the length of each
+	`<duration>` by `value` amount. Turn off with `S0`.
 -	`t<0..255>` - Set tempo in BPM.
--	`T<0..255>` - Set tempo using the platform's native timer values. (*)
+-	`T<0..255>` - Set tempo using the platform's native timer values. &ast;
 -	`[/]<0..255>` - Loop block. The section after the `/` is skipped at the
 	last iteration.
 -	`L` - Set loop point (segno). Playback is resumed at this point.
@@ -87,4 +89,4 @@ the previously specified channels will be used.
 -	`|` - Divider. This has no effect and can be used to divide measures or
 	bars, for aesthetics.
 
-(*) indicates that the range may depend on the platform.
+&ast; indicates that the range may depend on the platform.

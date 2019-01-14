@@ -179,6 +179,7 @@ void song_free(struct song* song)
 	int i;
 	for(i=0; i<256; i++)
 		track_free(song->track[i]);
+	tag_delete_recursively(song->tag);
 }
 
 struct song* song_create()
@@ -230,7 +231,7 @@ int song_finalize(struct song* song)
 {
 	int i;
 	for(i=0; i<256; i++)
-		track_finalize(song->track[i]);
+		track_finalize(song, song->track[i], i);
 	dump_tags(song->tag, 0);
 	return 0;
 }

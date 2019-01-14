@@ -77,25 +77,44 @@ struct song
 	struct tag *tag;
 };
 
-// atom replayer status
-struct atom_player_channel
+typedef void (*atom_cb_t)(void* cb_state, struct atom* atom);
+
+// track player status
+#define PLAYER_MAX_STACK 8
+struct track_player
 {
+	struct song* song;
+	struct track* track;
 	enum {
+		CHANNEL_DISABLED,
 		CHANNEL_INACTIVE,
-		CHANNEL_ACTIVE,
-		CHANNEL_ACTIVE_KEYON
+		CHANNEL_KEYON,
+		CHANNEL_KEYOFF
 	} state;
 	int delay;
 	int position;
-	uint32_t track_flag;
-	int track_state[ATOM_CHANNEL_CMD_COUNT];
+	int loop_position;
+	uint32_t ch_flag; // flag set if ch_state changed
+	int ch_state[ATOM_CHANNEL_CMD_COUNT];
+	uint32_t loop_ch_flag;
+	int loop_ch_state[ATOM_CHANNEL_CMD_COUNT];
 	struct {
 		int loop_count;
+		struct track* track;
 		int position;
 		int end_position;
-	} stack[8];
+	} stack[PLAYER_MAX_STACK + 1];
 	int stack_frame;
 	int accumulated_length;
+
+	void* cb_state;
+	atom_cb_t atom_callback;
+	unsigned int cb_unroll_loops : 1;
+	unsigned int cb_unroll_jumps : 1;
+	unsigned int cb_keyoff : 1; // send rest instead of off_time
+	unsigned int cb_optimized : 1; // send all atoms or just optimized
+	int inside_loop;
+	int inside_jump;
 };
 
 // Functions for use by song parsers
@@ -113,10 +132,15 @@ void track_drum_mode(struct track* track, int param);
 void track_octave(struct track* track, int octave);
 void track_octave_up(struct track* track);
 void track_octave_down(struct track* track);
-void track_finalize(struct track* track);
+void track_finalize(struct song* song, struct track* track, int id);
 void track_enable(struct track* track, int ch);
 int track_is_enabled(struct track* track);
 int track_in_drum_mode(struct track* track);
+
+// track playback
+struct track_player* track_player_init(struct song* song, struct track *track);
+void track_player_free(struct track_player *player);
+int track_player_step(struct track_player *player);
 
 // song module
 struct tag* tag_create(char* value, struct tag* property);
