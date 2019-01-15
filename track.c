@@ -287,6 +287,21 @@ struct track_player* track_player_init(struct song* song, struct track *track)
 	return player;
 }
 
+// return 0 if ready to play
+int track_player_reset(struct track_player* player, struct song* song, int track_id)
+{
+	memset(player, 0, sizeof(*player));
+	player->loop_position = -1;
+	if(!song)
+		return -1;
+	player->song = song;
+	player->track = song->track[track_id];
+	if(player->track->flag & 0x80)
+		return 0;
+	else
+		return -1;
+}
+
 void track_player_free(struct track_player *player)
 {
 	free(player);

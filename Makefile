@@ -8,6 +8,7 @@ CTRMML_OBJS = \
 			  $(OBJ)/track.o \
 			  $(OBJ)/song.o \
 			  $(OBJ)/playback.o \
+			  $(OBJ)/md.o \
 			  $(OBJ)/vgm.o \
 			  $(OBJ)/fileio.o
 

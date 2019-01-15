@@ -139,6 +139,7 @@ int track_in_drum_mode(struct track* track);
 
 // track playback
 struct track_player* track_player_init(struct song* song, struct track *track);
+int track_player_reset(struct track_player* player, struct song* song, int track_id);
 void track_player_free(struct track_player *player);
 int track_player_step(struct track_player *player);
 
@@ -161,6 +162,8 @@ int song_finalize(struct song* song);
 void song_free(struct song* song);
 
 int song_convert_mml(struct song* song, char* filename);
+
+void md_create_vgm(struct song* song, char* filename);
 
 #define CTRMML_H
 #endif
