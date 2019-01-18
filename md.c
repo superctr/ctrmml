@@ -314,6 +314,7 @@ static void ch_set_ins(struct md_channel *ch, uint8_t ins, uint8_t vol)
 	switch(ch->type)
 	{
 		case MDCH_FM:
+			printf("ins %02x = %02x\n", ins, ch->driver->ins_data_index[ins]);
 			opn_w(ch->driver, ch->bank, 0x40, ch->id, 0, 0x7f); // tl=max
 			opn_w(ch->driver, ch->bank, 0x40, ch->id, 1, 0x7f);
 			opn_w(ch->driver, ch->bank, 0x40, ch->id, 2, 0x7f);
@@ -461,18 +462,25 @@ static void md_read_fm(struct md_driver *driver, struct tag *tag, uint8_t id)
 			op += 20;
 		// DT,MUL
 		fm_data[0 + i] = (ins_data[op + 8] << 4) | (ins_data[op + 7] & 15);
+		printf("op%d dt/ml  %02x\n", i, fm_data[0+i]);
 		// TL
 		fm_data[4 + i] = ins_data[op + 5];
+		printf("op%d tl     %02x\n", i, fm_data[4+i]);
 		// KS/AR
 		fm_data[8 + i] = (ins_data[op + 6] << 6) | (ins_data[op + 0] & 31);
+		printf("op%d ks     %02x\n", i, fm_data[8+i]);
 		// AM/DR (AM sensitivity not supported yet)
 		fm_data[12 + i] = (ins_data[op + 1] & 31);
+		printf("op%d dr     %02x\n", i, fm_data[12+i]);
 		// SR
 		fm_data[16 + i] = (ins_data[op + 2] & 31);
+		printf("op%d sr     %02x\n", i, fm_data[16+i]);
 		// SL/RR
 		fm_data[20 + i] = (ins_data[op + 4] << 4) | (ins_data[op + 3] & 15);
+		printf("op%d sl/rr  %02x\n", i, fm_data[20+i]);
 		// SSG-EG
-		fm_data[24 + i] = ins_data[op + 10] & 15;
+		fm_data[24 + i] = ins_data[op + 9] & 15;
+		printf("op%d ssg-eg %02x\n", i, fm_data[24+i]);
 	}
 	// FB/ALG
 	fm_data[28] = (ins_data[0] << 3) | (ins_data[1] & 7);
