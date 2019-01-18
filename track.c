@@ -443,7 +443,10 @@ int track_player_step(struct track_player *player)
 				break;
 			}
 			else if(player->loop_position >= 0)
+			{
 				player->position = player->loop_position;
+				player->loop_count++;
+			}
 			else
 				return -1;
 			break;
@@ -489,6 +492,8 @@ int track_player_step(struct track_player *player)
 			}
 			break;
 	}
+	if(player->atom_post_callback)
+		player->atom_post_callback(player->cb_state, atom);
 	return player->delay;
 }
 

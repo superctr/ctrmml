@@ -106,9 +106,11 @@ struct track_player
 	} stack[PLAYER_MAX_STACK + 1];
 	int stack_frame;
 	int accumulated_length;
+	int loop_count;
 
 	void* cb_state;
 	atom_cb_t atom_callback;
+	atom_cb_t atom_post_callback; // had to add this one for playback channel commands
 	unsigned int cb_unroll_loops : 1;
 	unsigned int cb_unroll_jumps : 1;
 	unsigned int cb_keyoff : 1; // send rest instead of off_time

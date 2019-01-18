@@ -3,14 +3,16 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <strings.h>
 #include "ctrmml.h"
 #include "vgm.h"
+#include "playback.h"
 
 enum md_channel_type
 {
 	MDCH_FM = 0,
-	MDCH_FM3_A = 1,
-	MDCH_FM3_B = 2,
+	MDCH_FM3_A = 1, // op1,3
+	MDCH_FM3_B = 2, // op2,4
 	MDCH_PSG = 4,
 	MDCH_PSGN_A = 5, // internal frequency
 	MDCH_PSGN_B = 6 // ch3 frequency
@@ -24,6 +26,7 @@ struct md_channel
 	enum md_channel_type type : 3;
 	unsigned int bank : 1;
 	unsigned int id : 2;
+	uint16_t pitch;
 	uint8_t pan_lfo;
 	uint8_t con;
 	uint8_t *pit_start; // start position of pitch envelope
@@ -48,7 +51,7 @@ struct md_driver
 	struct song *song;
 	struct md_channel ch[10];
 	int data_count; // amount of entries in the data table
-	char* data_start[DATA_COUNT_MAX]; // start offset of the envelope or patch data
+	uint8_t* data_start[DATA_COUNT_MAX]; // start offset of the envelope or patch data
 	int data_length[DATA_COUNT_MAX]; // size of the envelope or patch data
 	int data_size; // size of data chunk
 	uint8_t* data; // size of env/patch data chunk
@@ -59,8 +62,20 @@ struct md_driver
 	int pcm_size;
 	int8_t* pcm; // size of PCM data chunk
 
-	int patch_data_index[DATA_COUNT_MAX]; // entry in data table
+	int ins_data_index[DATA_COUNT_MAX]; // entry in data table
+	int pitch_data_index[DATA_COUNT_MAX];
 };
+
+struct md_driver *md_driver_init();
+void md_driver_reset(struct md_driver *driver, struct song* song);
+int md_driver_update(void *ptr);
+
+void md_read_envelopes(struct md_driver *driver, struct song *song);
+
+static uint16_t opn_freq[13] = {644, 681, 722, 765, 810, 858, 910, 964, 1021, 1081, 1146, 1214, 1288};
+static uint16_t psg_freq[13] = {851, 803, 758, 715, 675, 637, 601, 568, 536, 506, 477, 450, 425};
+
+void md_driver_command(void *ptr, struct atom* atom);
 
 static void opn_w(struct md_driver *driver, uint8_t port, uint8_t reg, uint8_t ch, uint8_t op, uint16_t data)
 {
@@ -79,13 +94,13 @@ static void opn_w(struct md_driver *driver, uint8_t port, uint8_t reg, uint8_t c
 	else if(reg >= 0xa0 && reg < 0xb0) // ch3 operator freq
 	{
 		// would use a lookup table in 68k code
-		if(reg >= 0xa4 && op == 0)
+		if(reg >= 0xa8 && op == 0)
 			reg += 1;
-		else if(reg >= 0xa4 && op == 1)
+		else if(reg >= 0xa8 && op == 1)
 			reg += 0;
-		else if(reg >= 0xa4 && op == 2)
+		else if(reg >= 0xa8 && op == 2)
 			reg += 2;
-		else if(reg >= 0xa4 && op == 3)
+		else if(reg >= 0xa8 && op == 3)
 			reg = 0xa2;
 		printf("opn-fnum  port %d reg %02x data %04x (ch %d op %d)\n", port, reg, data, ch, op);
 	}
@@ -127,9 +142,11 @@ void md_driver_reset(struct md_driver *driver, struct song* song)
 		memset(&driver->ch[i], 0, sizeof(driver->ch[i]));
 		driver->ch[i].player = player;
 		driver->ch[i].driver = driver;
-		if(player && track_player_reset(player, song, i))
+		if(player && !track_player_reset(player, song, i))
 			driver->ch[i].enabled = 1;
 		driver->ch[i].bank = 0;
+		player->atom_post_callback = md_driver_command;
+		player->cb_state = &driver->ch[i];
 		// assign channels
 		if(i < 6)
 		{
@@ -169,12 +186,234 @@ struct md_driver *md_driver_init()
 	driver->data_size = DATA_SIZE_MAX;
 	driver->pcm = calloc(1, sizeof(int8_t) * PCM_SIZE_MAX);
 	driver->pcm_size = PCM_SIZE_MAX;
-	md_driver_reset(driver, 0);
 	return driver;
+}
+
+// static void opn_w(struct md_driver *driver, uint8_t port, uint8_t reg, uint8_t ch, uint8_t op, uint16_t data)
+static void ch_set_freq(struct md_channel *ch)
+{
+	uint8_t note_num = ch->pitch >> 8;
+	uint8_t note = note_num % 12;
+	uint8_t octave = note_num / 12;
+	uint8_t detune = ch->pitch & 0xff;
+	uint16_t* base;
+	uint16_t val;
+	switch(ch->type)
+	{
+		case MDCH_FM:
+		case MDCH_FM3_A:
+		case MDCH_FM3_B:
+			base = &opn_freq[note];
+			break;
+		case MDCH_PSG:
+		default:
+			base = &psg_freq[note];
+	}
+	printf("base[0] = %d, base[1] = %d, dtn=%d\n", base[0], base[1], detune);
+
+	val = base[0] + (((base[1] - base[0]) * detune) >> 8);
+	val += (octave & 7) << 11;
+
+	switch(ch->type)
+	{
+		case MDCH_FM3_A:
+			opn_w(ch->driver, ch->bank, 0xa8, 0, 0, val);
+			opn_w(ch->driver, ch->bank, 0xa8, 0, 2, val);
+			break;
+		case MDCH_FM3_B:
+			opn_w(ch->driver, ch->bank, 0xa8, 0, 0, val);
+			// continue
+		case MDCH_FM:
+			opn_w(ch->driver, ch->bank, 0xa0, ch->id, 0, val);
+			break;
+		case MDCH_PSG:
+			val >>= octave;
+			// continue
+		default:
+			psg_w(ch->driver, 0, ch->id, val);
+			break;
+	}
+}
+
+#define CH_STATE(var) player->ch_state[var - ATOM_CMD_CHANNEL_MODE]
+void md_driver_command(void *ptr, struct atom* atom)
+{
+	struct md_channel *ch = ptr;
+	struct track_player *player = ch->player;
+	switch(atom->type)
+	{
+		case ATOM_CMD_INS:
+			printf("set ins to %d\n", CH_STATE(ATOM_CMD_INS));
+			break;
+		case ATOM_CMD_VOL:
+			printf("set vol to %d\n", CH_STATE(ATOM_CMD_INS));
+			break;
+		case ATOM_NOTE:
+			printf("keyon %d\n", atom->param);
+			ch->pitch = ((atom->param + CH_STATE(ATOM_CMD_TRANSPOSE))<<8) + CH_STATE(ATOM_CMD_DETUNE);
+			ch_set_freq(ch);
+			break;
+		case ATOM_REST:
+			printf("rest %d\n", atom->param);
+			break;
+		case ATOM_TIE:
+			printf("tie %d\n", atom->param);
+			break;
+		default:
+			break;
+	}
+}
+
+int md_driver_update(void *ptr)
+{
+	struct md_driver *driver = ptr;
+	struct md_channel *ch = driver->ch;
+	int i;
+	for(i=0; i<10; i++, ch++)
+	{
+		if(!ch->enabled)
+			continue;
+
+		if(ch->player->delay)
+		{
+			ch->player->delay--;
+			continue;
+		}
+
+		if(track_player_step(ch->player) < 0)
+		{
+			ch->enabled = 0;
+			continue;
+		}
+
+		// update envelopes...
+	}
+	// handle loops.....
+	return 0;
+}
+
+int md_add_unique_data(struct md_driver *driver, uint8_t* data, int length)
+{
+	int i;
+	uint8_t *start_offset = driver->data;
+	// look for previous matching data in the table
+	for(i=0; i<driver->data_count; i++)
+	{
+		if(length != driver->data_length[i])
+			continue;
+		if(memcmp(driver->data_start[i], data, length))
+			continue;
+		return i;
+	}
+	if(driver->data_count > DATA_COUNT_MAX)
+	{
+		fprintf(stderr, "error: maximum amount of data table entries reached\n");
+		exit(-1);
+	}
+	else if(driver->data_count > 0)
+	{
+		start_offset = driver->data_start[driver->data_count-1] + driver->data_length[driver->data_count-1];
+	}
+	driver->data_start[driver->data_count] = start_offset;
+	driver->data_length[driver->data_count] = length;
+	memcpy(start_offset, data, length);
+	return driver->data_count++;
+}
+
+// Read FM instrument
+static void md_read_fm(struct md_driver *driver, struct tag *tag, uint8_t id)
+{
+	int i;
+	static uint8_t fm_data[29];
+	static int8_t ins_data[42];
+
+	for(int i=0; i<42; i++)
+	{
+		if(!tag)
+		{
+			fprintf(stderr, "warning: not enough parameters for fm instrument @%d\n", id);
+			return;
+		}
+		ins_data[i] = strtol(tag->key, NULL, 0);
+		tag = tag_get_next(tag);
+	}
+
+	for(i=0; i<4; i++)
+	{
+		int op = 2;
+		// physical operator order is 1,3,2,4
+		if(i & 2)
+			op += 10;
+		if(i & 1)
+			op += 20;
+		// DT,MUL
+		fm_data[0 + i] = (ins_data[op + 8] << 4) | (ins_data[op + 7] & 15);
+		// TL
+		fm_data[4 + i] = ins_data[op + 5];
+		// KS/AR
+		fm_data[8 + i] = (ins_data[op + 6] << 6) | (ins_data[op + 0] & 31);
+		// AM/DR (AM sensitivity not supported yet)
+		fm_data[12 + i] = (ins_data[op + 1] & 31);
+		// SR
+		fm_data[16 + i] = (ins_data[op + 2] & 31);
+		// SL/RR
+		fm_data[20 + i] = (ins_data[op + 4] << 4) | (ins_data[op + 3] & 15);
+		// SSG-EG
+		fm_data[24 + i] = ins_data[op + 10] & 15;
+	}
+	// FB/ALG
+	fm_data[28] = (ins_data[1] << 3) | (ins_data[0] & 7);
+	driver->ins_data_index[id] = md_add_unique_data(driver, fm_data, sizeof(fm_data));
+	printf("fm ins @%d added at %02x\n", id, driver->ins_data_index[id]);
+}
+
+void md_read_envelopes(struct md_driver *driver, struct song *song)
+{
+	struct tag* tag = song->tag;
+	while(tag)
+	{
+		unsigned char env;
+		if(sscanf(tag->key, "@%hhu", &env) == 1)
+		{
+			struct tag* child = tag_get_property(tag);
+			if(!child)
+			{
+				fprintf(stderr,"warning: missing parameter for instrument @%d\n", env);
+			}
+			else if(!strcasecmp(child->key, "psg"))
+			{
+				printf("read psg instrument %d (%s)\n", env, tag->key);
+			}
+			else if(!strcasecmp(child->key, "fm"))
+			{
+				printf("read fm instrument %d (%s)\n", env, tag->key);
+				md_read_fm(driver, tag_get_property(tag), env);
+			}
+			else
+			{
+				fprintf(stderr,"unknown type '%s' for instrument @%d\n", child->key, env);
+				fprintf(stderr,"\tvalid: 'psg' or 'fm'\n");
+			}
+		}
+		else if(sscanf(tag->key, "@M%hhu", &env) == 1)
+		{
+			printf("read pitch %d (%s)\n", env, tag->key);
+		}
+		tag = tag_get_next(tag);
+	}
 }
 
 void md_create_vgm(struct song* song, char* filename)
 {
-	struct md_driver *driver = md_driver_init();
+	struct md_driver *driver;
+	struct pb_handler pb_handler;
+	driver = md_driver_init();
+	md_read_envelopes(driver, song);
+	md_driver_reset(driver, song);
+	pb_handler.rate = 60.0 / 44100.0;
+	pb_handler.delta_time = 0;
+	pb_handler.pb_state = driver;
+	pb_handler.callback = md_driver_update;
+	playback(&pb_handler, 1, 10000);
 	printf("vgm file = %s\n", filename);
 }
