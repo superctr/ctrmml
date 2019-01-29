@@ -8,6 +8,10 @@
 #include "vgm.h"
 #include "playback.h"
 
+//#define DEBUG_FM(fmt,...) { printf(fmt, __VA_ARGS__); }
+#define DEBUG_FM(fmt,...) { }
+#define DEBUG_PSG(fmt,...) { printf(fmt, __VA_ARGS__); }
+
 enum md_channel_type
 {
 	MDCH_FM = 0,
@@ -91,14 +95,14 @@ static void opn_w(struct md_driver *driver, uint8_t port, uint8_t reg, uint8_t c
 	{
 		data <<= 4;
 		data += ch | (port << 2);
-		//printf("opn-keyon port %d reg %02x data %02x (ch %d op %d)\n", port, reg, data, ch, op);
+		DEBUG_FM("opn-keyon port %d reg %02x data %02x (ch %d op %d)\n", port, reg, data, ch, op);
 		vgm_write(0x52, 0, reg, data);
 	}
 	else if(reg >= 0x30 && reg < 0xa0)
 	{
 		reg += op*4;
 		reg += ch;
-		//printf("opn-param port %d reg %02x data %02x (ch %d op %d)\n", port, reg, data, ch, op);
+		DEBUG_FM("opn-param port %d reg %02x data %02x (ch %d op %d)\n", port, reg, data, ch, op);
 		vgm_write(0x52, port, reg, data);
 	}
 	else if(reg >= 0xa0 && reg < 0xb0) // ch3 operator freq
@@ -113,19 +117,19 @@ static void opn_w(struct md_driver *driver, uint8_t port, uint8_t reg, uint8_t c
 			reg += 2;
 		else if(reg >= 0xa8 && op == 3)
 			reg = 0xa2;
-		//printf("opn-fnum  port %d reg %02x data %04x (ch %d op %d)\n", port, reg, data, ch, op);
+		DEBUG_FM("opn-fnum  port %d reg %02x data %04x (ch %d op %d)\n", port, reg, data, ch, op);
 		vgm_write(0x52, port, reg+4, data>>8);
 		vgm_write(0x52, port, reg, data&0xff);
 	}
 	else if(reg >= 0xb0)
 	{
 		reg += ch;
-		//printf("opn-param port %d reg %02x data %02x (ch %d op %d)\n", port, reg, data, ch, op);
+		DEBUG_FM("opn-param port %d reg %02x data %02x (ch %d op %d)\n", port, reg, data, ch, op);
 		vgm_write(0x52, port, reg, data);
 	}
 	else
 	{
-		printf("opn-param port %d reg %02x data %02x\n", port, reg, data);
+		DEBUG_FM("opn-param port %d reg %02x data %02x\n", port, reg, data);
 		vgm_write(0x52, 0, reg, data); // port0 only
 	}
 	//driver->borrowed_sample++;
@@ -140,7 +144,7 @@ static void psg_w(struct md_driver *driver, uint8_t reg, uint8_t ch, uint16_t da
 		data &= 0x3ff;
 		cmd1 = (data & 0x0f) | (ch << 5) | 0x80;
 		cmd2 = data >> 4;
-		printf("psg %02x,%02x (ch %d freq %04x)\n", cmd1, cmd2, ch, data);
+		DEBUG_PSG("psg %02x,%02x (ch %d freq %04x)\n", cmd1, cmd2, ch, data);
 		// don't send second byte if noise
 		vgm_write(0x50, 0, 0, cmd1);
 		if(ch < 3)
@@ -149,7 +153,7 @@ static void psg_w(struct md_driver *driver, uint8_t reg, uint8_t ch, uint16_t da
 	else if(reg == 1) // volume
 	{
 		cmd1 = (data & 0x0f) | (ch << 5) | 0x90;
-		printf("psg %02x (ch %d vol %04x)\n", cmd1, ch,  data);
+		DEBUG_PSG("psg %02x (ch %d vol %04x)\n", cmd1, ch,  data);
 		vgm_write(0x50, 0, 0, cmd1);
 	}
 }
@@ -338,7 +342,7 @@ static void ch_set_ins(struct md_channel *ch, uint8_t ins, uint8_t vol)
 	switch(ch->type)
 	{
 		case MDCH_FM:
-			printf("ins %3d = %02x\n", ins, ch->driver->ins_data_index[ins]);
+			DEBUG_FM("ins %3d = %02x\n", ins, ch->driver->ins_data_index[ins]);
 			opn_w(ch->driver, ch->bank, 0x40, ch->id, 0, 0x7f); // tl=max
 			opn_w(ch->driver, ch->bank, 0x40, ch->id, 1, 0x7f);
 			opn_w(ch->driver, ch->bank, 0x40, ch->id, 2, 0x7f);
@@ -514,31 +518,31 @@ static void md_read_fm(struct md_driver *driver, struct tag *tag, uint8_t id)
 			op += 20;
 		// DT,MUL
 		fm_data[0 + i] = (ins_data[op + 8] << 4) | (ins_data[op + 7] & 15);
-		printf("op%d dt/ml  %02x\n", i, fm_data[0+i]);
+		DEBUG_FM("op%d dt/ml  %02x\n", i, fm_data[0+i]);
 		// TL
 		fm_data[4 + i] = ins_data[op + 5];
-		printf("op%d tl     %02x\n", i, fm_data[4+i]);
+		DEBUG_FM("op%d tl     %02x\n", i, fm_data[4+i]);
 		// KS/AR
 		fm_data[8 + i] = (ins_data[op + 6] << 6) | (ins_data[op + 0] & 31);
-		printf("op%d ks     %02x\n", i, fm_data[8+i]);
+		DEBUG_FM("op%d ks     %02x\n", i, fm_data[8+i]);
 		// AM/DR (AM sensitivity not supported yet)
 		fm_data[12 + i] = (ins_data[op + 1] & 31);
-		printf("op%d dr     %02x\n", i, fm_data[12+i]);
+		DEBUG_FM("op%d dr     %02x\n", i, fm_data[12+i]);
 		// SR
 		fm_data[16 + i] = (ins_data[op + 2] & 31);
-		printf("op%d sr     %02x\n", i, fm_data[16+i]);
+		DEBUG_FM("op%d sr     %02x\n", i, fm_data[16+i]);
 		// SL/RR
 		fm_data[20 + i] = (ins_data[op + 4] << 4) | (ins_data[op + 3] & 15);
-		printf("op%d sl/rr  %02x\n", i, fm_data[20+i]);
+		DEBUG_FM("op%d sl/rr  %02x\n", i, fm_data[20+i]);
 		// SSG-EG
 		fm_data[24 + i] = ins_data[op + 9] & 15;
-		printf("op%d ssg-eg %02x\n", i, fm_data[24+i]);
+		DEBUG_FM("op%d ssg-eg %02x\n", i, fm_data[24+i]);
 	}
 	// FB/ALG
 	fm_data[28] = (ins_data[0] & 7) | (ins_data[1] << 3);
-	printf("fb/alg %02x\n", fm_data[28]);
+	DEBUG_FM("fb/alg %02x\n", fm_data[28]);
 	driver->ins_data_index[id] = md_add_unique_data(driver, fm_data, sizeof(fm_data));
-	printf("fm ins @%d added at %02x\n", id, driver->ins_data_index[id]);
+	DEBUG_FM("fm ins @%d added at %02x\n", id, driver->ins_data_index[id]);
 }
 
 void md_read_envelopes(struct md_driver *driver, struct song *song)
