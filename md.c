@@ -23,6 +23,7 @@ struct md_channel
 	struct md_driver *driver;
 	struct track_player *player;
 	unsigned int enabled : 1;
+	unsigned int slur_flag : 1;
 	enum md_channel_type type : 3;
 	unsigned int bank : 1;
 	unsigned int id : 2;
@@ -50,6 +51,10 @@ struct md_driver
 {
 	struct song *song;
 	struct md_channel ch[10];
+
+	uint8_t tempo_delta; // tempo delta - 1 (0=1/256 frames per tick, 255=1 frame per tick)
+	uint8_t tempo_counter;
+
 	int data_count; // amount of entries in the data table
 	uint8_t* data_start[DATA_COUNT_MAX]; // start offset of the envelope or patch data
 	int data_length[DATA_COUNT_MAX]; // size of the envelope or patch data
@@ -74,7 +79,7 @@ int md_driver_update(void *ptr);
 
 void md_read_envelopes(struct md_driver *driver, struct song *song);
 
-static uint8_t opn_con_op[8] = {0,0,0,0,1,2,2,3};
+static uint8_t opn_con_op[8] = {3,3,3,3,2,1,1,0};
 static uint16_t opn_freq[13] = {644, 681, 722, 765, 810, 858, 910, 964, 1021, 1081, 1146, 1214, 1288};
 static uint16_t psg_freq[13] = {851, 803, 758, 715, 675, 637, 601, 568, 536, 506, 477, 450, 425};
 
@@ -86,18 +91,19 @@ static void opn_w(struct md_driver *driver, uint8_t port, uint8_t reg, uint8_t c
 	{
 		data <<= 4;
 		data += ch | (port << 2);
-		printf("opn-keyon port %d reg %02x data %02x (ch %d op %d)\n", port, reg, data, ch, op);
+		//printf("opn-keyon port %d reg %02x data %02x (ch %d op %d)\n", port, reg, data, ch, op);
 		vgm_write(0x52, 0, reg, data);
 	}
 	else if(reg >= 0x30 && reg < 0xa0)
 	{
 		reg += op*4;
 		reg += ch;
-		printf("opn-param port %d reg %02x data %02x (ch %d op %d)\n", port, reg, data, ch, op);
+		//printf("opn-param port %d reg %02x data %02x (ch %d op %d)\n", port, reg, data, ch, op);
 		vgm_write(0x52, port, reg, data);
 	}
 	else if(reg >= 0xa0 && reg < 0xb0) // ch3 operator freq
 	{
+		reg += ch;
 		// would use a lookup table in 68k code
 		if(reg >= 0xa8 && op == 0)
 			reg += 1;
@@ -107,14 +113,14 @@ static void opn_w(struct md_driver *driver, uint8_t port, uint8_t reg, uint8_t c
 			reg += 2;
 		else if(reg >= 0xa8 && op == 3)
 			reg = 0xa2;
-		printf("opn-fnum  port %d reg %02x data %04x (ch %d op %d)\n", port, reg, data, ch, op);
+		//printf("opn-fnum  port %d reg %02x data %04x (ch %d op %d)\n", port, reg, data, ch, op);
 		vgm_write(0x52, port, reg+4, data>>8);
 		vgm_write(0x52, port, reg, data&0xff);
 	}
 	else if(reg >= 0xb0)
 	{
 		reg += ch;
-		printf("opn-param port %d reg %02x data %02x (ch %d op %d)\n", port, reg, data, ch, op);
+		//printf("opn-param port %d reg %02x data %02x (ch %d op %d)\n", port, reg, data, ch, op);
 		vgm_write(0x52, port, reg, data);
 	}
 	else
@@ -122,8 +128,8 @@ static void opn_w(struct md_driver *driver, uint8_t port, uint8_t reg, uint8_t c
 		printf("opn-param port %d reg %02x data %02x\n", port, reg, data);
 		vgm_write(0x52, 0, reg, data); // port0 only
 	}
-	driver->borrowed_sample++;
-	vgm_delay(100);
+	//driver->borrowed_sample++;
+	//vgm_delay(100);
 }
 
 static void psg_w(struct md_driver *driver, uint8_t reg, uint8_t ch, uint16_t data)
@@ -136,11 +142,15 @@ static void psg_w(struct md_driver *driver, uint8_t reg, uint8_t ch, uint16_t da
 		cmd2 = data >> 4;
 		printf("psg %02x,%02x (ch %d freq %04x)\n", cmd1, cmd2, ch, data);
 		// don't send second byte if noise
+		vgm_write(0x50, 0, 0, cmd1);
+		if(ch < 3)
+			vgm_write(0x50, 0, 0, cmd2);
 	}
 	else if(reg == 1) // volume
 	{
 		cmd1 = (data & 0x0f) | (ch << 5) | 0x90;
 		printf("psg %02x (ch %d vol %04x)\n", cmd1, ch,  data);
+		vgm_write(0x50, 0, 0, cmd1);
 	}
 }
 
@@ -153,6 +163,8 @@ void md_driver_reset(struct md_driver *driver, struct song* song)
 		memset(&driver->ch[i], 0, sizeof(driver->ch[i]));
 		driver->ch[i].player = player;
 		driver->ch[i].driver = driver;
+		driver->tempo_delta = 255;
+		driver->tempo_counter=  0;
 		if(player && !track_player_reset(player, song, i))
 			driver->ch[i].enabled = 1;
 		driver->ch[i].bank = 0;
@@ -217,13 +229,15 @@ static void ch_set_freq(struct md_channel *ch)
 		case MDCH_FM3_A:
 		case MDCH_FM3_B:
 			base = &opn_freq[note];
+			val = base[0] + (((base[1] - base[0]) * detune) >> 8);
+			val += (octave & 7) << 11;
 			break;
 		case MDCH_PSG:
 		default:
 			base = &psg_freq[note];
+			val = base[0] + (((base[1] - base[0]) * detune) >> 8);
+			val >>= octave;
 	}
-	val = base[0] + (((base[1] - base[0]) * detune) >> 8);
-	val += (octave & 7) << 11;
 
 	switch(ch->type)
 	{
@@ -246,22 +260,32 @@ static void ch_set_freq(struct md_channel *ch)
 	}
 }
 
-static void ch_set_vol(struct md_channel *ch, uint8_t vol)
+static void ch_set_vol(struct md_channel *ch, uint8_t vol, int coarse)
 {
 	int operator;
+	if(coarse)
+	{
+		if(vol > 15)
+			vol = 15;
+		if(ch->type == MDCH_PSG)
+			vol = 15-vol;
+		else
+			vol = 2+(15-vol)*3;
+	}
 	switch(ch->type)
 	{
 		case MDCH_FM:
 			for(operator=3; operator>=0; operator--)
 			{
 				uint8_t max_tl = ch->specific.tl[operator];
-				if(opn_con_op[ch->con] >= operator)
+				if(operator >= opn_con_op[ch->con])
 					max_tl += vol;
 				if(max_tl > 127)
 					max_tl = 127;
 				opn_w(ch->driver, ch->bank, 0x40, ch->id, operator, max_tl);
 			}
 			break;
+		case MDCH_PSG:
 		default:
 			printf("set vol not supported for type %d yet\n", ch->type);
 			break;
@@ -314,7 +338,7 @@ static void ch_set_ins(struct md_channel *ch, uint8_t ins, uint8_t vol)
 	switch(ch->type)
 	{
 		case MDCH_FM:
-			printf("ins %02x = %02x\n", ins, ch->driver->ins_data_index[ins]);
+			printf("ins %3d = %02x\n", ins, ch->driver->ins_data_index[ins]);
 			opn_w(ch->driver, ch->bank, 0x40, ch->id, 0, 0x7f); // tl=max
 			opn_w(ch->driver, ch->bank, 0x40, ch->id, 1, 0x7f);
 			opn_w(ch->driver, ch->bank, 0x40, ch->id, 2, 0x7f);
@@ -322,8 +346,10 @@ static void ch_set_ins(struct md_channel *ch, uint8_t ins, uint8_t vol)
 			opn_w(ch->driver, ch->bank, 0x28, ch->id, 0, 0); // key off
 			for(addr=0; addr<4; addr++)
 			{
+				// load instrument parameters
 				ch->specific.tl[addr] = ch_fm_op_ins(ch, idata + addr, addr);
 			}
+			idata += 28;
 			opn_w(ch->driver, ch->bank, 0xb0, ch->id, 0, *idata);
 			ch->con = *idata & 7;
 			break;
@@ -341,29 +367,48 @@ void md_driver_command(void *ptr, struct atom* atom)
 	switch(atom->type)
 	{
 		case ATOM_CMD_INS:
-			printf("set ins to %d\n", CH_STATE(ATOM_CMD_INS));
+			printf("set ins %d to %d\n", ch->id, CH_STATE(ATOM_CMD_INS));
 			ch_set_ins(ch, CH_STATE(ATOM_CMD_INS), CH_STATE(ATOM_CMD_VOL));
-			break;
+			// continue ...
 		case ATOM_CMD_VOL:
 		case ATOM_CMD_VOL_FINE:
 		case ATOM_CMD_VOL_REL:
 		case ATOM_CMD_VOL_FINE_REL:
-			printf("set vol to %d\n", CH_STATE(ATOM_CMD_VOL));
-			ch_set_vol(ch, CH_STATE(ATOM_CMD_VOL));
+			//printf("set vol to %d\n", CH_STATE(ATOM_CMD_VOL));
+			ch_set_vol(ch, CH_STATE(ATOM_CMD_VOL_FINE), player->ch_flag & (1<<30));
+			//printf("set vol %d to %d\n", ch->id, CH_STATE(ATOM_CMD_VOL_FINE));
 			break;
 		case ATOM_NOTE:
-			printf("keyon %d\n", atom->param);
-			ch_key_on(ch, 0);
 			ch->pitch = ((atom->param + CH_STATE(ATOM_CMD_TRANSPOSE))<<8) + CH_STATE(ATOM_CMD_DETUNE);
-			ch_set_freq(ch);
-			ch_key_on(ch, 15);
+			if(!ch->slur_flag)
+			{
+				ch_key_on(ch, 0);
+				ch_set_freq(ch);
+				ch_key_on(ch, 15);
+			}
+			else
+			{
+				ch_set_freq(ch);
+				ch->slur_flag = 0;
+			}
+			//printf("note %d (%d)\n", ch->id, atom->param);
 			break;
 		case ATOM_REST:
-			printf("rest %d\n", atom->param);
+			ch_key_on(ch, 0);
+			break;
+		case ATOM_CMD_SLUR:
+			ch->slur_flag = 1;
 			break;
 		case ATOM_TIE:
-			printf("tie %d\n", atom->param);
+			//printf("tie %d\n", atom->param);
 			break;
+		case ATOM_CMD_TEMPO:
+		case ATOM_CMD_TEMPO_BPM:
+			if(player->ch_flag & (1<<31))
+				ch->driver->tempo_delta = (CH_STATE(ATOM_CMD_TEMPO)*256 / 150) - 1;
+			else
+				ch->driver->tempo_delta = CH_STATE(ATOM_CMD_TEMPO);
+			printf("set tempo to %02x\n", ch->driver->tempo_delta);
 		default:
 			break;
 	}
@@ -376,27 +421,34 @@ int md_driver_update(void *ptr)
 	int completed_ch = 10;
 	int step = 0;
 	int i;
+	int tempo_delta = driver->tempo_counter + driver->tempo_delta + 1;
+	int tempo_step = tempo_delta >> 8;
+	driver->tempo_counter = tempo_delta & 0xff;
 	for(i=0; i<10; i++, ch++)
 	{
+		step = 0;
 		if(!ch->enabled)
 			continue;
 		if(ch->player->loop_count < 2)
 		{
 			completed_ch--;
 		}
-		if(ch->player->delay)
+		if(tempo_step && ch->player->delay)
 		{
 			ch->player->delay--;
-			continue;
 		}
-		while(step == 0)
+		else if(tempo_step)
 		{
-			 step = track_player_step(ch->player);
-		}
-		if(step < 0)
-		{
-			ch->enabled = 0;
-			continue;
+			while(step == 0)
+			{
+				 step = track_player_step(ch->player);
+			}
+			if(step < 0)
+			{
+				ch->enabled = 0;
+				continue;
+			}
+			ch->player->delay = step-1; // we already do one step
 		}
 
 		// update envelopes...
@@ -483,7 +535,8 @@ static void md_read_fm(struct md_driver *driver, struct tag *tag, uint8_t id)
 		printf("op%d ssg-eg %02x\n", i, fm_data[24+i]);
 	}
 	// FB/ALG
-	fm_data[28] = (ins_data[0] << 3) | (ins_data[1] & 7);
+	fm_data[28] = (ins_data[0] & 7) | (ins_data[1] << 3);
+	printf("fb/alg %02x\n", fm_data[28]);
 	driver->ins_data_index[id] = md_add_unique_data(driver, fm_data, sizeof(fm_data));
 	printf("fm ins @%d added at %02x\n", id, driver->ins_data_index[id]);
 }
@@ -530,7 +583,11 @@ void md_create_vgm(struct song* song, char* filename)
 	struct md_driver *driver;
 	struct pb_handler pb_handler;
 	vgm_open(filename, 0x51, 0x80);
-	vgm_poke32(0x2C, 7670454);
+	vgm_poke32(0x2C, 7670454); // ym2612
+	vgm_poke32(0x0C, 3579575); // sega psg
+	vgm_poke16(0x28, 0x0009);
+	vgm_poke8(0x2A, 0x10);
+	vgm_poke8(0x2B, 0x03);
 	driver = md_driver_init();
 	md_read_envelopes(driver, song);
 	md_driver_reset(driver, song);

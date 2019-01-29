@@ -9,6 +9,10 @@
 #include <wchar.h>
 #include <time.h>
 
+#if defined(__unix__)
+#include <uchar.h>
+#endif
+
 #include "vgm.h"
 #include "fileio.h"
 
@@ -107,6 +111,11 @@ void vgm_poke32(int32_t offset, uint32_t d)
 	*(uint32_t*)(vgmdata+offset)= d;
 }
 
+void vgm_poke16(int32_t offset, uint16_t d)
+{
+	*(uint16_t*)(vgmdata+offset)= d;
+}
+
 void vgm_poke8(int32_t offset, uint8_t d)
 {
 	*(uint8_t*)(vgmdata+offset)= d;
@@ -161,6 +170,11 @@ void vgm_write(uint8_t command, uint8_t port, uint16_t reg, uint16_t value)
 		*data++ = reg;
 		*data++ = value;
 	}
+	else if(command == 0x50 || command == 0x30) // PSG
+	{
+		*data++ = command;
+		*data++ = value;
+	}
 	else // following is for D0-D6 commands...
 	{
 		*data++ = command;
@@ -195,11 +209,28 @@ void gd3_write_string(char* s)
 	size_t l;
 #if defined(_WIN32) && defined(__MINGW32__) && !defined(__NO_ISOCEXT)
 	l = _snwprintf((wchar_t*)data,256,L"%S", s);
+	data += (l+1)*2;
+#elif defined(__unix__)
+	size_t max=256;
+	static mbstate_t mbstate;
+	while((l = mbrtoc16((char16_t*)data,s,max,&mbstate)))
+	{
+		if(l == -1 || l == -2)
+			break;
+		else if(l == -3)
+			data += 2;
+		else
+		{
+			s += l;
+			data += 2;
+			max --;
+		}
+	}
+	data += 2;
 #else
 	l = swprintf((wchar_t*)data,256,L"%s", s);
-#endif // defined
-
 	data += (l+1)*2;
+#endif // defined
 }
 
 void vgm_write_tag()

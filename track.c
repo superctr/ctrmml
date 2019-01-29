@@ -164,7 +164,7 @@ void track_quantize(struct track* track, int param)
 
 void track_octave(struct track* track, int octave)
 {
-	track->octave = octave + 1;
+	track->octave = octave - 1;
 }
 
 void track_octave_up(struct track* track)
@@ -330,6 +330,11 @@ int track_player_step(struct track_player *player)
 		struct atom* old_atom = &player->track->atom[player->position-1];
 		if(old_atom->off_duration)
 		{
+			struct atom koff = {};
+			koff.type = ATOM_REST;
+
+			if(player->atom_post_callback)
+				player->atom_post_callback(player->cb_state, &koff);
 			player->delay = old_atom->off_duration;
 			player->state = CHANNEL_KEYOFF;
 			return player->delay;
