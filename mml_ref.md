@@ -5,6 +5,7 @@ MML reference
 Lines starting with # or @ defines a meta command. `#` parameters are always
 assumed to be a string, whereas `@` commands define a table of comma-separated
 values. Strings can be enclosed in double quotes if needed.
+
 -	`#title`, `#composer`, `#author`, `#date`, `#comment' - Song metadata.
 -	`#platform` - Sets the MML target platform.
 	- todo: available platforms
