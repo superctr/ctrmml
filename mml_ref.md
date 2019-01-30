@@ -95,6 +95,7 @@ the previously specified channels will be used.
 #### Megadrive
 #### FM instruments
 FM instruments are defined as below: (Commas between values are optional)
+
 	@1	fm ; finger bass
 	;	ALG  FB
 		  3   0
@@ -107,16 +108,23 @@ FM instruments are defined as below: (Commas between values are optional)
 #### PSG instruments
 PSG instruments (envelopes) are defined as a sequence of values. 15 is max
 volume and 0 is silence.
+
 	@10	psg
 		1 4 6 8 10 12 13 14 15
+
 Use `>` to specify sliding from one value to another
+
 	@11	psg
 		15>10
+
 Use `:` set the length of each value (in frames).
+
 	@12	psg
 		15:10     ; vol 15 for 10 frames
 		15>0:100  ; from 15 to 0 in 100 frames
+
 Set the sustain position with `/` or the loop position with `|`
+
 	@13 psg
 		15 14 / 13>0:7
 	@14 psg
