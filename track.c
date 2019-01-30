@@ -4,8 +4,9 @@
 #include <string.h>
 #include "ctrmml.h"
 
-#define DEBUG_PRINT(fmt,...) { printf("ch %02x: " fmt, track->ch, __VA_ARGS__); }
-static char* note_debug[12] = {"c","c#","d","d#","e","f","f#","g","g#","a","a#","b"};
+#define DEBUG_PRINT(fmt,...)
+//#define DEBUG_PRINT(fmt,...) { printf("ch %02x: " fmt, track->ch, __VA_ARGS__); }
+//static char* note_debug[12] = {"c","c#","d","d#","e","f","f#","g","g#","a","a#","b"};
 
 struct track* track_init()
 {

@@ -152,6 +152,7 @@ static void ch_set_freq(struct md_channel *ch)
 			break;
 		case MDCH_PSG:
 		case MDCH_PSGN_B:
+			octave--;
 			base = &psg_freq[note];
 			val = base[0] + (((base[1] - base[0]) * detune) >> 8);
 			val >>= octave;
