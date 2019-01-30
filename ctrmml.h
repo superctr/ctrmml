@@ -85,6 +85,8 @@ struct track_player
 {
 	struct song* song;
 	struct track* track;
+	struct atom atom; // atoms are copied here
+	struct atom *org_atom; // original atom
 	enum {
 		CHANNEL_DISABLED,
 		CHANNEL_INACTIVE,

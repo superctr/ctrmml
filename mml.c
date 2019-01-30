@@ -310,6 +310,8 @@ static void parse_mml(struct mml_file *mml, int conditional_block)
 			grace(mml);
 		else if(c == '*')
 			track_atom(mml->trk, ATOM_CMD_JUMP, expect_parameter(mml));
+		else if(c == '%')
+			track_atom(mml->trk, ATOM_CMD_CHANNEL_MODE, expect_parameter(mml));
 
 		else if(iseol(mml, c))
 			return;

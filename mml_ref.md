@@ -90,3 +90,35 @@ the previously specified channels will be used.
 	bars, for aesthetics.
 
 &ast; indicates that the range may depend on the platform.
+
+### Platforms
+#### Megadrive
+#### FM instruments
+FM instruments are defined as below: (Commas between values are optional)
+	@1	fm ; finger bass
+	;	ALG  FB
+		  3   0
+	;	 AR  DR  SR  RR  SL  TL  KS  ML  DT SSG
+		 31   0  19   5   0  23   0   0   0   0
+		 31   6   0   4   3  19   0   0   0   0
+		 31  15   0   5   4  38   0   4   0   0
+		 31  27   0  11   1   0   0   1   0   0
+
+#### PSG instruments
+PSG instruments (envelopes) are defined as a sequence of values. 15 is max
+volume and 0 is silence.
+	@10	psg
+		1 4 6 8 10 12 13 14 15
+Use `>` to specify sliding from one value to another
+	@11	psg
+		15>10
+Use `:` set the length of each value (in frames).
+	@12	psg
+		15:10     ; vol 15 for 10 frames
+		15>0:100  ; from 15 to 0 in 100 frames
+Set the sustain position with `/` or the loop position with `|`
+	@13 psg
+		15 14 / 13>0:7
+	@14 psg
+		0>14:7 | 15 10 5 0 5 10
+

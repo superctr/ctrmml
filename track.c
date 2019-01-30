@@ -48,9 +48,12 @@ void track_note(struct track* track, int note, int duration)
 	if(!quantize)
 		quantize++;
 
-	track_atom_add(track, ATOM_NOTE, note + track->octave*12, quantize, duration-quantize);
-
 	DEBUG_PRINT("add note %s%d, %d (%d, %d)\n", note_debug[note], track->octave, duration, quantize, duration-quantize);
+
+	if(~track->flag & 0x01)
+		note += track->octave*12; // add octave when not in drum mode
+
+	track_atom_add(track, ATOM_NOTE, note, quantize, duration-quantize);
 }
 
 void track_tie(struct track* track, int duration)
@@ -64,8 +67,8 @@ void track_tie(struct track* track, int duration)
 	{
 		quantize = (new_duration * track->quantize) / 8;
 		track->atom[track->last_note].on_duration = quantize;
-		track->atom[track->last_note].off_duration = duration-quantize;
-		DEBUG_PRINT("extend note %d A (%d, %d)\n", duration, duration, duration-quantize);
+		track->atom[track->last_note].off_duration = new_duration-quantize;
+		DEBUG_PRINT("extend note %d A (%d, %d)\n", duration, new_duration, new_duration-quantize);
 	}
 	else if(track->last_note >= 0)
 	{
@@ -220,7 +223,6 @@ void track_finalize_cb(void* cb_state, struct atom* atom)
 	struct track_player *player = cb_state;
 	if(atom->type == ATOM_CMD_SEGNO)
 	{
-		printf("at loop pos\n");
 		memcpy(player->loop_ch_state, player->ch_state, sizeof(player->loop_ch_state));
 		player->loop_ch_flag = player->ch_flag;
 	}
@@ -266,7 +268,6 @@ void track_finalize(struct song* song, struct track* track, int id)
 						track_atom(track, type, 0);
 					else if(player->ch_state[i] != player->loop_ch_state[i])
 						track_atom(track, type, player->loop_ch_state[i]);
-					printf("restore %02x = %d\n", type, player->loop_ch_state[i]);
 				}
 			}
 		}
@@ -307,34 +308,76 @@ void track_player_free(struct track_player *player)
 	free(player);
 }
 
-static void atom_send_cb(struct track_player *player, struct atom* atom)
+static void atom_send_cb(struct track_player *player)
 {
 	if(!player->cb_unroll_loops && player->inside_loop)
 		return;
 	if(!player->cb_unroll_jumps && player->inside_jump)
 		return;
 	if(player->atom_callback)
-		player->atom_callback(player->cb_state, atom);
+		player->atom_callback(player->cb_state, &player->atom);
+}
+
+static void atom_send_post_cb(struct track_player *player)
+{
+	if(player->atom_post_callback)
+		player->atom_post_callback(player->cb_state, &player->atom);
+}
+
+static int track_player_drum_mode(struct track_player *player)
+{
+	if(player->stack[player->stack_frame].loop_count == 0xABCDEF)
+	{
+		// second call leaves it
+		player->track = player->stack[player->stack_frame].track;
+		player->position = player->stack[player->stack_frame--].position;
+		player->inside_jump--;
+		player->atom.on_duration = player->track->atom[player->position-1].on_duration;
+		player->atom.off_duration = player->track->atom[player->position-1].off_duration;
+		return 0;
+	}
+	else
+	{
+		// first call enters subroutine
+		int offset = player->ch_state[ATOM_CMD_DRUM_MODE - ATOM_CMD_CHANNEL_MODE];
+		// Check if drum mode is enabled and that we have a note
+		if(!offset || player->atom.type != ATOM_NOTE)
+			return 0;
+		// Check if the track we're jumping to is actually valid
+		if((player->song->track[player->atom.param + offset]->flag & 0x80) == 0)
+		{
+			printf("drum mode error: track %02x is not defined\n", player->atom.param + offset);
+			return 0;
+		}
+		player->stack[++player->stack_frame].position = player->position;
+		player->stack[player->stack_frame].track = player->track;
+		player->stack[player->stack_frame].loop_count = 0xABCDEF; // indicate drum mode
+		player->track = player->song->track[player->atom.param + offset];
+		player->position = 0;
+		player->inside_jump++;
+		return 1;
+	}
 }
 
 // step the track player. this should work for both file generation and playback/logging
 // by setting the "expand jump/loop" bits as needed and using the callback.
 int track_player_step(struct track_player *player)
 {
-	struct atom* atom = &player->track->atom[player->position];
+	struct atom *atom = &player->atom;
+	player->org_atom = &player->track->atom[player->position];
+	player->atom = *player->org_atom;
 	player->accumulated_length += player->delay;
 	player->delay = 0;
 	if(player->state == CHANNEL_KEYON)
 	{
-		player->state = CHANNEL_INACTIVE;
 		struct atom* old_atom = &player->track->atom[player->position-1];
+		player->state = CHANNEL_INACTIVE;
 		if(old_atom->off_duration)
 		{
-			struct atom koff = {};
-			koff.type = ATOM_REST;
+			player->atom = *old_atom;
+			player->atom.type = ATOM_REST;
 
-			if(player->atom_post_callback)
-				player->atom_post_callback(player->cb_state, &koff);
+			atom_send_post_cb(player);
 			player->delay = old_atom->off_duration;
 			player->state = CHANNEL_KEYOFF;
 			return player->delay;
@@ -344,24 +387,33 @@ int track_player_step(struct track_player *player)
 	{
 		if(player->stack_frame)
 		{
+			if(!player->stack[player->stack_frame].track)
+			{
+				printf("Unterminated loop\n");
+				return -2;
+			}
 			player->track = player->stack[player->stack_frame].track;
 			player->position = player->stack[player->stack_frame--].position;
 			player->inside_jump--;
 		}
-		else if(player->inside_loop)
-			return -2;
 		else
 			return -1;
 	}
-	atom_send_cb(player, atom);
+	atom_send_cb(player);
 	// todo: move below code to a jumptable
 	switch(atom->type)
 	{
 		case ATOM_REST:
+			if(track_player_drum_mode(player))
+				return 0;
 			player->delay = atom->off_duration;
 			player->state = CHANNEL_KEYOFF;
 			break;
 		case ATOM_NOTE:
+			// Drum mode causes each note to execute a subroutine until a note is found,
+			// which replaces the original note in the track.
+			if(track_player_drum_mode(player))
+				return 0;
 		case ATOM_TIE:
 			if(atom->on_duration)
 			{
@@ -395,7 +447,7 @@ int track_player_step(struct track_player *player)
 				return -2;
 			}
 			// set param to end position to make it easier later
-			atom->param = player->stack[player->stack_frame].end_position;
+			player->org_atom->param = player->stack[player->stack_frame].end_position;
 			if(player->stack[player->stack_frame].loop_count == 1)
 			{
 				player->position = player->stack[player->stack_frame--].end_position;
@@ -434,8 +486,14 @@ int track_player_step(struct track_player *player)
 				printf("error: jump stack overflow\n");
 				return -2;
 			}
+			if((player->song->track[atom->param]->flag & 0x80) == 0)
+			{
+				printf("error: track %02x is not defined\n", atom->param);
+				return -2;
+			}
 			player->stack[++player->stack_frame].position = player->position;
 			player->stack[player->stack_frame].track = player->track;
+			player->stack[player->stack_frame].loop_count = 0; // indicate normal jump
 			player->track = player->song->track[atom->param];
 			player->position = 0;
 			player->inside_jump++;
@@ -471,7 +529,7 @@ int track_player_step(struct track_player *player)
 			if(atom->type != ATOM_CMD_VOL_REL)
 				CH_STATE(ATOM_CMD_VOL_FINE) = 0;
 			CH_STATE(ATOM_CMD_VOL_FINE) += atom->param;
-			FLAG_CLR(ATOM_CMD_VOL_FINE);
+			FLAG_SET(ATOM_CMD_VOL_FINE);
 			FLAG_SET(VOL_BIT);
 			break;
 		case ATOM_CMD_VOL_FINE_REL:
@@ -481,7 +539,7 @@ int track_player_step(struct track_player *player)
 			break;
 		case ATOM_CMD_TEMPO_BPM:
 			CH_STATE(ATOM_CMD_TEMPO) = atom->param;
-			FLAG_CLR(ATOM_CMD_TEMPO);
+			FLAG_SET(ATOM_CMD_TEMPO);
 			FLAG_SET(BPM_BIT);
 			break;
 		default:
@@ -497,8 +555,7 @@ int track_player_step(struct track_player *player)
 			}
 			break;
 	}
-	if(player->atom_post_callback)
-		player->atom_post_callback(player->cb_state, atom);
+	atom_send_post_cb(player);
 	return player->delay;
 }
 
