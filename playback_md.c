@@ -198,8 +198,8 @@ static void ch_set_vol(struct md_channel *ch, uint8_t vol, int coarse)
 			vol = 15;
 		if(ch->type & MDCH_PSG)
 			vol = 15-vol;
-		else
-			vol = 2+(15-vol)*3;
+		else // 2dB per step
+			vol = 2 + (15-vol)*3 - (15-vol)/3;
 	}
 	switch(ch->type)
 	{
