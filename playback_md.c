@@ -135,7 +135,7 @@ void md_driver_reset(struct md_driver *driver, struct song* song)
 // static void opn_w(struct md_driver *driver, uint8_t port, uint8_t reg, uint8_t ch, uint8_t op, uint16_t data)
 static void ch_set_freq(struct md_channel *ch)
 {
-	uint8_t note_num = ch->pitch >> 8;
+	uint8_t note_num = (ch->pitch >> 8) + ch->ins_transpose;
 	uint8_t note = note_num % 12;
 	uint8_t octave = note_num / 12;
 	uint8_t detune = ch->pitch & 0xff;
@@ -310,6 +310,7 @@ static void ch_set_ins(struct md_channel *ch, uint8_t ins, uint8_t vol)
 			printf("set ins not supported for type %d yet\n", ch->type);
 			break;
 	}
+	ch->ins_transpose = ch->driver->ins_transpose[ins];
 }
 
 #define CH_STATE(var) player->ch_state[var - ATOM_CMD_CHANNEL_MODE]

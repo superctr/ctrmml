@@ -111,6 +111,43 @@ static void md_read_fm(struct md_driver *driver, struct tag *tag, uint8_t id)
 	DEBUG_FM("fm ins @%d added at %02x\n", id, driver->ins_data_index[id]);
 }
 
+// helper to create 2op polyphonic presets
+static void md_read_fm_2op(struct md_driver *driver, struct tag *tag, uint8_t id)
+{
+	static uint8_t fm_data[29];
+	static uint8_t ins_data[6]; // fm ins, mul1,mul2,mul3,mul4, transpose
+	int data_id = 0;
+
+	for(int i=0; i<6; i++)
+	{
+		if(!tag)
+		{
+			fprintf(stderr, "warning: not enough parameters for fm instrument @%d\n", id);
+			return;
+		}
+		ins_data[i] = strtol(tag->key, NULL, 0);
+		printf("%02x,",ins_data[i]);
+		tag = tag_get_next(tag);
+	}
+	data_id = driver->ins_data_index[ins_data[0]];
+	if(data_id < MD_DATA_COUNT_MAX)
+		memcpy(fm_data, driver->data_start[data_id], driver->data_length[data_id]);
+	for(int i=0; i<4; i++)
+	{
+		uint8_t mul = ins_data[1 + ((i&1)<<1) + ((i&2)>>1)];
+		uint8_t ord = fm_data[0+i];
+		fm_data[0 + i] = (fm_data[0+i] & 0xf0) | (mul & 15);
+		printf("ins %d, op %d(%d) mul %d (%02x)\n", id, i, ((i&1)<<1) + ((i&2)>>1), mul, ord);
+	}
+	fm_data[4 + 3] = fm_data[4 + 2]; // op4 tl should be same as op1
+	driver->ins_data_index[id] = md_add_unique_data(driver, fm_data, sizeof(fm_data));
+	DEBUG_FM("fm 2op ins @%d added at %02x\n", id, driver->ins_data_index[id]);
+	printf("transpose %d\n", (int8_t)ins_data[5]);
+	driver->ins_transpose[id] = (int8_t)ins_data[5];
+
+}
+
+// read PSG volume envelope
 static void md_read_psg(struct md_driver *driver, struct tag *tag, uint8_t id)
 {
 	static uint8_t env_data[256];
@@ -224,6 +261,11 @@ void md_read_envelopes(struct md_driver *driver, struct song *song)
 			{
 				printf("read fm instrument %d (%s)\n", env, tag->key);
 				md_read_fm(driver, tag_get_next(child), env);
+			}
+			else if(!strcasecmp(child->key, "2op"))
+			{
+				printf("read fm2op instrument %d (%s)\n", env, tag->key);
+				md_read_fm_2op(driver, tag_get_next(child), env);
 			}
 			else
 			{

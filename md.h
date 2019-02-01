@@ -25,6 +25,7 @@ struct md_channel
 	unsigned int bank : 1;
 	unsigned int id : 2;
 	uint16_t pitch;
+	int8_t ins_transpose; // compiled files should have this already 'cooked'
 	uint8_t pan_lfo;
 	uint8_t con;
 	uint8_t *pit_start; // start position of pitch envelope
@@ -66,6 +67,7 @@ struct md_driver
 
 	int ins_data_index[MD_DATA_COUNT_MAX]; // entry in data table
 	int pitch_data_index[MD_DATA_COUNT_MAX];
+	int8_t ins_transpose[MD_DATA_COUNT_MAX];
 
 	int borrowed_sample; // used for vgm writing. may use write queue instead
 };
