@@ -102,3 +102,4 @@ class Track
 		uint16_t get_duration(uint16_t duration = 0);
 };
 #endif
+

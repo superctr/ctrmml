@@ -29,3 +29,4 @@ class Song
 		Track_Map *get_track_map();
 };
 #endif
+

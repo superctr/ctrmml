@@ -10,3 +10,4 @@ int main(int argc, char **argv)
 	bool run_ok = runner.run("", false);
 	return !run_ok;
 }
+

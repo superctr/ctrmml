@@ -62,3 +62,4 @@ class MML_Input
 		bool parse_line(std::string line);
 };
 #endif
+
