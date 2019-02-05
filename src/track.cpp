@@ -232,4 +232,3 @@ Atom *Track::get_atom(unsigned long position)
 {
 	return &atoms.at(position);
 }
-

@@ -28,5 +28,4 @@ class Song
 		class Track *get_track(uint16_t id);
 		Track_Map *get_track_map();
 };
-
 #endif

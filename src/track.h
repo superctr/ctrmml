@@ -1,6 +1,5 @@
 #ifndef TRACK_H
 #define TRACK_H
-
 #include <stdint.h>
 #include <vector>
 #include "song.h"
@@ -102,5 +101,4 @@ class Track
 		void set_duration(uint16_t duration);
 		uint16_t get_duration(uint16_t duration = 0);
 };
-
 #endif

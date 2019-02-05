@@ -1,3 +1,5 @@
+#ifndef MML_INPUT_H
+#define MML_INPUT_H
 #include <fstream>
 #include <vector>
 #include "track.h"
@@ -59,4 +61,4 @@ class MML_Input
 		bool open_file(std::string filename);
 		bool parse_line(std::string line);
 };
-
+#endif
