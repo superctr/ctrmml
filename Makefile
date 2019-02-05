@@ -5,11 +5,13 @@ LDFLAGS =
 LDFLAGS_TEST = -lcppunit
 
 CORE_OBJS = \
-	$(OBJ)/track.o
+	$(OBJ)/track.o \
+	$(OBJ)/song.o
 
 UNITTEST_OBJS = \
 	$(CORE_OBJS) \
 	$(OBJ)/unittest/test_track.o \
+	$(OBJ)/unittest/test_song.o \
 	$(OBJ)/unittest/main.o
 
 $(OBJ)/%.o: $(SRC)/%.cpp

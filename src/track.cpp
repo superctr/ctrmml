@@ -174,7 +174,7 @@ int Track::reverse_rest(uint16_t duration)
 	return -1;
 }
 
-int Track::finalize()
+int Track::finalize(class Song *song)
 {
 	printf("Not implemented yet.\n");
 	return -1;
