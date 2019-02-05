@@ -6,7 +6,8 @@ LDFLAGS_TEST = -lcppunit
 
 CORE_OBJS = \
 	$(OBJ)/track.o \
-	$(OBJ)/song.o
+	$(OBJ)/song.o \
+	$(OBJ)/mml_input.o
 
 UNITTEST_OBJS = \
 	$(CORE_OBJS) \
@@ -15,7 +16,7 @@ UNITTEST_OBJS = \
 	$(OBJ)/unittest/main.o
 
 $(OBJ)/%.o: $(SRC)/%.cpp
-	mkdir -p $(@D)
+	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) -c $< -o $@
 
 unittest: $(UNITTEST_OBJS)
@@ -44,7 +45,7 @@ ctrmml_old: $(CTRMML_OBJS_OLD) $(CTRMML_HEADERS_OLD)
 	$(CC) $(LDFLAGS_OLD) $(CTRMML_OBJS_OLD) -o $@
 
 $(OBJ_OLD)/%.o: $(SRC_OLD)/%.c
-	mkdir -p $(@D)
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS_OLD) -c $< -o $@
 
 clean:
