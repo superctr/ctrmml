@@ -5,12 +5,12 @@
 #include <map>
 #include "track.h"
 
-typedef std::list<std::string> Tag;
+typedef std::vector<std::string> Tag;
 typedef std::map<std::string,Tag> Tag_Map;
 typedef std::map<uint16_t, class Track> Track_Map;
 
 class Song
-{ 
+{
 	protected:
 		Tag_Map tag_map;
 		Track_Map track_map;
