@@ -14,9 +14,9 @@ Song::~Song()
 {
 }
 
-Tag_Map *Song::get_tags()
+Tag_Map& Song::get_tags()
 {
-	return &tag_map;
+	return tag_map;
 }
 
 void Song::add_tag(std::string key, std::string value)
@@ -102,9 +102,9 @@ void Song::add_tag_list(std::string key, std::string value)
 	free(str);
 }
 
-Tag *Song::get_tag(std::string key)
+Tag& Song::get_tag(std::string key)
 {
-	return &tag_map.at(key);
+	return tag_map.at(key);
 }
 
 std::string Song::get_tag_front(std::string key)
@@ -112,25 +112,18 @@ std::string Song::get_tag_front(std::string key)
 	return tag_map.at(key).front();
 }
 
-Tag_Map *Song::get_tag_map()
+Tag_Map& Song::get_tag_map()
 {
-	return &tag_map;
+	return tag_map;
 }
 
-class Track *Song::get_track(uint16_t id)
+class Track& Song::get_track(uint16_t id)
 {
-	try
-	{
-		return &track_map.at(id);
-	}
-	catch(std::exception&)
-	{
-		return nullptr;
-	}
+	return track_map.at(id);
 }
 
-Track_Map *Song::get_track_map()
+Track_Map& Song::get_track_map()
 {
-	return &track_map;
+	return track_map;
 }
 

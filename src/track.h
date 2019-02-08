@@ -79,10 +79,11 @@ class Track
 
 		bool is_enabled();
 		bool in_drum_mode();
-		std::vector<Atom> *get_atoms();
-		Atom *get_atom(unsigned long position);
+		std::vector<Atom>& get_atoms();
+		Atom& get_atom(unsigned long position);
+		unsigned long get_atom_count();
 
-		void add_atom(Atom *new_atom);
+		void add_atom(Atom& new_atom);
 		void add_atom(Atom_Command type, int16_t param = 0, uint16_t on_time = 0, uint16_t off_time = 0);
 		void add_note(int note, uint16_t duration = 0);
 		int  add_tie(uint16_t duration = 0);
@@ -90,7 +91,7 @@ class Track
 		int  add_slur();
 
 		int  reverse_rest(uint16_t duration = 0);
-		int  finalize(class Song *song);
+		int  finalize(class Song& song);
 
 		void set_octave(int param);
 		void change_octave(int param);

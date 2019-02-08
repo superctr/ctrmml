@@ -7,12 +7,14 @@ LDFLAGS_TEST = -lcppunit
 CORE_OBJS = \
 	$(OBJ)/track.o \
 	$(OBJ)/song.o \
+	$(OBJ)/input.o \
 	$(OBJ)/mml_input.o
 
 UNITTEST_OBJS = \
 	$(CORE_OBJS) \
 	$(OBJ)/unittest/test_track.o \
 	$(OBJ)/unittest/test_song.o \
+	$(OBJ)/unittest/test_input.o \
 	$(OBJ)/unittest/test_mml_input.o \
 	$(OBJ)/unittest/main.o
 

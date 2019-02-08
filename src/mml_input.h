@@ -1,36 +1,20 @@
 #ifndef MML_INPUT_H
 #define MML_INPUT_H
 #include <fstream>
+#include <string>
 #include <vector>
+#include "input.h"
 #include "track.h"
-#include "song.h"
 
-class MML_Input
+class MML_Input: public Line_Input
 {
 	private:
-		std::string filename;
-		std::fstream fs;
-		unsigned int line;
-		unsigned int column;
-
-		std::string buffer;
-		bool eof_flag;
-
-		Song* song;
 		Tag* tag;
 		Track* track;
 		uint16_t track_id;
 		uint16_t track_offset;
 		std::vector<uint16_t> track_list;
-
 		void (MML_Input::*last_cmd)();
-
-		// Text buffer commands
-		void error(char* error_msg, int column, int fatal);
-		void iseol(int c);
-		void my_getc();
-		void my_ungetc();
-		int scannum(int* ptr);
 
 		// MML read helpers
 		int read_duration();
@@ -38,7 +22,7 @@ class MML_Input
 		int expect_parameter();
 		int expect_signed();
 		int read_note(int c); // c is the first character
-		
+
 		// Wrappers that provide error/warning messages
 		// or other functions
 		void mml_slur();
@@ -57,9 +41,7 @@ class MML_Input
 	public:
 		MML_Input(Song* song);
 		~MML_Input();
-
-		bool open_file(std::string filename);
-		bool parse_line(std::string line);
+		bool parse_line();
 };
 #endif
 

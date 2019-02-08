@@ -17,9 +17,10 @@ class Track_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST(test_reverse_rest_shorten_on_time);
 	CPPUNIT_TEST(test_reverse_rest_shorten_off_time);
 	CPPUNIT_TEST(test_reverse_rest_impossible);
-	CPPUNIT_TEST(test_finalize_restore_state);
-	CPPUNIT_TEST(test_finalize_no_redundant_restore);
-	CPPUNIT_TEST(test_finalize_vol_tempo_flags);
+	CPPUNIT_TEST(test_get_atom_count);
+	//CPPUNIT_TEST(test_finalize_restore_state);
+	//CPPUNIT_TEST(test_finalize_no_redundant_restore);
+	//CPPUNIT_TEST(test_finalize_vol_tempo_flags);
 	CPPUNIT_TEST_SUITE_END();
 private:
 	Track *track;
@@ -39,8 +40,8 @@ public:
 		std::vector<Atom>::iterator it;
 		for(i=0; i<10; i++)
 			track->add_note(i, 24);
-		for(i=0, it = track->get_atoms()->begin();
-				it != track->get_atoms()->end(); i++, it++)
+		for(i=0, it = track->get_atoms().begin();
+				it != track->get_atoms().end(); i++, it++)
 		{
 			CPPUNIT_ASSERT_EQUAL((int16_t) (i + 12*5),it->param);
 			CPPUNIT_ASSERT_EQUAL((uint16_t) 24,it->on_time);
@@ -68,14 +69,14 @@ public:
 		track->add_note(1, 24);
 		track->set_quantize(4);
 		track->add_note(1, 24);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)18, track->get_atom(0)->on_time);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)6, track->get_atom(0)->off_time);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)6, track->get_atom(1)->on_time);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)18, track->get_atom(1)->off_time);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_atom(2)->on_time);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)0, track->get_atom(2)->off_time);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)12, track->get_atom(3)->on_time);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)12, track->get_atom(3)->off_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)18, track->get_atom(0).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)6, track->get_atom(0).off_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)6, track->get_atom(1).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)18, track->get_atom(1).off_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_atom(2).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)0, track->get_atom(2).off_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)12, track->get_atom(3).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)12, track->get_atom(3).off_time);
 	}
 	// Set default duration, add notes and verify that durations are correct
 	void test_add_note_default_duration()
@@ -84,24 +85,24 @@ public:
 		track->add_note(1);
 		track->set_duration(50);
 		track->add_note(1);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)16, track->get_atom(0)->on_time);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)50, track->get_atom(1)->on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)16, track->get_atom(0).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)50, track->get_atom(1).on_time);
 	}
 	// Add notes with various octave changes and verify that notes are correct.
 	void test_add_note_octave_change()
 	{
 		track->set_octave(0);
 		track->add_note(0);
-		CPPUNIT_ASSERT_EQUAL((int16_t)0, track->get_atom(0)->param);
+		CPPUNIT_ASSERT_EQUAL((int16_t)0, track->get_atom(0).param);
 		track->set_octave(1);
 		track->add_note(0);
-		CPPUNIT_ASSERT_EQUAL((int16_t)12, track->get_atom(1)->param);
+		CPPUNIT_ASSERT_EQUAL((int16_t)12, track->get_atom(1).param);
 		track->change_octave(1);
 		track->add_note(0);
-		CPPUNIT_ASSERT_EQUAL((int16_t)24, track->get_atom(2)->param);
+		CPPUNIT_ASSERT_EQUAL((int16_t)24, track->get_atom(2).param);
 		track->change_octave(-2);
 		track->add_note(0);
-		CPPUNIT_ASSERT_EQUAL((int16_t)0, track->get_atom(3)->param);
+		CPPUNIT_ASSERT_EQUAL((int16_t)0, track->get_atom(3).param);
 	}
 	// Add a tie and verify that the duration of the previous note is changed.
 	void test_tie_extend_duration()
@@ -109,13 +110,13 @@ public:
 		track->set_quantize(8);
 		track->add_note(0,24);
 		track->add_tie(24);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)48, track->get_atom(0)->on_time);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)0, track->get_atom(0)->off_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)48, track->get_atom(0).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)0, track->get_atom(0).off_time);
 		track->set_quantize(4);
 		track->add_note(0,24);
 		track->add_tie(24);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_atom(1)->on_time);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_atom(1)->off_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_atom(1).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_atom(1).off_time);
 	}
 	// Add note, then an unrelated atom, then a tie and verify that a new tie atom is added.
 	void test_tie_extend_add_tie()
@@ -124,9 +125,9 @@ public:
 		track->add_note(0,24);
 		track->add_atom(ATOM_CMD_VOL, 10); // type doesn't matter
 		track->add_tie(24);
-		CPPUNIT_ASSERT_EQUAL((Atom_Command)ATOM_TIE, track->get_atom(2)->type);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_atom(0)->on_time);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_atom(2)->on_time);
+		CPPUNIT_ASSERT_EQUAL((Atom_Command)ATOM_TIE, track->get_atom(2).type);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_atom(0).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_atom(2).on_time);
 	}
 	// Add note, then an unrelated atom, then a tie and verify that a new rest is added.
 	void test_tie_extend_add_rest()
@@ -135,10 +136,10 @@ public:
 		track->add_note(0,24);
 		track->add_atom(ATOM_CMD_VOL, 10); // type doesn't matter
 		track->add_tie(24);
-		CPPUNIT_ASSERT_EQUAL((Atom_Command)ATOM_REST, track->get_atom(2)->type);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)12, track->get_atom(0)->on_time);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)12, track->get_atom(0)->off_time);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_atom(2)->off_time);
+		CPPUNIT_ASSERT_EQUAL((Atom_Command)ATOM_REST, track->get_atom(2).type);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)12, track->get_atom(0).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)12, track->get_atom(0).off_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_atom(2).off_time);
 	}
 	// Add slur and verify that the articulation of the previous note is legato.
 	void test_slur()
@@ -147,8 +148,8 @@ public:
 		track->add_note(0,24);
 		track->add_slur();
 		track->add_note(1,24);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_atom(0)->on_time);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)0, track->get_atom(0)->off_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_atom(0).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)0, track->get_atom(0).off_time);
 	}
 	// Add slur and verify that the function returns error if it is impossible to set the previous note
 	// to legato.
@@ -165,12 +166,12 @@ public:
 		track->set_quantize(8);
 		track->add_note(0,24);
 		track->reverse_rest(10);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)14, track->get_atom(0)->on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)14, track->get_atom(0).on_time);
 		track->set_quantize(4);
 		track->add_note(0,24);
 		track->reverse_rest(20);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)4, track->get_atom(1)->on_time);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)0, track->get_atom(1)->off_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)4, track->get_atom(1).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)0, track->get_atom(1).off_time);
 	}
 	// Add a reverse rest and verify that the previous note was shortened.
 	void test_reverse_rest_shorten_off_time()
@@ -178,7 +179,7 @@ public:
 		track->set_quantize(2);
 		track->add_note(0,24);
 		track->reverse_rest(10);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)8, track->get_atom(0)->off_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)8, track->get_atom(0).off_time);
 	}
 	// Attempt to add a reverse rest where it is impossible and verify that an error code is returned.
 	void test_reverse_rest_impossible()
@@ -190,6 +191,14 @@ public:
 		track->add_note(0,24);
 		CPPUNIT_ASSERT(track->reverse_rest(48) == -2);
 	}
+	void test_get_atom_count()
+	{
+		track->add_atom(ATOM_CMD_VOL,12); // just some dummy atoms
+		track->add_atom(ATOM_CMD_INS,34);
+		track->add_atom(ATOM_CMD_PAN,56);
+		unsigned long expected = 3;
+		CPPUNIT_ASSERT_EQUAL(expected, track->get_atom_count());
+	}
 	// Verify that finalize restores changed channel state after loop.
 	void test_finalize_restore_state()
 	{
@@ -198,6 +207,7 @@ public:
 	// was unchanged during loop.
 	void test_finalize_no_redundant_restore()
 	{
+		// These tests are currently unimplemented because the player class is not implemented.
 	}
 	// Verify that volume/tempo flags are set properly if respective
 	// commands are used.
