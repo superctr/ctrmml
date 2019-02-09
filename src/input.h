@@ -36,7 +36,7 @@ class Line_Input: public Input
 		bool iseol(int c);
 		int get();
 		int get_token();
-		void unget(int c);
+		void unget(int c = 0);
 		int get_num();
 		bool parse_file();
 		virtual bool parse_line() = 0;

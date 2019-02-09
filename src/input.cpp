@@ -53,6 +53,13 @@ int Line_Input::get_token()
 
 void Line_Input::unget(int c)
 {
+	if(column == 0)
+		throw std::out_of_range("unget too many");
+	if(c == 0)
+	{
+		column--;
+		return;
+	}
 	buffer[--column] = c;
 }
 
@@ -60,17 +67,18 @@ int Line_Input::get_num()
 {
 	int base = 10;
 	int c = get_token();
-	if(std::isdigit(c))
+	if(std::isdigit(c) || c == '+' || c == '-')
 		unget(c);
 	else if(c == '$' || c == 'x')
 		base = 16;
 	if(column == buffer.size())
-		throw new std::invalid_argument("expected number");
+		throw std::invalid_argument("expected number");
 	const char* ptr = buffer.c_str() + column;
 	const char* endptr = ptr;
 	int ret = strtol(ptr, (char**)&endptr, base);
 	if(ptr == endptr)
-		throw new std::invalid_argument("expected number");
+		throw std::invalid_argument("expected number");
+	column += endptr - ptr;
 	return ret;
 }
 
