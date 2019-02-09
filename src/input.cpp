@@ -25,6 +25,7 @@ void Line_Input::error(char* error_msg, bool show_column, bool fatal)
 {
 }
 
+#if 0
 // Return 1 if eol. Should handle windows newlines as well
 bool Line_Input::iseol(int c)
 {
@@ -34,6 +35,7 @@ bool Line_Input::iseol(int c)
 		return 1;
 	return 0;
 }
+#endif
 
 int Line_Input::get()
 {
@@ -61,6 +63,16 @@ void Line_Input::unget(int c)
 		return;
 	}
 	buffer[--column] = c;
+}
+
+unsigned long Line_Input::tell()
+{
+	return column;
+}
+
+void Line_Input::seek(unsigned long pos)
+{
+	column = pos;
 }
 
 int Line_Input::get_num()

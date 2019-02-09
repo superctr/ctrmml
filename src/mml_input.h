@@ -31,6 +31,12 @@ class MML_Input: public Line_Input
 		void mml_grace();
 		void atom_relative(Atom_Command type, Atom_Command subtype);
 
+		// MML command parsers. Returns 0 and increments position if parsing succeeds.
+		// the idea is that these can be swapped out for different MML dialects or platforms.
+		bool mml_basic(); // Notes, length, octave, etc.
+		bool mml_control(); // Loop control
+		bool mml_envelope(); // Instrument, volume, envelope etc.
+
 		// Parsers for various parts of the MML file
 		void parse_mml_track(int conditional_block);
 		void parse_mml();

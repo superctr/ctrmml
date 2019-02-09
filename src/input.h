@@ -33,11 +33,14 @@ class Line_Input: public Input
 		void error(char* error_msg, bool column, bool fatal);
 
 		// Text buffer commands
-		bool iseol(int c);
 		int get();
 		int get_token();
 		void unget(int c = 0);
+		unsigned long tell();
+		void seek(unsigned long pos);
+
 		int get_num();
+
 		bool parse_file();
 		virtual bool parse_line() = 0;
 
