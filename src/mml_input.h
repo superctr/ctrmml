@@ -9,7 +9,8 @@
 class MML_Input: public Line_Input
 {
 	private:
-		Tag* tag;
+		std::string tag_key;
+		//Tag* tag;
 		Track* track;
 		uint16_t track_id;
 		uint16_t track_offset;
@@ -36,7 +37,7 @@ class MML_Input: public Line_Input
 		void parse_tag();
 
 		// Convert track id from character
-		static int convert_track_id(char c);
+		int get_track_id();
 
 	public:
 		MML_Input(Song* song);

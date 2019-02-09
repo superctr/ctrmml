@@ -23,6 +23,7 @@ public:
 	void test_basic_mml()
 	{
 		mml_input->read_line("A cdef");
+		CPPUNIT_ASSERT(song->get_track(0).get_atom_count() == 4);
 	}
 };
 
