@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../track.h"
 
@@ -16,7 +17,8 @@ class Track_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST(test_slur_impossible);
 	CPPUNIT_TEST(test_reverse_rest_shorten_on_time);
 	CPPUNIT_TEST(test_reverse_rest_shorten_off_time);
-	CPPUNIT_TEST(test_reverse_rest_impossible);
+	CPPUNIT_TEST_EXCEPTION(test_reverse_rest_overflow, std::length_error);
+	CPPUNIT_TEST_EXCEPTION(test_reverse_rest_impossible, std::domain_error);
 	CPPUNIT_TEST(test_get_atom_count);
 	//CPPUNIT_TEST(test_finalize_restore_state);
 	//CPPUNIT_TEST(test_finalize_no_redundant_restore);
@@ -181,15 +183,18 @@ public:
 		track->reverse_rest(10);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)8, track->get_atom(0).off_time);
 	}
-	// Attempt to add a reverse rest where it is impossible and verify that an error code is returned.
+	// Attempt to add a reverse rest where it is impossible
 	void test_reverse_rest_impossible()
 	{
 		track->add_atom(ATOM_CMD_VOL,12); // just some dummy atoms
 		track->add_atom(ATOM_CMD_INS,34);
 		track->add_atom(ATOM_CMD_PAN,56);
-		CPPUNIT_ASSERT(track->reverse_rest(48) == -1);
+		track->reverse_rest(48); // throw std::domain_error
+	}
+	void test_reverse_rest_overflow()
+	{
 		track->add_note(0,24);
-		CPPUNIT_ASSERT(track->reverse_rest(48) == -2);
+		track->reverse_rest(48); // throw std::length_error
 	}
 	void test_get_atom_count()
 	{

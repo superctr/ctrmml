@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <algorithm>
+#include <stdexcept>
 #include "track.h"
 
 Track::Track()
@@ -132,7 +133,8 @@ int Track::add_slur()
 // Maybe in the future, we might be able to remove or dummy out notes in
 // order to gain more time
 // Return 0 if successful, -1 if unable to backtrack, -2 if overflow.
-int Track::reverse_rest(uint16_t duration)
+// Throws std::length_error if overflow, std::domain_error if unable.
+void Track::reverse_rest(uint16_t duration)
 {
 	// backtrack to disable the articulation of the previous note.
 	std::vector<Atom>::reverse_iterator it;
@@ -153,25 +155,25 @@ int Track::reverse_rest(uint16_t duration)
 					{
 						it->off_time = 0;
 						it->on_time -= duration;
-						return 0;
+						return;
 					}
-					return -2; // Overflow condition.
+					throw std::length_error("previous duration not long enough"); // -2
 				}
 				else
 				{
 					it->off_time -= duration;
-					return 0;
+					return;
 				}
 			// Don't bother reading past loop points as effects are
 			// unpredictable.
 			case ATOM_CMD_SEGNO:
 			case ATOM_CMD_LOOP_END:
-				return -1;
+				throw std::domain_error("unable to modify previous duration"); // -1
 			default:
 				break;
 		}
 	}
-	return -1;
+	throw std::domain_error("there is no previous duration"); // -1
 }
 
 int Track::finalize(class Song& song)
@@ -210,6 +212,11 @@ void Track::set_drum_mode(uint16_t param)
 	add_atom(ATOM_CMD_DRUM_MODE, param);
 }
 
+bool Track::in_drum_mode()
+{
+	return (flag & 0x01);
+}
+
 void Track::set_duration(uint16_t param)
 {
 	default_duration = param;
@@ -221,6 +228,11 @@ uint16_t Track::get_duration(uint16_t duration)
 		return default_duration;
 	else
 		return duration;
+}
+
+uint16_t Track::get_measure_len()
+{
+	return measure_len;
 }
 
 std::vector<Atom>& Track::get_atoms()

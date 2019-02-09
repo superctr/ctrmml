@@ -18,7 +18,7 @@ class MML_Input: public Line_Input
 		void (MML_Input::*last_cmd)();
 
 		// MML read helpers
-		int read_duration();
+		unsigned int read_duration();
 		int read_parameter(int default_parameter);
 		int expect_parameter();
 		int expect_signed();

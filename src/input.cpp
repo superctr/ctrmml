@@ -40,7 +40,10 @@ bool Line_Input::iseol(int c)
 int Line_Input::get()
 {
 	if(column == buffer.size())
+	{
+		column++;
 		return 0;
+	}
 	return buffer[column++];
 }
 
@@ -79,10 +82,10 @@ int Line_Input::get_num()
 {
 	int base = 10;
 	int c = get_token();
-	if(std::isdigit(c) || c == '+' || c == '-')
-		unget(c);
-	else if(c == '$' || c == 'x')
+	if(c == '$' || c == 'x')
 		base = 16;
+	else
+		unget(c);
 	if(column == buffer.size())
 		throw std::invalid_argument("expected number");
 	const char* ptr = buffer.c_str() + column;

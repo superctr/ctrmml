@@ -90,7 +90,7 @@ class Track
 		void add_rest(uint16_t duration = 0);
 		int  add_slur();
 
-		int  reverse_rest(uint16_t duration = 0);
+		void reverse_rest(uint16_t duration = 0);
 		int  finalize(class Song& song);
 
 		void set_octave(int param);
@@ -101,6 +101,7 @@ class Track
 		// These are for use by input handlers but can also be used if duration passed to add_note is 0.
 		void set_duration(uint16_t duration);
 		uint16_t get_duration(uint16_t duration = 0);
+		uint16_t get_measure_len();
 };
 #endif
 

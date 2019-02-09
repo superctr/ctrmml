@@ -18,6 +18,7 @@ class Line_Input_Test : public CppUnit::TestFixture, private Line_Input
 	CPPUNIT_TEST(test_get_num_hex);
 	CPPUNIT_TEST_EXCEPTION(test_get_num_eol, std::invalid_argument);
 	CPPUNIT_TEST_EXCEPTION(test_get_num_nan, std::invalid_argument);
+	CPPUNIT_TEST(test_get_num_nan_increment);
 	CPPUNIT_TEST_SUITE_END();
 public:
 	Line_Input_Test() : Line_Input(0) {}
@@ -72,7 +73,7 @@ public:
 		CPPUNIT_ASSERT_EQUAL((int)0, get()); // = 0
 		unget(); // should not cause extra write
 		CPPUNIT_ASSERT_EQUAL(std::string("hi"), buffer);
-		CPPUNIT_ASSERT_EQUAL((unsigned int)1, column);
+		CPPUNIT_ASSERT_EQUAL((unsigned int)2, column);
 	}
 	void test_unget_too_many()
 	{
@@ -123,6 +124,16 @@ public:
 	{
 		buffer = "Skitrumpa";
 		get_num(); // should throw std::invalid_argument
+	}
+	// check that column is unchanged if exception is thrown
+	void test_get_num_nan_increment()
+	{
+		buffer = "Skitrumpa";
+		try {get_num();} // should throw std::invalid_argument
+		catch(std::invalid_argument&)
+		{
+		}
+		CPPUNIT_ASSERT_EQUAL((unsigned int)0, column);
 	}
 	bool parse_line()
 	{

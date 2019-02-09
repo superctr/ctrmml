@@ -1,29 +1,83 @@
 #include "mml_input.h"
 #include <iostream>
 #include <cctype>
+#include <stdexcept>
 
-int MML_Input::read_duration()
+unsigned int MML_Input::read_duration()
 {
+	int duration = 0, dot;
+	try
+	{
+		duration = track->get_measure_len() / get_num();
+		if(duration < 0)
+			throw std::out_of_range("MMLInput::read_duration()");
+	}
+	catch(std::invalid_argument)
+	{
+		duration = track->get_duration();
+	}
+	dot = duration>>1;
+	while(1)
+	{
+		if(get() == '.')
+		{
+			duration += dot;
+			dot >>= 1;
+		}
+		else
+		{
+			unget();
+			break;
+		}
+	}
+	return (unsigned)duration;
 }
 
 int MML_Input::read_parameter(int default_parameter)
 {
+	try
+	{
+		return get_num();
+	}
+	catch(std::invalid_argument)
+	{
+		return default_parameter;
+	}
 }
 
 int MML_Input::expect_parameter()
 {
+	// we could catch and throw a different exception here
+	get_num();
 }
 
 int MML_Input::expect_signed()
 {
+	get_num(); // is this neccessary anymore?
 }
 
 int MML_Input::read_note(int c)
 {
+	// would be nice to support key signatures...
+	static const int note_values[8] = {8,11,0,2,4,5,7,11}; // abcdefgh
+	int val = c - 'a';
+	// linear if in drum mode
+	if(!track->in_drum_mode())
+		val = note_values[val];
+	// sharps/flats
+	c = get();
+	if(c == '+')
+		val++;
+	else if(c == '-')
+		val--;
+	else
+		unget(c);
 }
 
 void MML_Input::mml_slur()
 {
+	if(track->add_slur())
+		std::printf("slur may not affect articulation of previous note\n");
 }
 
 void MML_Input::mml_reverse_rest(int duration)
