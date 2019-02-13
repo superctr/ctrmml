@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <cppunit/extensions/HelperMacros.h>
+#include "../song.h"
 #include "../track.h"
 
 class Song_Test : public CppUnit::TestFixture

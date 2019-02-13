@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include "track.h"
+#include "song.h"
 
 Track::Track()
 	: last_note_pos(-1),

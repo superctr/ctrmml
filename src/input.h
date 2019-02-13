@@ -4,6 +4,22 @@
 #include <string>
 #include "song.h"
 
+class InputRef
+{
+private:
+	std::string filename;
+	std::string line;
+	int line_nr;
+	int column;
+public:
+	InputRef(std::string &filename, std::string &line, int line_no, int column);
+	std::string& get_filename();
+	int& get_line();
+	int& get_column();
+	std::string& get_line_contents();
+	std::string& get_column_arrow();
+};
+
 class Input
 {
 	protected:

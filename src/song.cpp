@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "song.h"
+#include "track.h"
 
 Song::Song()
 	: tag_map(),
@@ -117,7 +118,7 @@ Tag_Map& Song::get_tag_map()
 	return tag_map;
 }
 
-class Track& Song::get_track(uint16_t id)
+Track& Song::get_track(uint16_t id)
 {
 	return track_map.at(id);
 }

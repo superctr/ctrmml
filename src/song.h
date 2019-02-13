@@ -1,13 +1,7 @@
 #ifndef SONG_H
 #define SONG_H
 #include <stdint.h>
-#include <list>
-#include <map>
-#include "track.h"
-
-typedef std::vector<std::string> Tag;
-typedef std::map<std::string,Tag> Tag_Map;
-typedef std::map<uint16_t, class Track> Track_Map;
+#include "core.h"
 
 class Song
 {
@@ -25,7 +19,7 @@ class Song
 		Tag& get_tag(std::string key);
 		std::string get_tag_front(std::string key);
 		Tag_Map& get_tag_map();
-		class Track& get_track(uint16_t id); // May throw std::out_of_range
+		Track& get_track(uint16_t id); // May throw std::out_of_range
 		Track_Map& get_track_map();
 };
 #endif

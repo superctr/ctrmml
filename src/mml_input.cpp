@@ -1,7 +1,9 @@
-#include "mml_input.h"
 #include <iostream>
 #include <cctype>
 #include <stdexcept>
+#include "mml_input.h"
+#include "song.h"
+#include "track.h"
 
 unsigned int MML_Input::read_duration()
 {
@@ -12,7 +14,7 @@ unsigned int MML_Input::read_duration()
 		if(duration < 0)
 			throw std::out_of_range("MMLInput::read_duration()");
 	}
-	catch(std::invalid_argument)
+	catch(std::invalid_argument&)
 	{
 		duration = track->get_duration();
 	}
@@ -39,7 +41,7 @@ int MML_Input::read_parameter(int default_parameter)
 	{
 		return get_num();
 	}
-	catch(std::invalid_argument)
+	catch(std::invalid_argument&)
 	{
 		return default_parameter;
 	}
@@ -48,12 +50,12 @@ int MML_Input::read_parameter(int default_parameter)
 int MML_Input::expect_parameter()
 {
 	// we could catch and throw a different exception here
-	get_num();
+	return get_num();
 }
 
 int MML_Input::expect_signed()
 {
-	get_num(); // is this neccessary anymore?
+	return get_num(); // is this neccessary anymore?
 }
 
 int MML_Input::read_note(int c)
@@ -72,6 +74,7 @@ int MML_Input::read_note(int c)
 		val--;
 	else
 		unget(c);
+	return val;
 }
 
 void MML_Input::mml_slur()

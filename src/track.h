@@ -2,7 +2,7 @@
 #define TRACK_H
 #include <stdint.h>
 #include <vector>
-#include "song.h"
+#include "core.h"
 
 enum Atom_Command {
 	// basic commands
@@ -91,7 +91,7 @@ class Track
 		int  add_slur();
 
 		void reverse_rest(uint16_t duration = 0);
-		int  finalize(class Song& song);
+		int  finalize(Song& song);
 
 		void set_octave(int param);
 		void change_octave(int param);
