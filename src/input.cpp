@@ -1,15 +1,72 @@
 #include "input.h"
 #include <cctype>
+#include <cstring>
 #include <cstdio>
 #include <stdexcept>
 
+InputError::InputError(std::shared_ptr<InputRef> ref, const char* message)
+	: reference(ref)
+{
+	if(ref == nullptr)
+	{
+		std::strncpy(buf,message,200);
+	}
+	else
+	{
+		std::snprintf(buf,200,"%s:%d:%d: %s", ref->get_filename().c_str(), ref->get_line(), ref->get_column(), message);
+	}
+}
+
+const char* InputError::what()
+{
+	return buf;
+}
+
+InputRef::InputRef(std::string &fn, std::string &ln, int lno, int col)
+	: filename(fn), line(ln), line_nr(lno), column(col)
+{
+}
+
+std::string& InputRef::get_filename()
+{
+	return filename;
+}
+
+int& InputRef::get_line()
+{
+	return line_nr;
+}
+int& InputRef::get_column()
+{
+	return column;
+}
+std::string& InputRef::get_line_contents()
+{
+	return line;
+}
+std::string InputRef::get_column_arrow()
+{
+	std::string s;
+	return s;
+}
+
 Input::Input(Song* song)
-	: song(song), filename(""), fs(0)
+	: song(song), reference(nullptr), filename(""), fs(0)
 {
 }
 
 Input::~Input()
 {
+}
+
+void Input::set_reference(InputRef& in_ref)
+{
+	reference = std::make_shared<InputRef>(in_ref);
+}
+
+void Input::throw_error(const char* msg)
+{
+	throw InputError(reference, msg);
 }
 
 Line_Input::Line_Input(Song* song)

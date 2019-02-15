@@ -2,36 +2,52 @@
 #define INPUT_H
 #include <fstream>
 #include <string>
-#include "song.h"
+#include "core.h"
+
+class InputError : public std::exception
+{
+	private:
+		std::shared_ptr<InputRef> reference;
+		char buf[200];
+
+	public:
+		InputError(std::shared_ptr<InputRef> ref, const char* message);
+		const char* what();
+};
 
 class InputRef
 {
-private:
-	std::string filename;
-	std::string line;
-	int line_nr;
-	int column;
-public:
-	InputRef(std::string &filename, std::string &line, int line_no, int column);
-	std::string& get_filename();
-	int& get_line();
-	int& get_column();
-	std::string& get_line_contents();
-	std::string& get_column_arrow();
+	private:
+		std::string filename;
+		std::string line;
+		int line_nr;
+		int column;
+	public:
+		InputRef(std::string &filename, std::string &line, int line_no = 0, int column = 0);
+		std::string& get_filename();
+		int& get_line();
+		int& get_column();
+		std::string& get_line_contents();
+		std::string get_column_arrow();
 };
 
 class Input
 {
 	protected:
 		Song* song;
+		std::shared_ptr<InputRef> reference;
 		std::string filename;
 		std::fstream fs;
 		virtual bool parse_file() = 0;
 		bool include_file(std::string filename);
+		void set_reference(InputRef& ref);
+		void throw_error(const char* msg);
 	public:
 		Input(Song* song);
 		virtual ~Input();
 		bool open_file(std::string filename);
+		std::shared_ptr<InputRef> get_reference();
+
 		static Input& get_input(std::string filename); // Get appropriate input type based on the filename
 };
 
