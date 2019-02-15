@@ -19,36 +19,39 @@ class InputRef
 {
 	private:
 		std::string filename;
-		std::string line;
-		int line_nr;
-		int column;
+		std::string line_contents;
+		unsigned int line;
+		unsigned int column;
 	public:
-		InputRef(std::string &filename, std::string &line, int line_no = 0, int column = 0);
-		std::string& get_filename();
-		int& get_line();
-		int& get_column();
-		std::string& get_line_contents();
+		InputRef(const std::string &filename = "", const std::string &line = "", int line_no = 0, int column = 0);
+		const std::string& get_filename();
+		const unsigned int& get_line();
+		const unsigned int& get_column();
+		const std::string& get_line_contents();
 		std::string get_column_arrow();
 };
 
+// Abstract class for the song data parser.
 class Input
 {
 	protected:
 		Song* song;
-		std::shared_ptr<InputRef> reference;
 		std::string filename;
 		std::fstream fs;
+
 		virtual bool parse_file() = 0;
-		bool include_file(std::string filename);
-		void set_reference(InputRef& ref);
-		void throw_error(const char* msg);
+		virtual std::shared_ptr<InputRef> get_reference();
+
+		bool include_file(const std::string filename);
+		void parse_error(const char* msg);
+		void parse_warning(const char* msg);
+
 	public:
 		Input(Song* song);
 		virtual ~Input();
-		bool open_file(std::string filename);
-		std::shared_ptr<InputRef> get_reference();
 
-		static Input& get_input(std::string filename); // Get appropriate input type based on the filename
+		bool open_file(const std::string &filename);
+		static Input& get_input(const std::string &filename); // Get appropriate input type based on the filename
 };
 
 class Line_Input: public Input
@@ -60,9 +63,8 @@ class Line_Input: public Input
 		unsigned int column;
 		bool eof_flag;
 
-		// Display error message.
-		// column=1 to show the column number, fatal=1 to throw an exception
-		void error(char* error_msg, bool column, bool fatal);
+		// Provide reference for line commands
+		std::shared_ptr<InputRef> get_reference();
 
 		// Text buffer commands
 		int get();

@@ -45,10 +45,12 @@ class MML_Input: public Line_Input
 		// Convert track id from character
 		int get_track_id();
 
+		// Virtual function override from Line_Input
+		bool parse_line();
+
 	public:
 		MML_Input(Song* song);
 		~MML_Input();
-		bool parse_line();
 };
 #endif
 

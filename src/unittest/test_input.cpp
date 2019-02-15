@@ -19,6 +19,7 @@ class Line_Input_Test : public CppUnit::TestFixture, private Line_Input
 	CPPUNIT_TEST_EXCEPTION(test_get_num_eol, std::invalid_argument);
 	CPPUNIT_TEST_EXCEPTION(test_get_num_nan, std::invalid_argument);
 	CPPUNIT_TEST(test_get_num_nan_increment);
+	CPPUNIT_TEST(test_inputref);
 	CPPUNIT_TEST_SUITE_END();
 public:
 	Line_Input_Test() : Line_Input(0) {}
@@ -139,6 +140,16 @@ public:
 	{
 		// Dummy function
 		return 1;
+	}
+	void test_inputref()
+	{
+		buffer = "Skitrumpa";
+		std::shared_ptr<InputRef> ptr = get_reference();
+		get();
+		get(); // increment column a few times
+		CPPUNIT_ASSERT_EQUAL((unsigned int)0,ptr->get_column());
+		ptr = get_reference();
+		CPPUNIT_ASSERT_EQUAL((unsigned int)2,ptr->get_column());
 	}
 };
 

@@ -13,7 +13,7 @@ InputError::InputError(std::shared_ptr<InputRef> ref, const char* message)
 	}
 	else
 	{
-		std::snprintf(buf,200,"%s:%d:%d: %s", ref->get_filename().c_str(), ref->get_line(), ref->get_column(), message);
+		std::snprintf(buf,200,"%s:%d:%d: %s", ref->get_filename().c_str(), ref->get_line()+1, ref->get_column()+1, message);
 	}
 }
 
@@ -22,27 +22,27 @@ const char* InputError::what()
 	return buf;
 }
 
-InputRef::InputRef(std::string &fn, std::string &ln, int lno, int col)
-	: filename(fn), line(ln), line_nr(lno), column(col)
+InputRef::InputRef(const std::string &fn, const std::string &ln, int lno, int col)
+	: filename(fn), line_contents(ln), line(lno), column(col)
 {
 }
 
-std::string& InputRef::get_filename()
+const std::string& InputRef::get_filename()
 {
 	return filename;
 }
 
-int& InputRef::get_line()
+const unsigned int& InputRef::get_line()
 {
-	return line_nr;
+	return line;
 }
-int& InputRef::get_column()
+const unsigned int& InputRef::get_column()
 {
 	return column;
 }
-std::string& InputRef::get_line_contents()
+const std::string& InputRef::get_line_contents()
 {
-	return line;
+	return line_contents;
 }
 std::string InputRef::get_column_arrow()
 {
@@ -51,7 +51,7 @@ std::string InputRef::get_column_arrow()
 }
 
 Input::Input(Song* song)
-	: song(song), reference(nullptr), filename(""), fs(0)
+	: song(song), filename(""), fs(0)
 {
 }
 
@@ -59,14 +59,15 @@ Input::~Input()
 {
 }
 
-void Input::set_reference(InputRef& in_ref)
+std::shared_ptr<InputRef> Input::get_reference()
 {
-	reference = std::make_shared<InputRef>(in_ref);
+	InputRef r = InputRef(filename);
+	return std::make_shared<InputRef>(r);
 }
 
-void Input::throw_error(const char* msg)
+void Input::parse_error(const char* msg)
 {
-	throw InputError(reference, msg);
+	throw InputError(get_reference(), msg);
 }
 
 Line_Input::Line_Input(Song* song)
@@ -78,11 +79,13 @@ Line_Input::~Line_Input()
 {
 }
 
+#if 0 // not used. use parse_error or parse_warning instead
 void Line_Input::error(char* error_msg, bool show_column, bool fatal)
 {
 }
+#endif
 
-#if 0
+#if 0 // So far not used. Maybe it's not needed, as I currently read one line at a time.
 // Return 1 if eol. Should handle windows newlines as well
 bool Line_Input::iseol(int c)
 {
@@ -93,6 +96,12 @@ bool Line_Input::iseol(int c)
 	return 0;
 }
 #endif
+
+std::shared_ptr<InputRef> Line_Input::get_reference()
+{
+	InputRef r = InputRef(filename, buffer, line, column);
+	return std::make_shared<InputRef>(r);
+}
 
 int Line_Input::get()
 {
