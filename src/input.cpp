@@ -17,6 +17,7 @@ InputError::InputError(std::shared_ptr<InputRef> ref, const char* message)
 	}
 }
 
+//! Return exception information.
 const char* InputError::what()
 {
 	return buf;
@@ -51,7 +52,7 @@ std::string InputRef::get_column_arrow()
 }
 
 Input::Input(Song* song)
-	: song(song), filename(""), fs(0)
+	: song(song), filename("")
 {
 }
 
@@ -59,24 +60,55 @@ Input::~Input()
 {
 }
 
+//! Get the current associated Song object, where all tags and track should be added.
+Song& Input::get_song()
+{
+	return *song;
+}
+
+//! Get current filename
+const std::string &Input::get_filename()
+{
+	return filename;
+}
+
+//! Get an InputRef.
+/*! This can be overridden by derived classes to support column/file
+ * numbers where this is relevant.
+ */
 std::shared_ptr<InputRef> Input::get_reference()
 {
 	InputRef r = InputRef(filename);
 	return std::make_shared<InputRef>(r);
 }
 
+//! Throw an InputError.
 void Input::parse_error(const char* msg)
 {
 	throw InputError(get_reference(), msg);
 }
 
+//! Raise a parse warning.
+/*! In the future this will be added to a warning buffer...
+ */
+void Input::parse_warning(const char* msg)
+{
+	throw InputError(get_reference(), msg);
+}
+
 Line_Input::Line_Input(Song* song)
-	: Input(song), lines(0), line(0), column(0), eof_flag(false)
+	: Input(song), lines(0), line(0), column(0)
 {
 }
 
 Line_Input::~Line_Input()
 {
+}
+
+//! Open file and parse lines.
+bool Line_Input::parse_file()
+{
+	return 0;
 }
 
 #if 0 // not used. use parse_error or parse_warning instead
@@ -99,10 +131,13 @@ bool Line_Input::iseol(int c)
 
 std::shared_ptr<InputRef> Line_Input::get_reference()
 {
-	InputRef r = InputRef(filename, buffer, line, column);
+	InputRef r = InputRef(get_filename(), buffer, line, column);
 	return std::make_shared<InputRef>(r);
 }
 
+//! Get the next character from the buffer and increase the column number
+/*! If at the end of the current buffer, 0 is returned and column number is still incremented.
+ */
 int Line_Input::get()
 {
 	if(column == buffer.size())
@@ -113,7 +148,9 @@ int Line_Input::get()
 	return buffer[column++];
 }
 
-// get next token (non-blank character)
+//! Get the next non-blank character from the buffer.
+/*! Blank characters are skipped until the next non-blank character is found.
+ */
 int Line_Input::get_token()
 {
 	int c;
@@ -122,28 +159,11 @@ int Line_Input::get_token()
 	return c;
 }
 
-void Line_Input::unget(int c)
-{
-	if(column == 0)
-		throw std::out_of_range("unget too many");
-	if(c == 0)
-	{
-		column--;
-		return;
-	}
-	buffer[--column] = c;
-}
-
-unsigned long Line_Input::tell()
-{
-	return column;
-}
-
-void Line_Input::seek(unsigned long pos)
-{
-	column = pos;
-}
-
+//! Get a number from the buffer.
+/*! Blank characters are skipped until the next number is found.
+ * '$' or 'x' prefix indicates hexadecimal number.
+ * \exception std::invalid_argument if no number could be read.
+ */
 int Line_Input::get_num()
 {
 	int base = 10;
@@ -163,13 +183,35 @@ int Line_Input::get_num()
 	return ret;
 }
 
-bool Line_Input::parse_file()
+//! Put back the character to the buffer, decrementing the buffer position.
+void Line_Input::unget(int c)
 {
-	return 0;
+	if(column == 0)
+		throw std::out_of_range("unget too many");
+	if(c == 0)
+	{
+		column--;
+		return;
+	}
+	buffer[--column] = c;
 }
 
+//! Get current buffer position.
+unsigned long Line_Input::tell()
+{
+	return column;
+}
+
+//! Set buffer position.
+void Line_Input::seek(unsigned long pos)
+{
+	column = pos;
+}
+
+//! Read input line and parse it.
 bool Line_Input::read_line(const std::string& input_line)
 {
 	buffer = input_line;
 	return parse_line();
 }
+

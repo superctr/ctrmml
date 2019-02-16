@@ -15,11 +15,34 @@ Song::~Song()
 {
 }
 
-Tag_Map& Song::get_tags()
+//! Get a reference to the tag map.
+Tag_Map& Song::get_tag_map()
 {
 	return tag_map;
 }
 
+//! Gets the tag with the specified key.
+/*!
+ * \exception std::out_of_range if not found
+ */
+Tag& Song::get_tag(std::string key)
+{
+	return tag_map.at(key);
+}
+
+//! Gets the first value of the tag with the specified key.
+/*!
+ * \exception std::out_of_range if not found
+ */
+std::string Song::get_tag_front(std::string key)
+{
+	return tag_map.at(key).front();
+}
+
+//! Appends a value to the tag with the specified key.
+/*!
+ * If key is not found, a new tag is created
+ */
 void Song::add_tag(std::string key, std::string value)
 {
 	// delete trailing spaces
@@ -28,7 +51,22 @@ void Song::add_tag(std::string key, std::string value)
 	tag_map[key].push_back(value);
 }
 
-// add double-quote-enclosed string
+//! Set the value to the tag with the specified key.
+/*!
+ * If key is not found, a new tag is created
+ */
+void Song::set_tag(std::string key, std::string value)
+{
+	// delete trailing spaces
+	while(!value.empty() && isspace(value.back()))
+		value.pop_back();
+	tag_map[key].push_back(value);
+}
+
+//! add double-quote-enclosed string
+/*!
+ * If key is not found, a new tag is created
+ */
 static char* add_tag_enclosed(Tag *tag, char* s)
 {
 	// process string first
@@ -54,8 +92,12 @@ static char* add_tag_enclosed(Tag *tag, char* s)
 	return head;
 }
 
-// add a tag list
-// list can be separated by commas OR spaces, but comma always forces a tag to be added
+//! Append multiple values (separated by commas or spaces) to the tag with the specified key.
+/*!
+ * The list can be separated by commas OR spaces, but comma always forces a value to be added.
+ *
+ * If key is not found, a new tag is created.
+ */
 void Song::add_tag_list(std::string key, std::string value)
 {
 	Tag *tag = &tag_map[key];
@@ -103,28 +145,18 @@ void Song::add_tag_list(std::string key, std::string value)
 	free(str);
 }
 
-Tag& Song::get_tag(std::string key)
-{
-	return tag_map.at(key);
-}
-
-std::string Song::get_tag_front(std::string key)
-{
-	return tag_map.at(key).front();
-}
-
-Tag_Map& Song::get_tag_map()
-{
-	return tag_map;
-}
-
-Track& Song::get_track(uint16_t id)
-{
-	return track_map.at(id);
-}
-
+//! Get reference to the track map.
 Track_Map& Song::get_track_map()
 {
 	return track_map;
+}
+
+//! Get a reference to the track with the specified id.
+/*!
+ * \exception std::out_of_range if not found. Use get_track_map()[] to create track if needed.
+ */
+Track& Song::get_track(uint16_t id)
+{
+	return track_map.at(id);
 }
 

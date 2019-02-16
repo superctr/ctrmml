@@ -55,8 +55,14 @@ clean:
 	rm -rf $(OBJ_OLD)
 	rm -rf $(OBJ)
 
+doc:
+	doxygen Doxyfile
+
+cleandoc:
+	rm -rf doxygen
+
 test: unittest
 	./unittest
 
-.PHONY: test clean
+.PHONY: test clean doc cleandoc
 

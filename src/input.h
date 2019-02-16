@@ -4,6 +4,7 @@
 #include <string>
 #include "core.h"
 
+//! Parser error exception.
 class InputError : public std::exception
 {
 	private:
@@ -15,6 +16,7 @@ class InputError : public std::exception
 		const char* what();
 };
 
+//! Reference to input data
 class InputRef
 {
 	private:
@@ -22,8 +24,10 @@ class InputRef
 		std::string line_contents;
 		unsigned int line;
 		unsigned int column;
+
 	public:
 		InputRef(const std::string &filename = "", const std::string &line = "", int line_no = 0, int column = 0);
+
 		const std::string& get_filename();
 		const unsigned int& get_line();
 		const unsigned int& get_column();
@@ -31,20 +35,24 @@ class InputRef
 		std::string get_column_arrow();
 };
 
-// Abstract class for the song data parser.
+//! Abstract class for the song data parser.
 class Input
 {
-	protected:
+	private:
 		Song* song;
 		std::string filename;
-		std::fstream fs;
 
+	protected:
+		//! Used by derived classes to open and parse a file.
 		virtual bool parse_file() = 0;
+
+		Song& get_song();
+		const std::string& get_filename();
 		virtual std::shared_ptr<InputRef> get_reference();
 
-		bool include_file(const std::string filename);
 		void parse_error(const char* msg);
 		void parse_warning(const char* msg);
+		void include_file(const std::string filename);
 
 	public:
 		Input(Song* song);
@@ -54,29 +62,30 @@ class Input
 		static Input& get_input(const std::string &filename); // Get appropriate input type based on the filename
 };
 
+//! Abstract class for text line-based input formats (such as MML)
 class Line_Input: public Input
 {
-	protected:
+	friend class Line_Input_Test; // needs access to internal variables.
+	private:
 		std::vector<std::string> lines;
 		std::string buffer; // current line used by get/unget functions, etc.
 		unsigned int line;
 		unsigned int column;
-		bool eof_flag;
 
-		// Provide reference for line commands
+		bool parse_file();
+
+	protected:
+		//! Used by derived classes to read the input lines.
+		virtual bool parse_line() = 0;
+
 		std::shared_ptr<InputRef> get_reference();
 
-		// Text buffer commands
 		int get();
 		int get_token();
+		int get_num();
 		void unget(int c = 0);
 		unsigned long tell();
 		void seek(unsigned long pos);
-
-		int get_num();
-
-		bool parse_file();
-		virtual bool parse_line() = 0;
 
 	public:
 		Line_Input(Song* song);

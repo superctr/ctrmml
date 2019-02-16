@@ -29,7 +29,7 @@ class MML_Input: public Line_Input
 		void mml_slur();
 		void mml_reverse_rest(int duration);
 		void mml_grace();
-		void atom_relative(Atom_Command type, Atom_Command subtype);
+		void event_relative(Event::Type type, Event::Type subtype);
 
 		// MML command parsers. Returns 0 and increments position if parsing succeeds.
 		// the idea is that these can be swapped out for different MML dialects or platforms.

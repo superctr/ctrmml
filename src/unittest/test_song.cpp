@@ -144,8 +144,8 @@ public:
 		t1.add_note(12);
 		t2.add_note(45);
 		t2.add_note(78);
-		CPPUNIT_ASSERT_EQUAL((unsigned long) 1, t1.get_atom_count());
-		CPPUNIT_ASSERT_EQUAL((unsigned long) 2, t2.get_atom_count());
+		CPPUNIT_ASSERT_EQUAL((unsigned long) 1, t1.get_event_count());
+		CPPUNIT_ASSERT_EQUAL((unsigned long) 2, t2.get_event_count());
 	}
 	void test_get_track()
 	{
@@ -154,8 +154,8 @@ public:
 		t1.add_note(12);
 		t1.add_note(45);
 		t1.add_note(78);
-		CPPUNIT_ASSERT_EQUAL((unsigned long) 3, t1.get_atom_count());
-		CPPUNIT_ASSERT_EQUAL((unsigned long) 3, t2.get_atom_count());
+		CPPUNIT_ASSERT_EQUAL((unsigned long) 3, t1.get_event_count());
+		CPPUNIT_ASSERT_EQUAL((unsigned long) 3, t2.get_event_count());
 	}
 	void test_get_invalid_track()
 	{

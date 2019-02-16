@@ -4,60 +4,65 @@
 #include <vector>
 #include "core.h"
 
-enum Atom_Command {
-	// basic commands
-	ATOM_NOP = 0,
-	ATOM_REST, // read durations (off time probably best)
-	ATOM_NOTE, // read durations (on time and off time)
-	ATOM_TIE, // param is ignored, read durations
-	// track commands
-	ATOM_CMD_LOOP_START,
-	ATOM_CMD_LOOP_BREAK,
-	ATOM_CMD_LOOP_END,
-	ATOM_CMD_SEGNO,
-	ATOM_CMD_JUMP,
-	ATOM_CMD_END,
-	ATOM_CMD_SLUR, // flag to indicate the next note is legato
-	// special channel commands. These affect the same memory as another command
-	ATOM_CMD_TRANSPOSE_REL,
-	ATOM_CMD_VOL,
-	ATOM_CMD_VOL_REL,
-	ATOM_CMD_VOL_FINE_REL,
-	ATOM_CMD_TEMPO_BPM,
-	// channel commands
-	ATOM_CMD_CHANNEL_MODE, // always the first channel command
-	ATOM_CMD_INS,
-	ATOM_CMD_TRANSPOSE,
-	ATOM_CMD_DETUNE,
-	ATOM_CMD_VOL_FINE,
-	ATOM_CMD_PAN,
-	ATOM_CMD_VOL_ENVELOPE,
-	ATOM_CMD_PITCH_ENVELOPE,
-	ATOM_CMD_PAN_ENVELOPE,
-	ATOM_CMD_DRUM_MODE,
-	ATOM_CMD_TEMPO,
-	// special
-	ATOM_CMD_COUNT, // last command ID
-	ATOM_CHANNEL_CMD = ATOM_CMD_CHANNEL_MODE, // first channel cmd ID
-	ATOM_CHANNEL_CMD_COUNT = ATOM_CMD_COUNT - ATOM_CHANNEL_CMD, // channel command count
-	ATOM_CMD_INVALID = -1,
-};
-
-struct Atom
+//! Track event.
+struct Event
 {
-	Atom_Command type;
+	enum Type {
+		// basic commands
+		NOP = 0,
+		REST, //!< Reads off_time.
+		NOTE, //!< Key on, Param defines note, Reads on_time and off_time.
+		TIE, //!< Reads on_time and off_time.
+		// track commands
+		CMD_LOOP_START,
+		CMD_LOOP_BREAK,
+		CMD_LOOP_END, //!< Param defines loop count
+		CMD_SEGNO, //!< Set the track loop position.
+		CMD_JUMP, //!< Jump to a track. Param specifies the track number. Previous position is stored in stack.
+		CMD_END, //!< Jump to the stack position, alternatively the loop position, alternatively stops the track.
+		CMD_SLUR, //!< Indicates that the next note is legato
+		// special channel commands. These affect the same memory as another command
+		CMD_TRANSPOSE_REL, //!< Relative transpose.
+		CMD_VOL, //!< Coarse volume. Param is between 0-15, should correspond to -2dB per step.
+		CMD_VOL_REL, //!< Relative coarse volume.
+		CMD_VOL_FINE_REL, //!< Relative fine volume. Platform-specific.
+		CMD_TEMPO_BPM, //!< Param defines tempo in BPM.
+		// channel commands
+		CMD_CHANNEL_MODE, //!< Platform-specific, always the first channel command
+		CMD_INS, //!< Set instrument
+		CMD_TRANSPOSE, //!< Set transpose
+		CMD_DETUNE, //!< Set detune
+		CMD_VOL_FINE, //!< Fine volume. Platform-specific.
+		CMD_PAN, //!< Set panning. Signed parameter.
+		CMD_VOL_ENVELOPE, //!< Set volume envelope ID.
+		CMD_PITCH_ENVELOPE, //!< Set pitch envelope ID.
+		CMD_PAN_ENVELOPE, //!< Set pan envelope ID.
+		CMD_DRUM_MODE, //!< Set drum mode.
+		CMD_TEMPO, //!< Set platform-specific tempo.
+		// special
+		CMD_COUNT, //!< Command ID count.
+		CHANNEL_CMD = CMD_CHANNEL_MODE, //!< first channel cmd ID
+		CHANNEL_CMD_COUNT = CMD_COUNT - CHANNEL_CMD, //!< channel command count
+		CMD_INVALID = -1,
+	};
+
+	//! The event type.
+	Event::Type type;
+	//! Optional parameter.
 	int16_t param;
-	uint16_t on_time; // only for note and rest
+	//! Key-on time (for NOTE and TIE types only)
+	uint16_t on_time;
+	//! Key-off time (for NOTE, REST and TIE types only)
 	uint16_t off_time;
 };
 
 class Track
 {
-	protected:
+	private:
 		uint8_t flag;
 		uint8_t ch;
-		std::vector<Atom> atoms;
-		uint16_t last_note_pos; // last atom id that was a note
+		std::vector<Event> events;
+		uint16_t last_note_pos; // last event id that was a note
 		int octave;
 		uint16_t measure_len;
 		uint16_t default_duration; // default duration
@@ -72,19 +77,23 @@ class Track
 		Track();
 		~Track();
 
+		//! Default octave setting.
 		static const int DEFAULT_OCTAVE = 5;
+		//! Default measure length (whole note duration).
 		static const uint16_t DEFAULT_MEASURE_LEN = 96;
+		//! Default quantize dividend.
 		static const uint16_t DEFAULT_QUANTIZE = 8;
+		//! Default quantize divisor.
 		static const uint16_t DEFAULT_QUANTIZE_PARTS = 8;
 
 		bool is_enabled();
 		bool in_drum_mode();
-		std::vector<Atom>& get_atoms();
-		Atom& get_atom(unsigned long position);
-		unsigned long get_atom_count();
+		std::vector<Event>& get_events();
+		Event& get_event(unsigned long position);
+		unsigned long get_event_count();
 
-		void add_atom(Atom& new_atom);
-		void add_atom(Atom_Command type, int16_t param = 0, uint16_t on_time = 0, uint16_t off_time = 0);
+		void add_event(Event& new_event);
+		void add_event(Event::Type type, int16_t param = 0, uint16_t on_time = 0, uint16_t off_time = 0);
 		void add_note(int note, uint16_t duration = 0);
 		int  add_tie(uint16_t duration = 0);
 		void add_rest(uint16_t duration = 0);

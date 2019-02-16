@@ -91,7 +91,7 @@ void MML_Input::mml_grace()
 {
 }
 
-void MML_Input::atom_relative(Atom_Command type, Atom_Command subtype)
+void MML_Input::event_relative(Event::Type type, Event::Type subtype)
 {
 }
 
@@ -137,15 +137,15 @@ bool MML_Input::mml_control()
 {
 	int c = get_token();
 	if(c == '[')
-		track->add_atom(ATOM_CMD_LOOP_START);
+		track->add_event(Event::CMD_LOOP_START);
 	else if(c == '/')
-		track->add_atom(ATOM_CMD_LOOP_BREAK);
+		track->add_event(Event::CMD_LOOP_BREAK);
 	else if(c == ']')
-		track->add_atom(ATOM_CMD_LOOP_END, read_parameter(2));
+		track->add_event(Event::CMD_LOOP_END, read_parameter(2));
 	else if(c == 'L')
-		track->add_atom(ATOM_CMD_SEGNO);
+		track->add_event(Event::CMD_SEGNO);
 	else if(c == '*')
-		track->add_atom(ATOM_CMD_JUMP, expect_parameter());
+		track->add_event(Event::CMD_JUMP, expect_parameter());
 	else
 	{
 		unget(c);
@@ -159,33 +159,33 @@ bool MML_Input::mml_envelope()
 {
 	int c = get_token();
 	if(c == '@')
-		track->add_atom(ATOM_CMD_INS, expect_parameter());
+		track->add_event(Event::CMD_INS, expect_parameter());
 	else if(c == 'k')
-		track->add_atom(ATOM_CMD_TRANSPOSE, expect_signed());
+		track->add_event(Event::CMD_TRANSPOSE, expect_signed());
 	else if(c == 'K')
-		track->add_atom(ATOM_CMD_DETUNE, expect_signed());
+		track->add_event(Event::CMD_DETUNE, expect_signed());
 	else if(c == 'v')
-		track->add_atom(ATOM_CMD_VOL, expect_parameter());
+		track->add_event(Event::CMD_VOL, expect_parameter());
 	else if(c == '(')
-		track->add_atom(ATOM_CMD_VOL_REL, -read_parameter(1));
+		track->add_event(Event::CMD_VOL_REL, -read_parameter(1));
 	else if(c == ')')
-		track->add_atom(ATOM_CMD_VOL_REL, read_parameter(1));
+		track->add_event(Event::CMD_VOL_REL, read_parameter(1));
 	else if(c == 'V')
-		atom_relative(ATOM_CMD_VOL_FINE, ATOM_CMD_VOL_FINE_REL);
+		event_relative(Event::CMD_VOL_FINE, Event::CMD_VOL_FINE_REL);
 	else if(c == 'p')
-		track->add_atom(ATOM_CMD_PAN, expect_signed());
+		track->add_event(Event::CMD_PAN, expect_signed());
 	else if(c == 'E')
-		track->add_atom(ATOM_CMD_VOL_ENVELOPE, expect_parameter());
+		track->add_event(Event::CMD_VOL_ENVELOPE, expect_parameter());
 	else if(c == 'M')
-		track->add_atom(ATOM_CMD_PITCH_ENVELOPE, expect_parameter());
+		track->add_event(Event::CMD_PITCH_ENVELOPE, expect_parameter());
 	else if(c == 'P')
-		track->add_atom(ATOM_CMD_PAN_ENVELOPE, expect_parameter());
+		track->add_event(Event::CMD_PAN_ENVELOPE, expect_parameter());
 	else if(c == 'D')
 		track->set_drum_mode(expect_parameter());
 	else if(c == 't')
-		track->add_atom(ATOM_CMD_TEMPO_BPM, expect_parameter());
+		track->add_event(Event::CMD_TEMPO_BPM, expect_parameter());
 	else if(c == 'T')
-		track->add_atom(ATOM_CMD_TEMPO, expect_parameter());
+		track->add_event(Event::CMD_TEMPO, expect_parameter());
 	else
 	{
 		unget(c);
@@ -225,7 +225,7 @@ void MML_Input::parse_mml_track(int conditional_block)
 		else if(c == '{' && !conditional_block)
 			parse_mml_track(1);
 		else if(c == '%')
-			track->add_atom(ATOM_CMD_CHANNEL_MODE, expect_parameter());
+			track->add_event(Event::CMD_CHANNEL_MODE, expect_parameter());
 		else if(c == 0)
 			return;
 		else
@@ -259,7 +259,7 @@ void MML_Input::parse_mml()
 		seek(col);
 		track_id = track_list[i];
 		track_offset = i;
-		track = &song->get_track_map()[track_id];
+		track = &get_song().get_track_map()[track_id];
 		parse_mml_track(0);
 	}
 }
