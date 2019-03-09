@@ -130,7 +130,8 @@ void Track::add_rest(uint16_t duration)
  * This is done by extending the previous note by setting it to legato,
  * then adding an Event::SLUR event.
  *
- * If unable to backtrack, return -1.
+ * \retval -1 if unable to backtrack.
+ * \retval 0 on success.
  */
 int Track::add_slur()
 {

@@ -49,13 +49,21 @@ int MML_Input::read_parameter(int default_parameter)
 
 int MML_Input::expect_parameter()
 {
-	// we could catch and throw a different exception here
-	return get_num();
+	try
+	{
+		return get_num();
+	}
+	catch(std::invalid_argument&)
+	{
+		parse_error("missing parameter");
+		return 0;
+	}
 }
 
 int MML_Input::expect_signed()
 {
-	return get_num(); // is this neccessary anymore?
+	// is this function necessary anymore?
+	return expect_parameter();
 }
 
 int MML_Input::read_note(int c)
@@ -80,19 +88,41 @@ int MML_Input::read_note(int c)
 void MML_Input::mml_slur()
 {
 	if(track->add_slur())
-		std::printf("slur may not affect articulation of previous note\n");
+		parse_warning("slur may not affect articulation of previous note");
 }
 
 void MML_Input::mml_reverse_rest(int duration)
 {
+	try
+	{
+		track->reverse_rest(duration);
+	}
+	catch (std::domain_error&)
+	{
+		parse_error("unable to backtrack");
+	}
 }
 
 void MML_Input::mml_grace()
 {
+	int c = read_note(get_token());
+	int duration = read_duration();
+	mml_reverse_rest(duration);
+	track->add_note(c, duration);
 }
 
+//! combination command that allows for two Event::Type depending on
+//! if a sign prefix is found.
 void MML_Input::event_relative(Event::Type type, Event::Type subtype)
 {
+	int c = get_token();
+	if(c == '+' || c == '-')
+		type = subtype;
+	else
+		unget();
+	if(type == Event::INVALID)
+		parse_error("parameter must be relative (+ or - prefix)");
+	track->add_event(type, expect_parameter());
 }
 
 // Basic MML command parser. Commands defined here are the ones

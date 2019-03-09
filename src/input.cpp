@@ -2,6 +2,7 @@
 #include <cctype>
 #include <cstring>
 #include <cstdio>
+#include <iostream>
 #include <stdexcept>
 
 InputError::InputError(std::shared_ptr<InputRef> ref, const char* message)
@@ -23,34 +24,46 @@ const char* InputError::what()
 	return buf;
 }
 
+//! Creates an InputRef.
 InputRef::InputRef(const std::string &fn, const std::string &ln, int lno, int col)
 	: filename(fn), line_contents(ln), line(lno), column(col)
 {
 }
 
-const std::string& InputRef::get_filename()
+const std::string& InputRef::get_filename() const
 {
 	return filename;
 }
 
-const unsigned int& InputRef::get_line()
+const unsigned int& InputRef::get_line() const
 {
 	return line;
 }
-const unsigned int& InputRef::get_column()
+
+const unsigned int& InputRef::get_column() const
 {
 	return column;
 }
-const std::string& InputRef::get_line_contents()
+
+const std::string& InputRef::get_line_contents() const
 {
 	return line_contents;
 }
-std::string InputRef::get_column_arrow()
+
+std::string InputRef::get_column_arrow() const
 {
 	std::string s;
 	return s;
 }
 
+//! Formatted print
+std::ostream& operator<<(std::ostream& os, const class InputRef& ref)
+{
+	os << ref.get_filename() << ":" << ref.get_line() << ":" << ref.get_column();
+	return os;
+}
+
+//! Creates an Input.
 Input::Input(Song* song)
 	: song(song), filename("")
 {
@@ -93,9 +106,11 @@ void Input::parse_error(const char* msg)
  */
 void Input::parse_warning(const char* msg)
 {
-	throw InputError(get_reference(), msg);
+	std::cerr << *get_reference() << ": " << msg << "\n";
+	std::cerr << get_reference()->get_line_contents() << std::endl;
 }
 
+//! Creates a Line_Input.
 Line_Input::Line_Input(Song* song)
 	: Input(song), lines(0), line(0), column(0)
 {
@@ -184,6 +199,8 @@ int Line_Input::get_num()
 }
 
 //! Put back the character to the buffer, decrementing the buffer position.
+/*! \param c character to put back. If 0 this is ignored and the buffer contents are unchanged.
+ */
 void Line_Input::unget(int c)
 {
 	if(column == 0)

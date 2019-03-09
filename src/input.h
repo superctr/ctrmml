@@ -1,5 +1,7 @@
+//! \file input.h
 #ifndef INPUT_H
 #define INPUT_H
+#include <ostream>
 #include <fstream>
 #include <string>
 #include "core.h"
@@ -26,14 +28,16 @@ class InputRef
 		unsigned int column;
 
 	public:
-		InputRef(const std::string &filename = "", const std::string &line = "", int line_no = 0, int column = 0);
+		InputRef(const std::string& filename = "", const std::string& line = "", int line_no = 0, int column = 0);
 
-		const std::string& get_filename();
-		const unsigned int& get_line();
-		const unsigned int& get_column();
-		const std::string& get_line_contents();
-		std::string get_column_arrow();
+		const std::string& get_filename() const;
+		const unsigned int& get_line() const;
+		const unsigned int& get_column() const;
+		const std::string& get_line_contents() const;
+		std::string get_column_arrow() const;
 };
+
+std::ostream& operator<<(std::ostream& os, const class InputRef& ref);
 
 //! Abstract class for the song data parser.
 class Input
@@ -58,8 +62,8 @@ class Input
 		Input(Song* song);
 		virtual ~Input();
 
-		bool open_file(const std::string &filename);
-		static Input& get_input(const std::string &filename); // Get appropriate input type based on the filename
+		bool open_file(const std::string& filename);
+		static Input& get_input(const std::string& filename); // Get appropriate input type based on the filename
 };
 
 //! Abstract class for text line-based input formats (such as MML)

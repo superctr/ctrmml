@@ -1,3 +1,4 @@
+//! \file mml_input.h
 #ifndef MML_INPUT_H
 #define MML_INPUT_H
 #include <fstream>
@@ -6,6 +7,7 @@
 #include "input.h"
 #include "track.h"
 
+//! MML (Music Macro Language) parser
 class MML_Input: public Line_Input
 {
 	private:
