@@ -128,13 +128,13 @@ void Track::add_rest(uint16_t duration)
 //! Connect two notes.
 /*!
  * This is done by extending the previous note by setting it to legato,
- * then adding an Event::CMD_SLUR event.
+ * then adding an Event::SLUR event.
  *
  * If unable to backtrack, return -1.
  */
 int Track::add_slur()
 {
-	add_event(Event::CMD_SLUR);
+	add_event(Event::SLUR);
 
 	// backtrack to disable the articulation of the previous note.
 	std::vector<Event>::reverse_iterator it;
@@ -150,8 +150,8 @@ int Track::add_slur()
 			// Don't bother reading past loop points as effects are
 			// unpredictable.
 			case Event::REST:
-			case Event::CMD_SEGNO:
-			case Event::CMD_LOOP_END:
+			case Event::SEGNO:
+			case Event::LOOP_END:
 				return -1;
 			default:
 				break;
@@ -201,8 +201,8 @@ void Track::reverse_rest(uint16_t duration)
 				}
 			// Don't bother reading past loop points as effects are
 			// unpredictable.
-			case Event::CMD_SEGNO:
-			case Event::CMD_LOOP_END:
+			case Event::SEGNO:
+			case Event::LOOP_END:
 				throw std::domain_error("unable to modify previous duration"); // -1
 			default:
 				break;
@@ -212,7 +212,7 @@ void Track::reverse_rest(uint16_t duration)
 }
 
 //! Finalize and validate the track.
-int Track::finalize(class Song& song)
+int Track::finalize(class Song& song, uint16_t track_id)
 {
 	printf("Not implemented yet.\n");
 	return -1;
@@ -252,7 +252,7 @@ void Track::set_drum_mode(uint16_t param)
 		flag &= ~(0x01);
 	else
 		flag |= 0x01;
-	add_event(Event::CMD_DRUM_MODE, param);
+	add_event(Event::DRUM_MODE, param);
 }
 
 //! Returns the drum mode status.

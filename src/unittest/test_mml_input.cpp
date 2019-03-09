@@ -53,11 +53,11 @@ public:
 	void test_mml_loop()
 	{
 		mml_input->read_line("A [c] [c]5");
-		CPPUNIT_ASSERT_EQUAL(Event::CMD_LOOP_START, song->get_track(0).get_event(0).type);
-		CPPUNIT_ASSERT_EQUAL(Event::CMD_LOOP_END, song->get_track(0).get_event(2).type);
+		CPPUNIT_ASSERT_EQUAL(Event::LOOP_START, song->get_track(0).get_event(0).type);
+		CPPUNIT_ASSERT_EQUAL(Event::LOOP_END, song->get_track(0).get_event(2).type);
 		CPPUNIT_ASSERT_EQUAL((int16_t)2, song->get_track(0).get_event(2).param); // default parameter
-		CPPUNIT_ASSERT_EQUAL(Event::CMD_LOOP_START, song->get_track(0).get_event(3).type);
-		CPPUNIT_ASSERT_EQUAL(Event::CMD_LOOP_END, song->get_track(0).get_event(5).type);
+		CPPUNIT_ASSERT_EQUAL(Event::LOOP_START, song->get_track(0).get_event(3).type);
+		CPPUNIT_ASSERT_EQUAL(Event::LOOP_END, song->get_track(0).get_event(5).type);
 		CPPUNIT_ASSERT_EQUAL((int16_t)5, song->get_track(0).get_event(5).param); // default parameter
 	}
 };

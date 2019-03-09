@@ -9,41 +9,41 @@ struct Event
 {
 	enum Type {
 		// basic commands
-		NOP = 0,
-		REST, //!< Reads off_time.
-		NOTE, //!< Key on, Param defines note, Reads on_time and off_time.
-		TIE, //!< Reads on_time and off_time.
+		NOP = 0,		//!< Does nothing and ignores all parameters.
+		REST,			//!< Key off. Reads off_time.
+		NOTE,			//!< Key on, Param defines note, Reads on_time and off_time.
+		TIE, 			//!< Extends the previous note or rest. Reads on_time and off_time.
 		// track commands
-		CMD_LOOP_START,
-		CMD_LOOP_BREAK,
-		CMD_LOOP_END, //!< Param defines loop count
-		CMD_SEGNO, //!< Set the track loop position.
-		CMD_JUMP, //!< Jump to a track. Param specifies the track number. Previous position is stored in stack.
-		CMD_END, //!< Jump to the stack position, alternatively the loop position, alternatively stops the track.
-		CMD_SLUR, //!< Indicates that the next note is legato
+		LOOP_START,		//!< Start of a loop block.
+		LOOP_BREAK,		//!< Skip to the end of the loop block.
+		LOOP_END,		//!< End of the loop block. Param defines loop count
+		SEGNO,			//!< Set the track loop position.
+		JUMP,			//!< Jump to a track. Param specifies the track number. Previous position is stored in stack.
+		END,			//!< Jump to the stack position, alternatively the loop position, alternatively stops the track.
+		SLUR,			//!< Indicates that the next note is legato
 		// special channel commands. These affect the same memory as another command
-		CMD_TRANSPOSE_REL, //!< Relative transpose.
-		CMD_VOL, //!< Coarse volume. Param is between 0-15, should correspond to -2dB per step.
-		CMD_VOL_REL, //!< Relative coarse volume.
-		CMD_VOL_FINE_REL, //!< Relative fine volume. Platform-specific.
-		CMD_TEMPO_BPM, //!< Param defines tempo in BPM.
+		TRANSPOSE_REL,	//!< Relative transpose.
+		VOL,			//!< Coarse volume. Param is between 0-15, should correspond to -2dB per step.
+		VOL_REL,		//!< Relative coarse volume.
+		VOL_FINE_REL,	//!< Relative fine volume. Platform-specific.
+		TEMPO_BPM,		//!< Set tempo in quarter notes per minute
 		// channel commands
-		CMD_CHANNEL_MODE, //!< Platform-specific, always the first channel command
-		CMD_INS, //!< Set instrument
-		CMD_TRANSPOSE, //!< Set transpose
-		CMD_DETUNE, //!< Set detune
-		CMD_VOL_FINE, //!< Fine volume. Platform-specific.
-		CMD_PAN, //!< Set panning. Signed parameter.
-		CMD_VOL_ENVELOPE, //!< Set volume envelope ID.
-		CMD_PITCH_ENVELOPE, //!< Set pitch envelope ID.
-		CMD_PAN_ENVELOPE, //!< Set pan envelope ID.
-		CMD_DRUM_MODE, //!< Set drum mode.
-		CMD_TEMPO, //!< Set platform-specific tempo.
+		CHANNEL_MODE,	//!< Platform-specific, always the first channel command
+		INS,			//!< Set instrument
+		TRANSPOSE,		//!< Set transpose
+		DETUNE,			//!< Set detune
+		VOL_FINE,		//!< Fine volume. Platform-specific.
+		PAN,			//!< Set panning. Signed parameter.
+		VOL_ENVELOPE,	//!< Set volume envelope ID.
+		PITCH_ENVELOPE, //!< Set pitch envelope ID.
+		PAN_ENVELOPE,	//!< Set pan envelope ID.
+		DRUM_MODE,		//!< Set drum mode.
+		TEMPO,			//!< Set platform-specific tempo.
 		// special
-		CMD_COUNT, //!< Command ID count.
-		CHANNEL_CMD = CMD_CHANNEL_MODE, //!< first channel cmd ID
+		CMD_COUNT,		//!< Command ID count.
+		CHANNEL_CMD = CHANNEL_MODE, //!< first channel cmd ID
 		CHANNEL_CMD_COUNT = CMD_COUNT - CHANNEL_CMD, //!< channel command count
-		CMD_INVALID = -1,
+		INVALID = -1, //!< represents an invalid or unknown command.
 	};
 
 	//! The event type.
@@ -100,7 +100,7 @@ class Track
 		int  add_slur();
 
 		void reverse_rest(uint16_t duration = 0);
-		int  finalize(Song& song);
+		int  finalize(Song& song, uint16_t track_id);
 
 		void set_octave(int param);
 		void change_octave(int param);

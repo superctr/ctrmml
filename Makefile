@@ -23,7 +23,7 @@ $(OBJ)/%.o: $(SRC)/%.cpp
 	$(CXX) $(CFLAGS) -c $< -o $@
 
 unittest: $(UNITTEST_OBJS)
-	$(CXX) $(LDFLAGS) $(LDFLAGS_TEST) $(UNITTEST_OBJS) -o $@
+	$(CXX) $(UNITTEST_OBJS) $(LDFLAGS) $(LDFLAGS_TEST) -o $@
 
 SRC_OLD = .
 OBJ_OLD = obj/old

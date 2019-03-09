@@ -125,7 +125,7 @@ public:
 	{
 		track->set_quantize(8);
 		track->add_note(0,24);
-		track->add_event(Event::CMD_VOL, 10); // type doesn't matter
+		track->add_event(Event::VOL, 10); // type doesn't matter
 		track->add_tie(24);
 		CPPUNIT_ASSERT_EQUAL((Event::Type)Event::TIE, track->get_event(2).type);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_event(0).on_time);
@@ -136,7 +136,7 @@ public:
 	{
 		track->set_quantize(2);
 		track->add_note(0,24);
-		track->add_event(Event::CMD_VOL, 10); // type doesn't matter
+		track->add_event(Event::VOL, 10); // type doesn't matter
 		track->add_tie(24);
 		CPPUNIT_ASSERT_EQUAL((Event::Type)Event::REST, track->get_event(2).type);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)12, track->get_event(0).on_time);
@@ -186,9 +186,9 @@ public:
 	// Attempt to add a reverse rest where it is impossible
 	void test_reverse_rest_impossible()
 	{
-		track->add_event(Event::CMD_VOL,12); // just some dummy events
-		track->add_event(Event::CMD_INS,34);
-		track->add_event(Event::CMD_PAN,56);
+		track->add_event(Event::VOL,12); // just some dummy events
+		track->add_event(Event::INS,34);
+		track->add_event(Event::PAN,56);
 		track->reverse_rest(48); // throw std::domain_error
 	}
 	void test_reverse_rest_overflow()
@@ -198,9 +198,9 @@ public:
 	}
 	void test_get_event_count()
 	{
-		track->add_event(Event::CMD_VOL,12); // just some dummy events
-		track->add_event(Event::CMD_INS,34);
-		track->add_event(Event::CMD_PAN,56);
+		track->add_event(Event::VOL,12); // just some dummy events
+		track->add_event(Event::INS,34);
+		track->add_event(Event::PAN,56);
 		unsigned long expected = 3;
 		CPPUNIT_ASSERT_EQUAL(expected, track->get_event_count());
 	}

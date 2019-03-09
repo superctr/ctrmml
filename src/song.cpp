@@ -25,7 +25,7 @@ Tag_Map& Song::get_tag_map()
 /*!
  * \exception std::out_of_range if not found
  */
-Tag& Song::get_tag(std::string key)
+Tag& Song::get_tag(const std::string& key)
 {
 	return tag_map.at(key);
 }
@@ -34,7 +34,7 @@ Tag& Song::get_tag(std::string key)
 /*!
  * \exception std::out_of_range if not found
  */
-std::string Song::get_tag_front(std::string key)
+std::string Song::get_tag_front(const std::string& key)
 {
 	return tag_map.at(key).front();
 }
@@ -43,7 +43,7 @@ std::string Song::get_tag_front(std::string key)
 /*!
  * If key is not found, a new tag is created
  */
-void Song::add_tag(std::string key, std::string value)
+void Song::add_tag(const std::string& key, std::string value)
 {
 	// delete trailing spaces
 	while(!value.empty() && isspace(value.back()))
@@ -55,7 +55,7 @@ void Song::add_tag(std::string key, std::string value)
 /*!
  * If key is not found, a new tag is created
  */
-void Song::set_tag(std::string key, std::string value)
+void Song::set_tag(const std::string& key, std::string value)
 {
 	// delete trailing spaces
 	while(!value.empty() && isspace(value.back()))
@@ -98,7 +98,7 @@ static char* add_tag_enclosed(Tag *tag, char* s)
  *
  * If key is not found, a new tag is created.
  */
-void Song::add_tag_list(std::string key, std::string value)
+void Song::add_tag_list(const std::string& key, const std::string& value)
 {
 	Tag *tag = &tag_map[key];
 	char *str = strdup(value.c_str());

@@ -13,11 +13,11 @@ class Song
 		~Song();
 
 		Tag_Map& get_tag_map();
-		void add_tag(std::string key, std::string value);
-		void add_tag_list(std::string key, std::string value);
-		void set_tag(std::string key, std::string value);
-		Tag& get_tag(std::string key);
-		std::string get_tag_front(std::string key);
+		void add_tag(const std::string& key, std::string value);
+		void add_tag_list(const std::string &key, const std::string &value);
+		void set_tag(const std::string& key, std::string value);
+		Tag& get_tag(const std::string& key);
+		std::string get_tag_front(const std::string& key);
 		Track& get_track(uint16_t id);
 		Track_Map& get_track_map();
 };

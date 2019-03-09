@@ -137,15 +137,15 @@ bool MML_Input::mml_control()
 {
 	int c = get_token();
 	if(c == '[')
-		track->add_event(Event::CMD_LOOP_START);
+		track->add_event(Event::LOOP_START);
 	else if(c == '/')
-		track->add_event(Event::CMD_LOOP_BREAK);
+		track->add_event(Event::LOOP_BREAK);
 	else if(c == ']')
-		track->add_event(Event::CMD_LOOP_END, read_parameter(2));
+		track->add_event(Event::LOOP_END, read_parameter(2));
 	else if(c == 'L')
-		track->add_event(Event::CMD_SEGNO);
+		track->add_event(Event::SEGNO);
 	else if(c == '*')
-		track->add_event(Event::CMD_JUMP, expect_parameter());
+		track->add_event(Event::JUMP, expect_parameter());
 	else
 	{
 		unget(c);
@@ -159,33 +159,33 @@ bool MML_Input::mml_envelope()
 {
 	int c = get_token();
 	if(c == '@')
-		track->add_event(Event::CMD_INS, expect_parameter());
+		track->add_event(Event::INS, expect_parameter());
 	else if(c == 'k')
-		track->add_event(Event::CMD_TRANSPOSE, expect_signed());
+		track->add_event(Event::TRANSPOSE, expect_signed());
 	else if(c == 'K')
-		track->add_event(Event::CMD_DETUNE, expect_signed());
+		track->add_event(Event::DETUNE, expect_signed());
 	else if(c == 'v')
-		track->add_event(Event::CMD_VOL, expect_parameter());
+		track->add_event(Event::VOL, expect_parameter());
 	else if(c == '(')
-		track->add_event(Event::CMD_VOL_REL, -read_parameter(1));
+		track->add_event(Event::VOL_REL, -read_parameter(1));
 	else if(c == ')')
-		track->add_event(Event::CMD_VOL_REL, read_parameter(1));
+		track->add_event(Event::VOL_REL, read_parameter(1));
 	else if(c == 'V')
-		event_relative(Event::CMD_VOL_FINE, Event::CMD_VOL_FINE_REL);
+		event_relative(Event::VOL_FINE, Event::VOL_FINE_REL);
 	else if(c == 'p')
-		track->add_event(Event::CMD_PAN, expect_signed());
+		track->add_event(Event::PAN, expect_signed());
 	else if(c == 'E')
-		track->add_event(Event::CMD_VOL_ENVELOPE, expect_parameter());
+		track->add_event(Event::VOL_ENVELOPE, expect_parameter());
 	else if(c == 'M')
-		track->add_event(Event::CMD_PITCH_ENVELOPE, expect_parameter());
+		track->add_event(Event::PITCH_ENVELOPE, expect_parameter());
 	else if(c == 'P')
-		track->add_event(Event::CMD_PAN_ENVELOPE, expect_parameter());
+		track->add_event(Event::PAN_ENVELOPE, expect_parameter());
 	else if(c == 'D')
 		track->set_drum_mode(expect_parameter());
 	else if(c == 't')
-		track->add_event(Event::CMD_TEMPO_BPM, expect_parameter());
+		track->add_event(Event::TEMPO_BPM, expect_parameter());
 	else if(c == 'T')
-		track->add_event(Event::CMD_TEMPO, expect_parameter());
+		track->add_event(Event::TEMPO, expect_parameter());
 	else
 	{
 		unget(c);
@@ -225,7 +225,7 @@ void MML_Input::parse_mml_track(int conditional_block)
 		else if(c == '{' && !conditional_block)
 			parse_mml_track(1);
 		else if(c == '%')
-			track->add_event(Event::CMD_CHANNEL_MODE, expect_parameter());
+			track->add_event(Event::CHANNEL_MODE, expect_parameter());
 		else if(c == 0)
 			return;
 		else
