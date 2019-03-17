@@ -6,6 +6,7 @@
 class Song_Test : public CppUnit::TestFixture
 {
 	CPPUNIT_TEST_SUITE(Song_Test);
+	CPPUNIT_TEST(test_set_tag);
 	CPPUNIT_TEST(test_add_tag);
 	CPPUNIT_TEST(test_add_tag_trim_trailing_spaces);
 	CPPUNIT_TEST(test_add_tag_list);
@@ -32,6 +33,15 @@ public:
 	void tearDown()
 	{
 		delete song;
+	}
+	// create tag and verify that it exists
+	void test_set_tag()
+	{
+		song->set_tag("Tag1", "first value in tag1");
+		tag = &song->get_tag("Tag1");
+		CPPUNIT_ASSERT_EQUAL(std::string("first value in tag1"), tag->at(0));
+		song->set_tag("Tag1", "overwritten value in tag1");
+		CPPUNIT_ASSERT_EQUAL(std::string("overwritten value in tag1"), tag->at(0));
 	}
 	// create tag and verify that it exists
 	void test_add_tag()

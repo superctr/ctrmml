@@ -8,7 +8,8 @@ CORE_OBJS = \
 	$(OBJ)/track.o \
 	$(OBJ)/song.o \
 	$(OBJ)/input.o \
-	$(OBJ)/mml_input.o
+	$(OBJ)/mml_input.o \
+	$(OBJ)/player.o
 
 UNITTEST_OBJS = \
 	$(CORE_OBJS) \

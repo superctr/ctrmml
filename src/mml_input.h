@@ -48,7 +48,7 @@ class MML_Input: public Line_Input
 		int get_track_id();
 
 		// Virtual function override from Line_Input
-		bool parse_line();
+		void parse_line();
 
 	public:
 		MML_Input(Song* song);

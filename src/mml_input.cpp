@@ -296,7 +296,17 @@ void MML_Input::parse_mml()
 
 void MML_Input::parse_tag()
 {
-	std::cout << "parse_tag() "<<tag_key<<"\n";
+	//std::cout << "parse_tag() "<<tag_key<<":" << get_line() << "\n";
+	if(tag_key[0] == '#')
+	{
+		// Special cases for "include" etc commands go here
+		get_song().set_tag(tag_key, get_line());
+		last_cmd = nullptr; // Only read a single line
+	}
+	else
+	{
+		get_song().add_tag_list(tag_key, get_line());
+	}
 }
 
 // may throw std::invalid_argument
@@ -326,7 +336,7 @@ MML_Input::~MML_Input()
 {
 }
 
-bool MML_Input::parse_line()
+void MML_Input::parse_line()
 {
 	int c = get_track_id();
 	if(c != -1)
@@ -359,12 +369,17 @@ bool MML_Input::parse_line()
 		else if(c == ';')
 		{
 			// Comment
-			return false;
+			return;
 		}
-		else
+		else if(!std::isblank(c))
 		{
-			// I guess an exception could be thrown here instead
-			return true;
+			// Not at the end of the line
+			if(c != 0)
+			{
+				parse_error("Expected track or tag identifier");
+			}
+			// At the end of the line, we can stop parsing
+			return;
 		}
 		unget(c);
 	}
@@ -376,13 +391,13 @@ bool MML_Input::parse_line()
 		c = get_token();
 		unget(c);
 		if(c == 0)
-			return false;
+			return;
 		if(last_cmd != nullptr)
 		{
 			(this->*last_cmd)();
-			return false;
+			return;
 		}
 	}
-	return false;
+	return;
 }
 

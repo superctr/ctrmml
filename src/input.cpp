@@ -121,9 +121,17 @@ Line_Input::~Line_Input()
 }
 
 //! Open file and parse lines.
-bool Line_Input::parse_file()
+void Line_Input::parse_file()
 {
-	return 0;
+	std::ifstream inputfile = std::ifstream(get_filename());
+	if(!inputfile)
+		throw std::invalid_argument("Failed to open file");
+	line = 0;
+	for(std::string str; std::getline(inputfile, str);)
+	{
+		read_line(str);
+		line++;
+	}
 }
 
 #if 0 // not used. use parse_error or parse_warning instead
@@ -198,6 +206,12 @@ int Line_Input::get_num()
 	return ret;
 }
 
+//! Return a substring of the current line, starting from the column position.
+std::string Line_Input::get_line()
+{
+	return std::string(buffer, column);
+}
+
 //! Put back the character to the buffer, decrementing the buffer position.
 /*! \param c character to put back. If 0 this is ignored and the buffer contents are unchanged.
  */
@@ -226,9 +240,10 @@ void Line_Input::seek(unsigned long pos)
 }
 
 //! Read input line and parse it.
-bool Line_Input::read_line(const std::string& input_line)
+void Line_Input::read_line(const std::string& input_line)
 {
+	column = 0;
 	buffer = input_line;
-	return parse_line();
+	parse_line();
 }
 

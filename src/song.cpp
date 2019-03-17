@@ -34,7 +34,7 @@ Tag& Song::get_tag(const std::string& key)
 /*!
  * \exception std::out_of_range if not found
  */
-std::string Song::get_tag_front(const std::string& key)
+const std::string& Song::get_tag_front(const std::string& key)
 {
 	return tag_map.at(key).front();
 }
@@ -60,6 +60,7 @@ void Song::set_tag(const std::string& key, std::string value)
 	// delete trailing spaces
 	while(!value.empty() && isspace(value.back()))
 		value.pop_back();
+	tag_map[key].clear();
 	tag_map[key].push_back(value);
 }
 

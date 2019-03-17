@@ -8,8 +8,11 @@ class MML_Input_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST_SUITE(MML_Input_Test);
 	CPPUNIT_TEST(test_basic_mml);
 	CPPUNIT_TEST(test_mml_note_octave);
+	CPPUNIT_TEST(test_mml_note_flat_sharp);
 	CPPUNIT_TEST(test_mml_note_duration);
 	CPPUNIT_TEST(test_mml_loop);
+	CPPUNIT_TEST(test_mml_tag_replace);
+	CPPUNIT_TEST(test_mml_tag_append);
 	CPPUNIT_TEST_SUITE_END();
 private:
 	Song *song;
@@ -29,6 +32,14 @@ public:
 	{
 		mml_input->read_line("A cdef");
 		CPPUNIT_ASSERT(song->get_track(0).get_event_count() == 4);
+	}
+	void test_mml_note_flat_sharp()
+	{
+		mml_input->read_line("A o3c+d-");
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(0).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)37, song->get_track(0).get_event(0).param);
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(1).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)37, song->get_track(0).get_event(1).param);
 	}
 	void test_mml_note_octave()
 	{
@@ -59,6 +70,23 @@ public:
 		CPPUNIT_ASSERT_EQUAL(Event::LOOP_START, song->get_track(0).get_event(3).type);
 		CPPUNIT_ASSERT_EQUAL(Event::LOOP_END, song->get_track(0).get_event(5).type);
 		CPPUNIT_ASSERT_EQUAL((int16_t)5, song->get_track(0).get_event(5).param); // default parameter
+	}
+	void test_mml_tag_replace()
+	{
+		mml_input->read_line("#title My song title.");
+		CPPUNIT_ASSERT_EQUAL(std::string("My song title."), song->get_tag_front("#title"));
+		mml_input->read_line("#title My new song title.");
+		CPPUNIT_ASSERT_EQUAL(std::string("My new song title."), song->get_tag_front("#title"));
+	}
+	void test_mml_tag_append()
+	{
+		mml_input->read_line("@blah One two, three \"four, five\"");
+		mml_input->read_line("\tsixth");
+		CPPUNIT_ASSERT_EQUAL(std::string("One"), song->get_tag("@blah").at(0));
+		CPPUNIT_ASSERT_EQUAL(std::string("two"), song->get_tag("@blah").at(1));
+		CPPUNIT_ASSERT_EQUAL(std::string("three"), song->get_tag("@blah").at(2));
+		CPPUNIT_ASSERT_EQUAL(std::string("four, five"), song->get_tag("@blah").at(3));
+		CPPUNIT_ASSERT_EQUAL(std::string("sixth"), song->get_tag("@blah").at(4));
 	}
 };
 

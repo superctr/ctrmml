@@ -48,7 +48,7 @@ class Input
 
 	protected:
 		//! Used by derived classes to open and parse a file.
-		virtual bool parse_file() = 0;
+		virtual void parse_file() = 0;
 
 		Song& get_song();
 		const std::string& get_filename();
@@ -62,7 +62,7 @@ class Input
 		Input(Song* song);
 		virtual ~Input();
 
-		bool open_file(const std::string& filename);
+		void open_file(const std::string& filename);
 		static Input& get_input(const std::string& filename); // Get appropriate input type based on the filename
 };
 
@@ -76,17 +76,18 @@ class Line_Input: public Input
 		unsigned int line;
 		unsigned int column;
 
-		bool parse_file();
+		void parse_file();
 
 	protected:
 		//! Used by derived classes to read the input lines.
-		virtual bool parse_line() = 0;
+		virtual void parse_line() = 0;
 
 		std::shared_ptr<InputRef> get_reference();
 
 		int get();
 		int get_token();
 		int get_num();
+		std::string get_line();
 		void unget(int c = 0);
 		unsigned long tell();
 		void seek(unsigned long pos);
@@ -94,7 +95,7 @@ class Line_Input: public Input
 	public:
 		Line_Input(Song* song);
 		virtual ~Line_Input();
-		bool read_line(const std::string& input_line);
+		void read_line(const std::string& input_line);
 };
 
 #endif

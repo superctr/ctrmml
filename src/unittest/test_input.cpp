@@ -16,6 +16,7 @@ class Line_Input_Test : public CppUnit::TestFixture, private Line_Input
 	CPPUNIT_TEST(test_get_num_multiple);
 	CPPUNIT_TEST(test_get_num_sign);
 	CPPUNIT_TEST(test_get_num_hex);
+	CPPUNIT_TEST(test_get_line);
 	CPPUNIT_TEST_EXCEPTION(test_get_num_eol, std::invalid_argument);
 	CPPUNIT_TEST_EXCEPTION(test_get_num_nan, std::invalid_argument);
 	CPPUNIT_TEST(test_get_num_nan_increment);
@@ -136,10 +137,16 @@ public:
 		}
 		CPPUNIT_ASSERT_EQUAL((unsigned int)0, column);
 	}
-	bool parse_line()
+	void test_get_line()
+	{
+		buffer = "0123456789";
+		CPPUNIT_ASSERT_EQUAL(std::string("0123456789"), get_line());
+		seek(3);
+		CPPUNIT_ASSERT_EQUAL(std::string("3456789"), get_line());
+	}
+	void parse_line()
 	{
 		// Dummy function
-		return 1;
 	}
 	void test_inputref()
 	{
