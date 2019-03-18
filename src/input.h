@@ -71,7 +71,6 @@ class Line_Input: public Input
 {
 	friend class Line_Input_Test; // needs access to internal variables.
 	private:
-		std::vector<std::string> lines;
 		std::string buffer; // current line used by get/unget functions, etc.
 		unsigned int line;
 		unsigned int column;

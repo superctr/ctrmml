@@ -17,6 +17,7 @@ UNITTEST_OBJS = \
 	$(OBJ)/unittest/test_song.o \
 	$(OBJ)/unittest/test_input.o \
 	$(OBJ)/unittest/test_mml_input.o \
+	$(OBJ)/unittest/test_player.o \
 	$(OBJ)/unittest/main.o
 
 $(OBJ)/%.o: $(SRC)/%.cpp

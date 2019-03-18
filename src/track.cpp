@@ -5,7 +5,9 @@
 #include "song.h"
 
 Track::Track()
-	: last_note_pos(-1),
+	: flag(0),
+	ch(0),
+	last_note_pos(-1),
 	octave(DEFAULT_OCTAVE),
 	measure_len(DEFAULT_MEASURE_LEN),
 	default_duration(measure_len/4),

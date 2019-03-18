@@ -325,7 +325,11 @@ int MML_Input::get_track_id()
 }
 
 MML_Input::MML_Input(Song* song)
-	: Line_Input(song), track_list(0), last_cmd(nullptr)
+	: Line_Input(song),
+	track_id(0),
+	track_offset(0),
+	track_list(0),
+	last_cmd(nullptr)
 {
 	// Perhaps the initial state of mml_input should be track A.
 	// Or maybe it can be initialized by a previous MML_Input during

@@ -112,7 +112,7 @@ void Input::parse_warning(const char* msg)
 
 //! Creates a Line_Input.
 Line_Input::Line_Input(Song* song)
-	: Input(song), lines(0), line(0), column(0)
+	: Input(song), line(0), column(0)
 {
 }
 
