@@ -72,21 +72,29 @@ unsigned int Basic_Player::get_stack_depth(Player_Stack::Type type)
 	return stack_depth[type];
 }
 
+//! Gets the timestamp of the last played event.
 unsigned int Basic_Player::get_play_time() const
 {
 	return play_time;
 }
 
+//! Gets the current loop count.
 unsigned int Basic_Player::get_loop_count() const
 {
 	return loop_count;
 }
 
+//! Gets the last parsed event.
 const Event& Basic_Player::get_event() const
 {
 	return event;
 }
 
+//! Play one event.
+/*!
+ * This function first reads an event from the track. Then calls the abstract virtual function event_hook().
+ * After that, loops and jump events are handled to set the next event position.
+ */
 void Basic_Player::step_event()
 {
 	// Set accumulated time
@@ -181,6 +189,7 @@ void Basic_Player::step_event()
 	}
 }
 
+//! Return false when playback is completed.
 bool Basic_Player::is_enabled() const
 {
 	return enabled;
@@ -218,9 +227,7 @@ void Player::play_ticks(unsigned int ticks)
 
 //! Validates a track by playing it.
 /*!
- * If any errors occur, exceptions are thrown. Currently
- * these are mostly std::invalid_argument, but once InputRef
- * is implemented in the tracks InputErrors will be thrown instead.
+ * \exception InputError if any validation errors occur. These should be displayed to the user.
  */
 Track_Validator::Track_Validator(Song& song, Track& track)
 	: Basic_Player(song, track), segno_time(-1), loop_time(0)
@@ -249,6 +256,10 @@ void Track_Validator::end_hook()
 		loop_time = get_play_time() - segno_time;
 }
 
+//! Gets the length of the loop section (i.e. from the position of the Event::SEGNO to the end of the track)
+/*!
+ * If there is no loop, 0 is returned.
+ */
 unsigned int Track_Validator::get_loop_length() const
 {
 	return loop_time;
@@ -256,9 +267,7 @@ unsigned int Track_Validator::get_loop_length() const
 
 //! Validates all tracks in a song.
 /*!
- * If any errors occur, exceptions are thrown. Currently
- * these are mostly std::invalid_argument, but once InputRef
- * is implemented in the tracks InputErrors will be thrown instead.
+ * \exception InputError if any validation errors occur. These should be displayed to the user.
  */
 Song_Validator::Song_Validator(Song& song)
 {
@@ -268,6 +277,10 @@ Song_Validator::Song_Validator(Song& song)
 	}
 }
 
+//! Gets a reference to the Track_Validator map.
+/*!
+ * The track validators contain the length and loop lengths of each track, which you can get with Player::get_play_time() and Track_Validator::get_loop_length() respectively.
+ */
 const std::map<uint16_t,Track_Validator>& Song_Validator::get_track_map() const
 {
 	return track_map;
