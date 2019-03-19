@@ -1,5 +1,6 @@
 #include "player.h"
 #include <stdexcept>
+#include "input.h"
 #include "song.h"
 #include "track.h"
 
@@ -17,33 +18,55 @@ Basic_Player::Basic_Player(Song& song, Track& track)
 {
 }
 
+//! Throws an InputError.
+void Basic_Player::error(const char* message)
+{
+	throw InputError(reference, message);
+}
+
+inline void Basic_Player::stack_underflow(int type)
+{
+	if(type == Player_Stack::LOOP)
+		error("unterminated '[]' loop");
+	else if(type == Player_Stack::JUMP)
+		error("unexpected ']' loop end");
+	else if(type == Player_Stack::DRUM_MODE)
+		error("drum routine contains no note");
+	else
+		error("unknown stack type (BUG, please report)");
+}
+
+//! Push to stack.
 void Basic_Player::stack_push(const Player_Stack& frame)
 {
 	if(stack.size() >= max_stack_depth)
-		throw std::invalid_argument("stack depth limit reached");
+		error("stack overflow (depth limit reached)");
 	stack_depth[frame.type]++;
 	stack.push(frame);
 }
 
+//! Get the stack top, with type checking.
 Player_Stack& Basic_Player::stack_top(Player_Stack::Type type)
 {
 	if(!stack.size())
-		throw std::invalid_argument("stack underflow");
+		error("stack underflow (BUG, please report)");
 	Player_Stack& frame = stack.top();
 	if(frame.type != type)
-		throw std::invalid_argument("incorrect stack frame");
+		stack_underflow(frame.type);
 	return frame;
 }
 
+//! Pop the stack, with type checking.
 Player_Stack Basic_Player::stack_pop(Player_Stack::Type type)
 {
 	Player_Stack frame = stack.top();
 	stack.pop();
 	if(frame.type != type)
-		throw std::invalid_argument("incorrect stack frame");
+		stack_underflow(frame.type);
 	return frame;
 }
 
+//! Get the stack depth for the specified type.
 unsigned int Basic_Player::get_stack_depth(Player_Stack::Type type)
 {
 	return stack_depth[type];
@@ -79,12 +102,13 @@ void Basic_Player::step_event()
 	catch(std::out_of_range&)
 	{
 		// reached the end
-		event = {Event::END, 0, 0, 0};
+		event = {Event::END, 0, 0, 0, reference};
 		track_event = nullptr;
 	}
 	// Set new on/off time
 	on_time = event.on_time;
 	off_time = event.off_time;
+	reference = event.reference;
 	event_hook();
 	// Handle events
 	switch(event.type)
@@ -128,17 +152,17 @@ void Basic_Player::step_event()
 			}
 			catch(std::exception& ex)
 			{
-				throw std::invalid_argument("jump destination doesn't exist");
+				error("jump destination doesn't exist");
 			}
 			break;
 		case Event::END:
-			try
+			if(stack.size())
 			{
 				// Pop old position
 				track = stack_top(Player_Stack::JUMP).track;
 				position = stack_pop(Player_Stack::JUMP).position;
 			}
-			catch(std::exception&)
+			else
 			{
 				if(loop_hook())
 				{

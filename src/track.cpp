@@ -43,6 +43,16 @@ uint16_t Track::off_time(uint16_t duration)
 	return duration - on_time(duration);
 }
 
+//! Sets the reference to use for successive Events.
+/*!
+ * This is used to associate source files with events so that
+ * sensible error messages can be generated outside the parser.
+ */
+void Track::set_reference(const std::shared_ptr<InputRef>& ref)
+{
+	reference = ref;
+}
+
 //! Appends an Event to the event list.
 void Track::add_event(Event& new_event)
 {
@@ -52,7 +62,7 @@ void Track::add_event(Event& new_event)
 //! Appends a new Event to the event list.
 void Track::add_event(Event::Type type, int16_t param, uint16_t on_time, uint16_t off_time)
 {
-	Event a = {type, param, on_time, off_time};
+	Event a = {type, param, on_time, off_time, reference};
 	events.push_back(a);
 }
 

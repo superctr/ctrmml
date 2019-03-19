@@ -3,6 +3,7 @@
 #define TRACK_H
 #include <stdint.h>
 #include <vector>
+#include <memory>
 #include "core.h"
 
 //! Track event.
@@ -55,6 +56,8 @@ struct Event
 	uint16_t on_time;
 	//! Key-off time (for NOTE, REST and TIE types only)
 	uint16_t off_time;
+	//! Pointer to a reference.
+	std::shared_ptr<InputRef> reference;
 };
 
 class Track
@@ -69,6 +72,7 @@ class Track
 		uint16_t default_duration; // default duration
 		uint16_t quantize;
 		uint16_t quantize_parts;
+		std::shared_ptr<InputRef> reference;
 
 		void enable();
 		uint16_t on_time(uint16_t duration);
@@ -93,6 +97,7 @@ class Track
 		Event& get_event(unsigned long position);
 		unsigned long get_event_count();
 
+		void set_reference(const std::shared_ptr<InputRef>& ref);
 		void add_event(Event& new_event);
 		void add_event(Event::Type type, int16_t param = 0, uint16_t on_time = 0, uint16_t off_time = 0);
 		void add_note(int note, uint16_t duration = 0);

@@ -261,6 +261,8 @@ void MML_Input::parse_mml_track(int conditional_block)
 		else
 		{
 			unget(c);
+			// Set reference
+			track->set_reference(get_reference());
 			// Here i can read a list of command handlers and call them
 			// until one returns false
 			if(mml_basic() == false)

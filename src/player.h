@@ -4,6 +4,7 @@
 #include "core.h"
 #include "track.h"
 #include <stack>
+#include <memory>
 
 //! Track player flags.
 //! This controls when Player calls Player::write_event().
@@ -47,12 +48,15 @@ class Basic_Player
 		unsigned int loop_count;
 		unsigned int stack_depth[Player_Stack::MAX_STACK_TYPE];
 		unsigned int max_stack_depth;
+		inline void stack_underflow(int type);
 
 	protected:
 		//! Current event.
 		Event event;
 		//! Pointer to current event in the track.
 		Event *track_event;
+		//! Current reference
+		std::shared_ptr<InputRef> reference;
 		//! Keyon time from current event
 		unsigned int on_time;
 		//! Keyoff time from current event
@@ -63,13 +67,10 @@ class Basic_Player
 		virtual bool loop_hook() = 0;
 		//! Called at the end position.
 		virtual void end_hook() = 0;
-		//! Push to stack.
+		void error(const char* message);
 		void stack_push(const Player_Stack& stack_obj);
-		//! Get the stack top, with type checking.
 		Player_Stack& stack_top(Player_Stack::Type type);
-		//! Pop the stack, with type checking.
 		Player_Stack stack_pop(Player_Stack::Type type);
-		//! Get the stack depth for the specified type.
 		unsigned int get_stack_depth(Player_Stack::Type type);
 
 	public:
