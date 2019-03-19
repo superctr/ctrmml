@@ -1,6 +1,8 @@
 #include "song.h"
 #include "input.h"
 #include "mml_input.h"
+#include "player.h"
+#include "stringf.h"
 
 #include <iostream>
 
@@ -32,6 +34,14 @@ Song convert_file(const char* filename)
 	Song song;
 	MML_Input input = MML_Input(&song);
 	input.open_file(filename);
+	auto validator = Song_Validator(song);
+	for(auto it = validator.get_track_map().begin(); it != validator.get_track_map().end(); it++)
+	{
+		std::cout << stringf("Track%3d:%7d", it->first, it->second.get_play_time());
+		if(auto length = it->second.get_loop_length())
+			std::cout << stringf(" (loop %7d)", length);
+		std::cout << "\n";
+	}
 	return song;
 }
 

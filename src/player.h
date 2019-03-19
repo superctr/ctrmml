@@ -102,5 +102,32 @@ class Player : public Basic_Player
 		void skip_ticks(unsigned int ticks);
 };
 
+//! Track validator and length calculator
+/*!
+ * Used to detect basic playback errors and to get the track lengths
+ */
+class Track_Validator : public Basic_Player
+{
+	private:
+		void event_hook();
+		bool loop_hook();
+		void end_hook();
+		int segno_time;
+		unsigned int loop_time;
+	public:
+		Track_Validator(Song& song, Track& track);
+		unsigned int get_loop_length() const;
+};
+
+//! This validates and calculates length for each track.
+class Song_Validator
+{
+	private:
+		std::map<uint16_t,Track_Validator> track_map;
+	public:
+		Song_Validator(Song& song);
+		const std::map<uint16_t,Track_Validator>& get_track_map() const;
+};
+
 #endif
 

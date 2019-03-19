@@ -6,7 +6,7 @@
 Basic_Player::Basic_Player(Song& song, Track& track)
 	: song(&song),
 	track(&track),
-	enabled(track.is_enabled()),
+	enabled(true),
 	position(0),
 	loop_position(-1),
 	play_time(0),
@@ -190,5 +190,62 @@ void Player::skip_ticks(unsigned int ticks)
 
 void Player::play_ticks(unsigned int ticks)
 {
+}
+
+//! Validates a track by playing it.
+/*!
+ * If any errors occur, exceptions are thrown. Currently
+ * these are mostly std::invalid_argument, but once InputRef
+ * is implemented in the tracks InputErrors will be thrown instead.
+ */
+Track_Validator::Track_Validator(Song& song, Track& track)
+	: Basic_Player(song, track), segno_time(-1), loop_time(0)
+{
+	// step all the way to the end
+	while(is_enabled())
+		step_event();
+}
+
+void Track_Validator::event_hook()
+{
+	// Record timestamp of segno event.
+	if(event.type == Event::SEGNO)
+		segno_time = get_play_time();
+}
+
+bool Track_Validator::loop_hook()
+{
+	// do not loop
+	return 0;
+}
+
+void Track_Validator::end_hook()
+{
+	if(segno_time >= 0)
+		loop_time = get_play_time() - segno_time;
+}
+
+unsigned int Track_Validator::get_loop_length() const
+{
+	return loop_time;
+}
+
+//! Validates all tracks in a song.
+/*!
+ * If any errors occur, exceptions are thrown. Currently
+ * these are mostly std::invalid_argument, but once InputRef
+ * is implemented in the tracks InputErrors will be thrown instead.
+ */
+Song_Validator::Song_Validator(Song& song)
+{
+	for(auto it = song.get_track_map().begin(); it != song.get_track_map().end(); it++)
+	{
+		track_map.insert(std::make_pair(it->first, Track_Validator(song, it->second)));
+	}
+}
+
+const std::map<uint16_t,Track_Validator>& Song_Validator::get_track_map() const
+{
+	return track_map;
 }
 
