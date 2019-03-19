@@ -110,6 +110,17 @@ void Input::parse_warning(const char* msg)
 	std::cerr << get_reference()->get_line_contents() << std::endl;
 }
 
+//! Open a file and parse it.
+/*! This sets the filename and calls parse_file().
+ *
+ * \exception InputError in case of a read or parse error.
+ */
+void Input::open_file(const std::string& fn)
+{
+	filename = fn;
+	parse_file();
+}
+
 //! Creates a Line_Input.
 Line_Input::Line_Input(Song* song)
 	: Input(song), line(0), column(0)
@@ -124,8 +135,9 @@ Line_Input::~Line_Input()
 void Line_Input::parse_file()
 {
 	std::ifstream inputfile = std::ifstream(get_filename());
+	buffer = "";
 	if(!inputfile)
-		throw std::invalid_argument("Failed to open file");
+		parse_error("failed to open file");
 	line = 0;
 	for(std::string str; std::getline(inputfile, str);)
 	{

@@ -11,6 +11,10 @@ CORE_OBJS = \
 	$(OBJ)/mml_input.o \
 	$(OBJ)/player.o
 
+MMLC_OBJS = \
+	$(CORE_OBJS) \
+	$(OBJ)/mmlc.o
+
 UNITTEST_OBJS = \
 	$(CORE_OBJS) \
 	$(OBJ)/unittest/test_track.o \
@@ -23,6 +27,9 @@ UNITTEST_OBJS = \
 $(OBJ)/%.o: $(SRC)/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) -c $< -o $@
+
+mmlc: $(MMLC_OBJS)
+	$(CXX) $(MMLC_OBJS) $(LDFLAGS) -o $@
 
 unittest: $(UNITTEST_OBJS)
 	$(CXX) $(UNITTEST_OBJS) $(LDFLAGS) $(LDFLAGS_TEST) -o $@

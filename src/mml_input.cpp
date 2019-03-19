@@ -233,7 +233,7 @@ void MML_Input::parse_mml_track(int conditional_block)
 		while(offset)
 		{
 			do c = get_token();
-			while(c != 0 && c != '}' && c != ';');
+			while(c != 0 && c != '/' && c != ';');
 			if(c != '/')
 				throw std::invalid_argument("unterminated conditonal block");
 			c = 0;

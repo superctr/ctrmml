@@ -11,6 +11,7 @@ Basic_Player::Basic_Player(Song& song, Track& track)
 	loop_position(-1),
 	play_time(0),
 	loop_count(0),
+	max_stack_depth(10),
 	on_time(0),
 	off_time(0)
 {
@@ -18,6 +19,8 @@ Basic_Player::Basic_Player(Song& song, Track& track)
 
 void Basic_Player::stack_push(const Player_Stack& frame)
 {
+	if(stack.size() >= max_stack_depth)
+		throw std::invalid_argument("stack depth limit reached");
 	stack_depth[frame.type]++;
 	stack.push(frame);
 }
@@ -82,7 +85,7 @@ void Basic_Player::step_event()
 	// Set new on/off time
 	on_time = event.on_time;
 	off_time = event.off_time;
-	handle_event();
+	event_hook();
 	// Handle events
 	switch(event.type)
 	{
@@ -117,15 +120,13 @@ void Basic_Player::step_event()
 			try
 			{
 				Track& new_track = song->get_track(event.param);
-				if(!new_track.is_enabled())
-					throw std::invalid_argument("can't jump here");
 				// Push old position
 				stack_push({Player_Stack::JUMP, track, position, 0, 0});
 				// Set new position
 				track = &new_track;
 				position = 0;
 			}
-			catch(std::exception&)
+			catch(std::exception& ex)
 			{
 				throw std::invalid_argument("jump destination doesn't exist");
 			}
@@ -139,10 +140,17 @@ void Basic_Player::step_event()
 			}
 			catch(std::exception&)
 			{
-				if(loop_position > 0)
+				if(loop_hook())
+				{
 					position = loop_position;
+					loop_count++;
+				}
 				else
+				{
 					enabled = false;
+					// send a rest event here?
+					end_hook();
+				}
 			}
 		default:
 			break;
@@ -159,7 +167,16 @@ Player::Player(Song& song, Track& track, Player_Flag flag)
 {
 }
 
-void Player::handle_event()
+void Player::event_hook()
+{
+}
+
+bool Player::loop_hook()
+{
+	return 1;
+}
+
+void Player::end_hook()
 {
 }
 

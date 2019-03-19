@@ -46,16 +46,30 @@ class Basic_Player
 		unsigned int play_time;
 		unsigned int loop_count;
 		unsigned int stack_depth[Player_Stack::MAX_STACK_TYPE];
+		unsigned int max_stack_depth;
 
 	protected:
+		//! Current event.
 		Event event;
+		//! Pointer to current event in the track.
 		Event *track_event;
+		//! Keyon time from current event
 		unsigned int on_time;
+		//! Keyoff time from current event
 		unsigned int off_time;
-		virtual void handle_event() = 0;
+		//! Called at every event.
+		virtual void event_hook() = 0;
+		//! Called at the loop position. Return 1 to continue loop, 0 to end playback (end_hook will be called)
+		virtual bool loop_hook() = 0;
+		//! Called at the end position.
+		virtual void end_hook() = 0;
+		//! Push to stack.
 		void stack_push(const Player_Stack& stack_obj);
+		//! Get the stack top, with type checking.
 		Player_Stack& stack_top(Player_Stack::Type type);
+		//! Pop the stack, with type checking.
 		Player_Stack stack_pop(Player_Stack::Type type);
+		//! Get the stack depth for the specified type.
 		unsigned int get_stack_depth(Player_Stack::Type type);
 
 	public:
@@ -75,7 +89,9 @@ class Player : public Basic_Player
 {
 	private:
 		Player_Flag flag;
-		void handle_event();
+		void event_hook();
+		bool loop_hook();
+		void end_hook();
 	protected:
 		int track_state[Event::CHANNEL_CMD_COUNT];
 		uint32_t track_update_mask;

@@ -9,6 +9,8 @@ class Player_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST_SUITE(Player_Test);
 	CPPUNIT_TEST(test_get_event);
 	CPPUNIT_TEST(test_loop);
+	CPPUNIT_TEST(test_loop_position);
+	CPPUNIT_TEST(test_jump);
 	CPPUNIT_TEST_SUITE_END();
 private:
 	Song *song;
@@ -61,6 +63,45 @@ public:
 		}
 		player.step_event();
 		CPPUNIT_ASSERT_EQUAL(Event::END, player.get_event().type);
+	}
+	void test_loop_position()
+	{
+		mml_input->read_line("A L o3cd");
+		auto player = Player(*song, song->get_track(0));
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::SEGNO, player.get_event().type);
+		// three loops
+		for(int i=0; i<3; i++)
+		{
+			player.step_event();
+			CPPUNIT_ASSERT_EQUAL((unsigned int)i, player.get_loop_count());
+			CPPUNIT_ASSERT_EQUAL(Event::NOTE, player.get_event().type);
+			CPPUNIT_ASSERT_EQUAL((int16_t)36, player.get_event().param);
+			player.step_event();
+			CPPUNIT_ASSERT_EQUAL(Event::NOTE, player.get_event().type);
+			CPPUNIT_ASSERT_EQUAL((int16_t)38, player.get_event().param);
+			player.step_event();
+			CPPUNIT_ASSERT_EQUAL(Event::END, player.get_event().type);
+		}
+	}
+	void test_jump()
+	{
+		mml_input->read_line("A *10 o3e");
+		mml_input->read_line("*10 o3cd");
+		auto player = Player(*song, song->get_track(0));
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::JUMP, player.get_event().type);
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)36, player.get_event().param);
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)38, player.get_event().param);
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::END, player.get_event().type);
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)40, player.get_event().param);
 	}
 };
 
