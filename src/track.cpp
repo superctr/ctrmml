@@ -4,6 +4,7 @@
 #include "track.h"
 #include "song.h"
 
+//! Constructs a Track.
 Track::Track()
 	: flag(0),
 	ch(0),
@@ -13,10 +14,6 @@ Track::Track()
 	default_duration(measure_len/4),
 	quantize(DEFAULT_QUANTIZE),
 	quantize_parts(DEFAULT_QUANTIZE_PARTS)
-{
-}
-
-Track::~Track()
 {
 }
 

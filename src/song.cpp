@@ -5,13 +5,10 @@
 #include "song.h"
 #include "track.h"
 
+//! Constructs a Song.
 Song::Song()
 	: tag_map(),
 	track_map()
-{
-}
-
-Song::~Song()
 {
 }
 

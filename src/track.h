@@ -60,6 +60,13 @@ struct Event
 	std::shared_ptr<InputRef> reference;
 };
 
+//! Track structure.
+/*!
+ * Each song consists of an indeterminate number of tracks which are used for channels as well as individual phrases
+ * that may be referenced by a channel.
+ *
+ * The functions of this class facilitate easier insertion of events to a track.
+ */
 class Track
 {
 	private:
@@ -80,7 +87,6 @@ class Track
 
 	public:
 		Track();
-		~Track();
 
 		//! Default octave setting.
 		static const int DEFAULT_OCTAVE = 5;

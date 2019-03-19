@@ -4,6 +4,17 @@
 #include <stdint.h>
 #include "core.h"
 
+//! Song class.
+/*!
+ * The song consists of a track map and a tag map.
+ *
+ * The tracks represent channels or individual phrases and contain sequence data. Track IDs (keys) are uint16_t.
+ *
+ * The tags represent song metadata (for example title and author) as well as envelopes and other platform-specific data
+ * that cannot be easily represented in a portable way. Tags consists of a string vector and tag map keys are also strings.
+ * The # prefix is used for song metadata, @ for instruments or envelope data. % prefix is special and used for
+ * platform-specific events.
+ */
 class Song
 {
 	private:
@@ -11,7 +22,6 @@ class Song
 		Track_Map track_map;
 	public:
 		Song();
-		~Song();
 
 		Tag_Map& get_tag_map();
 		void add_tag(const std::string& key, std::string value);
