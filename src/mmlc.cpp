@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
 	}
 	catch (InputError& error)
 	{
-		std::cerr << "input error: " << error.what();
+		std::cerr << error.what() << "\n";
 		return -1;
 	}
 }

@@ -10,7 +10,8 @@ CORE_OBJS = \
 	$(OBJ)/input.o \
 	$(OBJ)/mml_input.o \
 	$(OBJ)/player.o \
-	$(OBJ)/stringf.o
+	$(OBJ)/stringf.o \
+	$(OBJ)/vgm.o
 
 MMLC_OBJS = \
 	$(CORE_OBJS) \
@@ -23,6 +24,7 @@ UNITTEST_OBJS = \
 	$(OBJ)/unittest/test_input.o \
 	$(OBJ)/unittest/test_mml_input.o \
 	$(OBJ)/unittest/test_player.o \
+	$(OBJ)/unittest/test_vgm.o \
 	$(OBJ)/unittest/main.o
 
 $(OBJ)/%.o: $(SRC)/%.cpp
