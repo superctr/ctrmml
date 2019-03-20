@@ -14,6 +14,7 @@ class MD_Data
 	private:
 		static const int data_count_max = 256;
 		int add_unique_data(const std::vector<uint8_t>& data);
+		std::string dump_data(uint16_t id); // debug function
 		void read_fm_4op(uint16_t id, const Tag& tag);
 		void read_fm_2op(uint16_t id, const Tag& tag);
 		void read_psg(uint16_t id, const Tag& tag);

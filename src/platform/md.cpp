@@ -13,7 +13,7 @@ int MD_Data::add_unique_data(const std::vector<uint8_t>& data)
 	// look for previous matching data in the data bank
 	for(i=0; i<data_bank.size(); i++)
 	{
-		if(data == data_bank[i])
+		if(data != data_bank[i])
 			continue;
 		return i;
 	}
@@ -75,26 +75,42 @@ void MD_Data::read_psg(uint16_t id, const Tag& tag)
 {
 }
 
+std::string MD_Data::dump_data(uint16_t id)
+{
+	int mapped_id = envelope_map[id];
+	std::string out = stringf("%d = %d [%d]{", id, mapped_id, data_bank[mapped_id].size());
+	for(auto it = data_bank[mapped_id].begin(); it != data_bank[mapped_id].end(); it++)
+	{
+		if(it != data_bank[mapped_id].begin())
+		{
+			out += ", ";
+		}
+		out += stringf("%02x", *it);
+	}
+	out += "}";
+	return out;
+}
+
 void MD_Data::read_envelope(uint16_t id, const Tag& tag)
 {
 	auto it = tag.begin();
 	std::string type = *it++;
 	if(iequal("psg", type))
 	{
-		std::cout << "read PSG envelope " << id << "\n";
 		read_psg(id, Tag(it, tag.end()));
+		std::cout << "read PSG envelope " << dump_data(id) << "\n";
 		return;
 	}
 	else if(iequal("fm", type))
 	{
-		std::cout << "read FM envelope " << id << "\n";
 		read_fm_4op(id, Tag(it, tag.end()));
+		std::cout << "read FM envelope " << dump_data(id) << "\n";
 		return;
 	}
 	else if(iequal("2op", type))
 	{
-		std::cout << "read 2op envelope " << id << "\n";
 		read_fm_2op(id, Tag(it, tag.end()));
+		std::cout << "read 2op envelope " << dump_data(id) << "\n";
 		return;
 	}
 	else
