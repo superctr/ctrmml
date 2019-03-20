@@ -11,6 +11,12 @@
 
 class MD_Data
 {
+	enum InstrumentType
+	{
+		INS_UNDEFINED = 0,
+		INS_PSG = 1,
+		INS_FM = 2
+	};
 	private:
 		static const int data_count_max = 256;
 		int add_unique_data(const std::vector<uint8_t>& data);
@@ -23,6 +29,8 @@ class MD_Data
 	public:
 		std::vector<std::vector<uint8_t>> data_bank;
 		std::map<uint16_t, int> envelope_map;
+		std::map<uint16_t, int> ins_transpose;
+		std::map<uint16_t, InstrumentType> ins_type;
 		void read_song(Song& song);
 };
 

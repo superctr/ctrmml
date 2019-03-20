@@ -1,6 +1,8 @@
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
+#include <stdexcept>
+#include <cctype>
 
 #include "md.h"
 #include "../song.h"
@@ -26,6 +28,7 @@ int MD_Data::add_unique_data(const std::vector<uint8_t>& data)
 	return i;
 }
 
+//! adds a 4op FM instrument. Data stored in operator order.
 void MD_Data::read_fm_4op(uint16_t id, const Tag& tag)
 {
 	std::vector<uint8_t> fm_data(29, 0);
@@ -63,16 +66,141 @@ void MD_Data::read_fm_4op(uint16_t id, const Tag& tag)
 		// SSG-EG
 		fm_data[24 + i] = tag_data[op + 9] & 15;
 	}
+	// FB/ALG
 	fm_data[28] = (tag_data[0] & 7) | (tag_data[1] << 3);
 	envelope_map[id] = add_unique_data(fm_data);
+	ins_transpose[id] = 0;
+	ins_type[id] = INS_FM;
 }
 
+//! Read 2op instrument definition.
+/*!
+ * Tag format: InsID,Mul1,Mul2,Mul3,Mul4,Transpose
+ */
 void MD_Data::read_fm_2op(uint16_t id, const Tag& tag)
 {
+	std::vector<uint8_t> fm_data(29, 0);
+	std::vector<uint8_t> tag_data(6, 0);
+
+	auto it = tag.begin();
+	for(int i=0; i<6; i++)
+	{
+		if(it == tag.end())
+			throw InputError(nullptr, stringf("error: not enough parameters for 2op fm instrument @%d", id).c_str());
+		tag_data[i] = std::strtol(it->c_str(), NULL, 0);
+		it++;
+	}
+
+	int ins_id = tag_data[0];
+	try
+	{
+		fm_data = data_bank.at(envelope_map.at(ins_id));
+		for(int i=0; i<4; i++)
+		{
+			uint8_t mul = tag_data[1 + ((i&1)<<1) + ((i&2)>>1)];
+			uint8_t dt = fm_data[0+i] & 0xf0;
+			fm_data[0+i] = dt | (mul & 15);
+		}
+		fm_data[4 + 3] = fm_data[4 + 2]; //op4 tl should be same as op1
+		envelope_map[id] = add_unique_data(fm_data);
+		ins_transpose[id] = tag_data[5];
+		ins_type[id] = INS_FM;
+	}
+	catch(std::exception&)
+	{
+		throw InputError(nullptr, stringf("2op ins @%d is referencing instrument @%d which does not exist\n", id, ins_id).c_str());
+	}
 }
 
+//! Read PSG volume envelope.
+/*!
+ * Format:
+ *   Value or Value:Length or | or /
+ * Output format:
+ *   00 - end
+ *   01 - sustain
+ *   02 <pos> - loop
+ *   fv - value <v> for <f> frames.
+ */
 void MD_Data::read_psg(uint16_t id, const Tag& tag)
 {
+	std::vector<uint8_t> env_data;
+	int loop_pos = -1, last_pos = 0, last = -1;
+	if(!tag.size())
+	{
+		std::cerr << stringf("warning: empty psg instrument @%d\n", id);
+		return;
+	}
+	for(auto it = tag.begin(); it != tag.end(); it++)
+	{
+		const char* s = it->c_str();
+		if(*s == '|')
+			loop_pos = env_data.size();
+		else if(*s == '/')
+		{
+			// insert sustain
+			if(last == -1)
+			{
+				// max volume
+				env_data.push_back(0x10);
+			}
+			env_data.push_back(0x01);
+			last = -1;
+		}
+		else if(std::isdigit(*s))
+		{
+			uint8_t initial = std::strtol(s, (char**)&s, 0);
+			uint8_t final = initial;
+			uint8_t length = 0;
+			double delta = 0, counter = 0;
+			if(*s == '>' && *++s)
+				final = strtol(s, (char**)&s, 0);
+			final = (final > 15) ? 15 : (final < 0) ? 0 : final; // bounds check
+			initial = (initial > 15) ? 15 : (initial < 0) ? 0 : initial;
+			if(final != initial)
+				length = std::abs(final-initial)+1;
+			if(*s == ':' && *++s)
+				length = strtol(s, (char**)&s, 0);
+			if(length == 0)
+				length++;
+			else if(length > 1) // calculate slide
+				delta = (double)(final-initial)/(length-1);
+			counter = initial + 0.5;
+			while(length--)
+			{
+				// last value is always the final
+				uint8_t val = (length) ? (int)counter : final;
+				// add to duration of previous value if it's the same
+				if((int)counter == last && env_data[last_pos] < 0xf0)
+					env_data[last_pos] += 0x10;
+				else
+				{
+					last_pos = env_data.size();
+					env_data.push_back(0x1f - val);
+				}
+				last = val;
+				counter += delta;
+			}
+		}
+		else
+		{
+			throw InputError(nullptr,stringf("undefined envelope value '%s'", s).c_str());
+		}
+	}
+	if(loop_pos == -1)
+	{
+		// end command
+		env_data.push_back(0x00);
+	}
+	else
+	{
+		// loop command
+		env_data.push_back(0x02);
+		env_data.push_back(loop_pos);
+	}
+	envelope_map[id] = add_unique_data(env_data);
+	ins_transpose[id] = 0;
+	ins_type[id] = INS_PSG;
 }
 
 std::string MD_Data::dump_data(uint16_t id)
@@ -121,8 +249,14 @@ void MD_Data::read_envelope(uint16_t id, const Tag& tag)
 
 void MD_Data::read_song(Song& song)
 {
+	// clear envelope and instrument maps
+	envelope_map.clear();
+	ins_transpose.clear();
+	ins_type.clear();
 	// add a unique psg envelope to prevent possible errors
 	envelope_map[0] = add_unique_data({0x10, 0x01, 0x1f, 0x00});
+	ins_transpose[0] = 0;
+	ins_type[0] = MD_Data::INS_UNDEFINED;
 	for(auto it = song.get_tag_map().begin(); it != song.get_tag_map().end(); it++)
 	{
 		uint16_t id;
