@@ -11,4 +11,9 @@
  */
 std::string stringf(const char* format, ...);
 
+//! Case-insensitive string comparison.
+/*!
+ * Return true if strings are equal
+ */
+bool iequal(const std::string &s1, const std::string &s2);
 #endif

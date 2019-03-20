@@ -11,7 +11,8 @@ CORE_OBJS = \
 	$(OBJ)/mml_input.o \
 	$(OBJ)/player.o \
 	$(OBJ)/stringf.o \
-	$(OBJ)/vgm.o
+	$(OBJ)/vgm.o \
+	$(OBJ)/platform/md.o
 
 MMLC_OBJS = \
 	$(CORE_OBJS) \

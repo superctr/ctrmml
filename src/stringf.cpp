@@ -1,6 +1,8 @@
 #include "stringf.h"
 #include <cstdarg>
 #include <cstdio>
+#include <algorithm>
+#include <cctype>
 
 std::string stringf(const char* format, ...)
 {
@@ -17,5 +19,19 @@ std::string stringf(const char* format, ...)
 	va_end(arg1);
 	va_end(arg2);
 	return out;
+}
+
+class iequal_class
+{
+public:
+	bool operator() (int c1, int c2) const
+	{
+		return std::tolower(c1) == std::tolower(c2);
+	}
+};
+
+bool iequal(const std::string &s1, const std::string &s2)
+{
+	return std::equal(s1.begin(), s1.end(), s2.begin(), iequal_class());
 }
 

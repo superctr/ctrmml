@@ -2,6 +2,8 @@
 #include "input.h"
 #include "mml_input.h"
 #include "player.h"
+#include "vgm.h"
+#include "platform/md.h"
 #include "stringf.h"
 
 #include <iostream>
@@ -17,7 +19,7 @@ void print_usage(char* exename)
 	std::cout << exename << " <input_file.mml>\n";
 }
 
-char* output_filename(char* input_filename, char* extension)
+std::string output_filename(char* input_filename, char* extension)
 {
 	static char str[256];
 	char *last_dot;
@@ -26,7 +28,7 @@ char* output_filename(char* input_filename, char* extension)
 	if(last_dot)
 		*last_dot = 0;
 	strncat(last_dot, extension, 256);
-	return strdup(str);
+	return str;
 }
 
 Song convert_file(const char* filename)
@@ -45,6 +47,14 @@ Song convert_file(const char* filename)
 	return song;
 }
 
+void generate_vgm(Song& song, const char* filename)
+{
+	VGM_Writer vgm(filename, 0x61, 0x100);
+	MD_Driver driver(44100, &vgm);
+	driver.play_song(song);
+
+}
+
 int main(int argc, char* argv[])
 {
 	if(argc < 2)
@@ -56,7 +66,8 @@ int main(int argc, char* argv[])
 
 	try
 	{
-		convert_file(argv[1]);
+		Song song = convert_file(argv[1]);
+		generate_vgm(song, "");
 	}
 	catch (InputError& error)
 	{
