@@ -10,6 +10,8 @@ class Track;
 class Song;
 class Input;
 class InputRef;
+class VGM_Writer;
+class Player;
 
 typedef std::vector<std::string> Tag;
 typedef std::map<std::string,Tag> Tag_Map;

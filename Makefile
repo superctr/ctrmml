@@ -12,6 +12,7 @@ CORE_OBJS = \
 	$(OBJ)/player.o \
 	$(OBJ)/stringf.o \
 	$(OBJ)/vgm.o \
+	$(OBJ)/driver.o \
 	$(OBJ)/platform/md.o
 
 MMLC_OBJS = \

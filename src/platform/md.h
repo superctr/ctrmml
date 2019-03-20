@@ -3,6 +3,7 @@
 #define PLATFORM_MD_H
 #include "../core.h"
 #include "../player.h"
+#include "../driver.h"
 #include "../vgm.h"
 #include <map>
 #include <memory>
@@ -64,7 +65,7 @@ class MD_Channel : public Player
 		MD_Channel(Song& song, int id);
 };
 
-class MD_Driver : public VGM_Driver
+class MD_Driver : public Driver
 {
 	private:
 		MD_Data data;

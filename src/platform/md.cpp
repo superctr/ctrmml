@@ -129,7 +129,7 @@ void MD_Channel::write_event()
 }
 
 MD_Driver::MD_Driver(unsigned int rate, VGM_Writer* vgm, bool is_pal)
-	: VGM_Driver(rate, vgm), tempo_delta(0), tempo_counter(0)
+	: Driver(rate, vgm), tempo_delta(0), tempo_counter(0)
 {
 	seq_rate = rate/60.0;
 	pcm_rate = rate/16000.0;
