@@ -10,9 +10,9 @@ Basic_Player::Basic_Player(Song& song, Track& track)
 	enabled(true),
 	position(0),
 	loop_position(-1),
-	play_time(0),
 	loop_count(0),
 	max_stack_depth(10),
+	play_time(0),
 	on_time(0),
 	off_time(0)
 {
@@ -172,7 +172,7 @@ void Basic_Player::step_event()
 			}
 			else
 			{
-				if(loop_hook())
+				if(loop_hook() && loop_position != -1)
 				{
 					position = loop_position;
 					loop_count++;
@@ -196,12 +196,65 @@ bool Basic_Player::is_enabled() const
 }
 
 Player::Player(Song& song, Track& track, Player_Flag flag)
-	: Basic_Player(song, track), flag(flag)
+	: Basic_Player(song, track),
+	flag(flag),
+	note_count(0),
+	rest_count(0),
+	track_update_mask(0)
 {
+}
+
+#define FLAG_SET(flag) { track_update_mask |= (1<<(flag - Event::CHANNEL_MODE)); }
+#define FLAG_CLR(flag) { track_update_mask &= ~(1<<(flag - Event::CHANNEL_MODE)); }
+#define CH_STATE(var) track_state[var - Event::CHANNEL_MODE]
+#define VOL_BIT 30 + Event::CHANNEL_MODE
+#define BPM_BIT 31 + Event::CHANNEL_MODE
+void Player::handle_event()
+{
+	switch(event.type)
+	{
+		case Event::TRANSPOSE_REL:
+			CH_STATE(Event::TRANSPOSE) += event.param;
+			FLAG_SET(Event::TRANSPOSE);
+			break;
+		case Event::VOL:
+		case Event::VOL_REL:
+			if(event.type != Event::VOL_REL)
+				CH_STATE(Event::VOL_FINE) = 0;
+			CH_STATE(Event::VOL_FINE) += event.param;
+			FLAG_SET(Event::VOL_FINE);
+			FLAG_SET(VOL_BIT);
+			break;
+		case Event::VOL_FINE_REL:
+			CH_STATE(Event::VOL_FINE) += event.param;
+			FLAG_SET(Event::VOL_FINE);
+			FLAG_CLR(VOL_BIT);
+			break;
+		case Event::TEMPO_BPM:
+			CH_STATE(Event::TEMPO) = event.param;
+			FLAG_SET(Event::TEMPO);
+			FLAG_SET(BPM_BIT);
+			break;
+		default:
+			if(event.type > Event::CHANNEL_MODE && event.type < Event::CMD_COUNT)
+			{
+				int type = event.type - Event::CHANNEL_MODE;
+				track_state[type] = event.param;
+				track_update_mask |= 1<<type;
+				if(type == Event::VOL_FINE)
+					FLAG_CLR(VOL_BIT);
+				if(type == Event::TEMPO)
+					FLAG_CLR(BPM_BIT);
+			}
+			break;
+	}
 }
 
 void Player::event_hook()
 {
+	handle_event();
+	if(~flag & PLAYER_SKIP)
+		write_event();
 }
 
 bool Player::loop_hook()
@@ -211,18 +264,76 @@ bool Player::loop_hook()
 
 void Player::end_hook()
 {
+	event = {Event::REST, 0, 0, 0, reference};
+	write_event();
 }
 
 void Player::write_event()
 {
+	// Handle NOTE and REST events here.
+	if(event.type == Event::NOTE)
+		note_count++;
+	else if(event.type == Event::REST)
+		rest_count++;
 }
 
+//! Skip to a timestamp
 void Player::skip_ticks(unsigned int ticks)
 {
+	if(!is_enabled())
+	{
+		play_time += ticks;
+		return;
+	}
+	flag |= PLAYER_SKIP;
+	while(ticks && is_enabled())
+	{
+		if(on_time > ticks)
+		{
+			on_time -= ticks;
+			break;
+		}
+		play_time += on_time;
+		ticks -= on_time;
+		on_time = 0;
+
+		if(off_time > ticks)
+		{
+			off_time -= ticks;
+			break;
+		}
+		play_time += off_time;
+		ticks -= off_time;
+		off_time = 0;
+
+		step_event();
+	}
+	play_time += ticks;
+	flag &= ~PLAYER_SKIP;
 }
 
-void Player::play_ticks(unsigned int ticks)
+//! Play track
+void Player::play_tick()
 {
+	if(on_time)
+	{
+		on_time--;
+		// key off
+		if(!on_time && off_time)
+		{
+			event = {Event::REST, 0, 0, 0, reference};
+			write_event();
+		}
+	}
+	else if(off_time)
+	{
+		off_time--;
+	}
+	while(is_enabled() && !on_time && !off_time)
+	{
+		step_event();
+	}
+	play_time++;
 }
 
 //! Validates a track by playing it.

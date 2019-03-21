@@ -15,6 +15,7 @@ enum Player_Flag
 	PLAYER_UNROLL_JUMPS = 1<<2, //!< Do not send events inside a jump.
 	PLAYER_SEND_REST = 1<<3, //!< Send Event::REST after an Event::NOTE or Event::TIE event with an off_time defined.
 	PLAYER_OPTIMIZE = 1<<4, //!< Filter redundant events.
+	PLAYER_SKIP = 1<<5, //!< Skip sending events
 };
 
 //! Player stack structure.
@@ -44,7 +45,6 @@ class Basic_Player
 		int position;
 		int loop_position;
 		std::stack<Player_Stack> stack;
-		unsigned int play_time;
 		unsigned int loop_count;
 		unsigned int stack_depth[Player_Stack::MAX_STACK_TYPE];
 		unsigned int max_stack_depth;
@@ -57,6 +57,8 @@ class Basic_Player
 		Event *track_event;
 		//! Current reference
 		std::shared_ptr<InputRef> reference;
+		//! Playing time
+		unsigned int play_time;
 		//! Keyon time from current event
 		unsigned int on_time;
 		//! Keyoff time from current event
@@ -88,8 +90,12 @@ class Basic_Player
  */
 class Player : public Basic_Player
 {
+	friend class Player_Test;
 	private:
-		Player_Flag flag;
+		uint32_t flag;
+		int note_count;
+		int rest_count;
+		void handle_event();
 		void event_hook();
 		bool loop_hook();
 		void end_hook();
@@ -99,7 +105,7 @@ class Player : public Basic_Player
 		virtual void write_event();
 	public:
 		Player(Song& song, Track& track, Player_Flag flag = PLAYER_NO_FLAG);
-		void play_ticks(unsigned int ticks);
+		void play_tick();
 		void skip_ticks(unsigned int ticks);
 };
 

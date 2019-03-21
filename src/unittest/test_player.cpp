@@ -11,6 +11,9 @@ class Player_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST(test_loop);
 	CPPUNIT_TEST(test_loop_position);
 	CPPUNIT_TEST(test_jump);
+	CPPUNIT_TEST(test_play_tick);
+	CPPUNIT_TEST(test_quantize_play_tick);
+	CPPUNIT_TEST(test_skip_ticks);
 	CPPUNIT_TEST_SUITE_END();
 private:
 	Song *song;
@@ -35,7 +38,7 @@ public:
 		player.step_event();
 		CPPUNIT_ASSERT_EQUAL(Event::VOL, player.get_event().type);
 		player.step_event();
-		CPPUNIT_ASSERT_EQUAL(Event::END, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL(false, player.is_enabled());
 	}
 	void test_loop()
 	{
@@ -62,7 +65,7 @@ public:
 			}
 		}
 		player.step_event();
-		CPPUNIT_ASSERT_EQUAL(Event::END, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL(false, player.is_enabled());
 	}
 	void test_loop_position()
 	{
@@ -102,6 +105,50 @@ public:
 		player.step_event();
 		CPPUNIT_ASSERT_EQUAL(Event::NOTE, player.get_event().type);
 		CPPUNIT_ASSERT_EQUAL((int16_t)40, player.get_event().param);
+	}
+	// result should be the same
+	void test_play_tick()
+	{
+		mml_input->read_line("A l16cdefg"); // length should be 30
+		auto player = Player(*song, song->get_track(0));
+		for(int i=0; i<30; i++)
+			player.play_tick();
+		CPPUNIT_ASSERT_EQUAL((unsigned int)30, player.get_play_time());
+		CPPUNIT_ASSERT_EQUAL(5, player.note_count);
+		CPPUNIT_ASSERT_EQUAL(0, player.rest_count);
+		for(int i=0; i<30; i++)
+			player.play_tick();
+		CPPUNIT_ASSERT_EQUAL((unsigned int)60, player.get_play_time());
+		CPPUNIT_ASSERT_EQUAL(5, player.note_count);
+		CPPUNIT_ASSERT_EQUAL(1, player.rest_count);
+	}
+	// result should be the same
+	void test_quantize_play_tick()
+	{
+		mml_input->read_line("A q4l16cdefg"); // length should be 30
+		auto player = Player(*song, song->get_track(0));
+		for(int i=0; i<30; i++)
+			player.play_tick();
+		CPPUNIT_ASSERT_EQUAL((unsigned int)30, player.get_play_time());
+		CPPUNIT_ASSERT_EQUAL(5, player.note_count);
+		CPPUNIT_ASSERT_EQUAL(5, player.rest_count);
+		for(int i=0; i<30; i++)
+			player.play_tick();
+		CPPUNIT_ASSERT_EQUAL((unsigned int)60, player.get_play_time());
+		CPPUNIT_ASSERT_EQUAL(5, player.note_count);
+		CPPUNIT_ASSERT_EQUAL(6, player.rest_count);
+	}
+	// result should be the same
+	void test_skip_ticks()
+	{
+		mml_input->read_line("A l16cdefg"); // length should be 30
+		auto player = Player(*song, song->get_track(0));
+		player.skip_ticks(23);
+		for(int i=0; i<13; i++)
+			player.play_tick();
+		CPPUNIT_ASSERT_EQUAL((unsigned int)36, player.get_play_time());
+		CPPUNIT_ASSERT_EQUAL(1, player.note_count);
+		CPPUNIT_ASSERT_EQUAL(1, player.rest_count);
 	}
 };
 
