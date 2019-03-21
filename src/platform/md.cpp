@@ -642,7 +642,12 @@ void MD_PSGNoise::set_type()
 	type = get_var(Event::CHANNEL_MODE);
 }
 
-//! Driver constructor
+//! constructs a MD_Driver.
+/*
+ * \param rate Sample rate.
+ * \param vgm Optional VGM writer. Set to nullptr to disable VGM logging.
+ * \param is_pal Use 50hz sequence update rate
+ */
 MD_Driver::MD_Driver(unsigned int rate, VGM_Writer* vgm, bool is_pal)
 	: Driver(rate, vgm), tempo_delta(255), tempo_counter(0)
 {
@@ -699,6 +704,7 @@ void MD_Driver::seq_update()
 	}
 }
 
+//! Return true if driver is currently playing a song, false otherwise.
 bool MD_Driver::is_playing()
 {
 	if(!channels.size())
@@ -713,6 +719,7 @@ bool MD_Driver::is_playing()
 	return true;
 }
 
+//! Get loop count (untested)
 int MD_Driver::loop_count()
 {
 	unsigned int loop_count = INT_MAX;
@@ -728,7 +735,7 @@ int MD_Driver::loop_count()
 	return loop_count;
 }
 
-//! Return delta until the next event.
+//! Updates the sound driver state and return delta until the next event.
 double MD_Driver::play_step()
 {
 	if(seq_counter < 1)

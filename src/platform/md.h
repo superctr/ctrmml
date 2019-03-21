@@ -1,4 +1,4 @@
-// \file platform/md.h
+// \filInstrumentType
 #ifndef PLATFORM_MD_H
 #define PLATFORM_MD_H
 #include "../core.h"
@@ -12,6 +12,7 @@
 class MD_Channel;
 class MD_Driver;
 
+//! Megadrive driver data bank
 class MD_Data
 {
 	enum InstrumentType
@@ -31,8 +32,11 @@ class MD_Data
 
 	public:
 		std::vector<std::vector<uint8_t>> data_bank;
+		//! Maps Song instrument numbers to data_bank entries.
 		std::map<uint16_t, int> envelope_map;
+		//! Maps Song instrument numbers to transpose settings (for FM 2op only)
 		std::map<uint16_t, int> ins_transpose;
+		//! Maps Song instrument numbers to InstrumentType
 		std::map<uint16_t, InstrumentType> ins_type;
 		void read_song(Song& song);
 };
@@ -54,11 +58,11 @@ class MD_Channel : public Player
 		uint16_t get_psg_pitch() const;
 
 		MD_Driver* driver;
-		bool slur_flag;
-		uint16_t pitch;
-		int8_t ins_transpose; // compiled files should have this already 'cooked'
-		uint8_t pan_lfo;
-		uint8_t con;
+		bool slur_flag; //!< Flag to disable key on for the next note
+		uint16_t pitch; //!< Current pitch (256 'cents' per semitone)
+		int8_t ins_transpose; //!< Instrument transpose (for FM 2op). compiled files should have this already 'cooked'
+		uint8_t pan_lfo; //!< FM panning & lfo parameters
+		uint8_t con; //!< FM connection
 		uint8_t tl[4]; // also used for Ch3 mode
 		void write_event();
 	public:
@@ -76,8 +80,8 @@ class MD_FM : public MD_Channel
 	};
 	private:
 		int type;
-		uint8_t bank : 1;
-		uint8_t id : 2;
+		uint8_t bank : 1; //!< YM2612 port id.
+		uint8_t id : 2; //!< YM2612 channel id.
 		void set_ins();
 		void set_vol();
 		void key_on();
@@ -93,11 +97,12 @@ class MD_FM : public MD_Channel
 class MD_PSG : public MD_Channel
 {
 	protected:
+		//! Channel index
 		int id;
-		std::vector<uint8_t>* env_data;
-		bool env_keyoff;
-		uint8_t env_pos;
-		uint8_t env_delay;
+		std::vector<uint8_t>* env_data; //!< Pointer to envelope data
+		bool env_keyoff; //!< Envelope key off flag
+		uint8_t env_pos; //!< Envelope position
+		uint8_t env_delay; //!< Envelope delay and current volume
 		void set_envelope(std::vector<uint8_t>* idata);
 		void update_envelope();
 	public:
@@ -144,6 +149,11 @@ class MD_PSGNoise : public MD_PSG
 		MD_PSGNoise(MD_Driver& driver, int track_id, int channel_id);
 };
 
+//! Megadrive sound driver
+/*!
+ * In the future, this driver will produce files that are compatible
+ * with a Megadrive sound driver written by me.
+ */
 class MD_Driver : public Driver
 {
 	friend MD_Channel;
@@ -167,7 +177,6 @@ class MD_Driver : public Driver
 
 	public:
 		MD_Driver(unsigned int rate, VGM_Writer* vgm, bool is_pal = false);
-		void prepare_song(Song& song);
 		void play_song(Song& song);
 		void reset();
 		bool is_playing();
@@ -176,3 +185,4 @@ class MD_Driver : public Driver
 };
 
 #endif
+
