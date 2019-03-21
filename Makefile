@@ -39,7 +39,7 @@ mmlc: $(MMLC_OBJS)
 unittest: $(UNITTEST_OBJS)
 	$(CXX) $(UNITTEST_OBJS) $(LDFLAGS) $(LDFLAGS_TEST) -o $@
 
-SRC_OLD = .
+SRC_OLD = old
 OBJ_OLD = obj/old
 CFLAGS_OLD = -g -Wall
 LDFLAGS_OLD =
