@@ -12,14 +12,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-void print_usage(char* exename)
+void print_usage(const char* exename)
 {
 	std::cout << "mmlc (pre-alpha version)\n";
 	std::cout << "(C) 2019 ian karlsson\n";
 	std::cout << exename << " <input_file.mml>\n";
 }
 
-std::string output_filename(char* input_filename, char* extension)
+std::string output_filename(const char* input_filename, const char* extension)
 {
 	static char str[256];
 	char *last_dot;
@@ -47,9 +47,9 @@ Song convert_file(const char* filename)
 	return song;
 }
 
-void generate_vgm(Song& song, const char* filename, int max_seconds)
+void generate_vgm(Song& song, const std::string& filename, int max_seconds)
 {
-	VGM_Writer vgm(filename, 0x61, 0x100);
+	VGM_Writer vgm(filename.c_str(), 0x61, 0x100);
 	MD_Driver driver(44100, &vgm);
 	long max_time = max_seconds * 44100;
 	driver.play_song(song);
@@ -63,6 +63,7 @@ void generate_vgm(Song& song, const char* filename, int max_seconds)
 	}
 	vgm.delay(max_time-elapsed_time);
 	vgm.stop();
+	vgm.write_tag();
 }
 
 int main(int argc, char* argv[])
@@ -77,7 +78,7 @@ int main(int argc, char* argv[])
 	try
 	{
 		Song song = convert_file(argv[1]);
-		generate_vgm(song, "experiment.vgm", 60);
+		generate_vgm(song, output_filename(argv[1], ".vgm"), 60);
 	}
 	catch (InputError& error)
 	{

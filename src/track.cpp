@@ -71,7 +71,7 @@ void Track::add_event(Event::Type type, int16_t param, uint16_t on_time, uint16_
 void Track::add_note(int note, uint16_t duration)
 {
 	duration = get_duration(duration);
-	if(~flag & 0x01)
+	if(!in_drum_mode())
 		note += octave * 12;
 	last_note_pos = events.size();
 	add_event(Event::NOTE, note, on_time(duration), off_time(duration));

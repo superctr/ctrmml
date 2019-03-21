@@ -3,6 +3,7 @@
 #include "input.h"
 #include "song.h"
 #include "track.h"
+#include "stringf.h"
 
 Basic_Player::Basic_Player(Song& song, Track& track)
 	: song(&song),
@@ -64,6 +65,17 @@ Player_Stack Basic_Player::stack_pop(Player_Stack::Type type)
 	if(frame.type != type)
 		stack_underflow(frame.type);
 	return frame;
+}
+
+//! Get the type of the top stack frame.
+/*!
+ * If the stack is empty, Player_Stack::MAX_STACK_TYPE is returned.
+ */
+Player_Stack::Type Basic_Player::get_stack_type()
+{
+	if(!stack.size())
+		return Player_Stack::MAX_STACK_TYPE;
+	return stack.top().type;
 }
 
 //! Get the stack depth for the specified type.
@@ -212,10 +224,47 @@ Player::Player(Song& song, Track& track, Player_Flag flag)
 #define CH_STATE(var) track_state[var - Event::CHANNEL_MODE]
 #define VOL_BIT 30 + Event::CHANNEL_MODE
 #define BPM_BIT 31 + Event::CHANNEL_MODE
+void Player::handle_drum_mode()
+{
+	if(get_stack_type() != Player_Stack::DRUM_MODE)
+	{
+		// First note event enters subroutine
+		int offset = CH_STATE(Event::DRUM_MODE);
+		try
+		{
+			Track& new_track = song->get_track(offset + event.param);
+			// Push old position
+			stack_push({Player_Stack::DRUM_MODE, track, position, (int)on_time, (int)off_time});
+			// Set new position
+			track = &new_track;
+			position = 0;
+			// Replace note
+			on_time = 0;
+			off_time = 0;
+			event.type = Event::NOP;
+		}
+		catch(std::exception& ex)
+		{
+			error(stringf("drum mode error: track *%d is not defined (base %d, note %d)", event.param + offset, offset, event.param).c_str());
+		}
+	}
+	else
+	{
+		// Second note exits the subroutine
+		on_time = stack_top(Player_Stack::DRUM_MODE).end_position;
+		off_time = stack_top(Player_Stack::DRUM_MODE).loop_count;
+		position = stack_top(Player_Stack::DRUM_MODE).position;
+		track = stack_pop(Player_Stack::DRUM_MODE).track;
+	}
+}
 void Player::handle_event()
 {
 	switch(event.type)
 	{
+		case Event::NOTE:
+			if(CH_STATE(Event::DRUM_MODE))
+				handle_drum_mode();
+			break;
 		case Event::TRANSPOSE_REL:
 			CH_STATE(Event::TRANSPOSE) += event.param;
 			FLAG_SET(Event::TRANSPOSE);

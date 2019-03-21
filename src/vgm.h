@@ -9,6 +9,8 @@ class VGM_Writer
 {
 	private:
 		std::string filename;
+		bool completed;
+
 		uint8_t* buffer;
 		uint8_t* buffer_pos;
 

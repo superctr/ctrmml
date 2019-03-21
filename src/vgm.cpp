@@ -69,7 +69,11 @@ void VGM_Writer::add_delay()
  * \param header_size the size of the VGM file header.
  */
 VGM_Writer::VGM_Writer(const char* filename, int version, int header_size)
-	: filename(filename), curr_delay(0), sample_count(0), loop_sample(0)
+	: filename(filename),
+	completed(0),
+	curr_delay(0),
+	sample_count(0),
+	loop_sample(0)
 {
 	// create initial buffer
 	buffer = (uint8_t*) std::calloc(initial_buffer_alloc, sizeof(uint8_t));
@@ -93,7 +97,7 @@ VGM_Writer::VGM_Writer(const char* filename, int version, int header_size)
 VGM_Writer::~VGM_Writer()
 {
 	poke32(0x04, get_position() - 4);
-	if(filename.size())
+	if(filename.size() && completed)
 	{
 		std::cout << "Writing " << filename << "...\n";
 		auto output = std::ofstream(filename, std::ios::binary);
@@ -130,6 +134,7 @@ void VGM_Writer::stop()
 	poke32(0x18, sample_count);
 	if(loop_sample)
 		poke32(0x20, sample_count - loop_sample);
+	completed = 1;
 }
 
 void VGM_Writer::reserve(uint32_t bytes)
@@ -216,7 +221,7 @@ void VGM_Writer::add_gd3(const char* s)
 #endif // defined
 }
 
-//! Write GD3 tags. Always call this after vgm_stop().
+//! Write GD3 tags. Always call this after VGM_Writer::stop().
 void VGM_Writer::write_tag()
 {
 	reserve(2000);

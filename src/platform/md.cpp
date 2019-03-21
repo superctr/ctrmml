@@ -731,13 +731,13 @@ int MD_Driver::loop_count()
 //! Return delta until the next event.
 double MD_Driver::play_step()
 {
-	if(seq_counter < seq_delta)
+	if(seq_counter < 1)
 	{
 		// update tracks
 		seq_counter += seq_delta;
 		seq_update();
 	}
-	if(pcm_counter < pcm_delta)
+	if(pcm_counter < 1)
 	{
 		// update pcm
 		pcm_counter += pcm_delta;

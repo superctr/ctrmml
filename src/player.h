@@ -38,6 +38,7 @@ struct Player_Stack
  */
 class Basic_Player
 {
+	friend Player; // needed to access position
 	private:
 		Song* song;
 		Track* track;
@@ -73,6 +74,7 @@ class Basic_Player
 		void stack_push(const Player_Stack& stack_obj);
 		Player_Stack& stack_top(Player_Stack::Type type);
 		Player_Stack stack_pop(Player_Stack::Type type);
+		Player_Stack::Type get_stack_type();
 		unsigned int get_stack_depth(Player_Stack::Type type);
 
 	public:
@@ -97,6 +99,7 @@ class Player : public Basic_Player
 		int rest_count;
 		int16_t track_state[Event::CHANNEL_CMD_COUNT];
 		uint32_t track_update_mask;
+		void handle_drum_mode();
 		void handle_event();
 		void event_hook();
 		bool loop_hook();
