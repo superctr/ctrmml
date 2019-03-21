@@ -292,9 +292,11 @@ void MD_Channel::write_event()
 			if(get_update_flag(Event::INS))
 			{
 				set_ins();
+				set_vol();
 				clear_update_flag(Event::INS);
+				clear_update_flag(Event::VOL_FINE);
 			}
-			if(get_update_flag(Event::VOL_FINE))
+			else if(get_update_flag(Event::VOL_FINE))
 			{
 				set_vol();
 				clear_update_flag(Event::VOL_FINE);

@@ -243,7 +243,6 @@ void Player::handle_event()
 			{
 				int type = event.type - Event::CHANNEL_MODE;
 				track_state[type] = event.param;
-				printf("%d = %04x\n",type,event.param);
 				track_update_mask |= 1<<type;
 				if(type == Event::VOL_FINE)
 					FLAG_CLR(VOL_BIT);

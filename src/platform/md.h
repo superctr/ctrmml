@@ -56,7 +56,7 @@ class MD_Channel : public Player
 		MD_Driver* driver;
 		bool slur_flag;
 		uint16_t pitch;
-		uint8_t ins_transpose; // compiled files should have this already 'cooked'
+		int8_t ins_transpose; // compiled files should have this already 'cooked'
 		uint8_t pan_lfo;
 		uint8_t con;
 		uint8_t tl[4]; // also used for Ch3 mode
