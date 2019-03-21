@@ -69,7 +69,7 @@ class Basic_Player
 		virtual bool loop_hook() = 0;
 		//! Called at the end position.
 		virtual void end_hook() = 0;
-		void error(const char* message);
+		void error(const char* message) const;
 		void stack_push(const Player_Stack& stack_obj);
 		Player_Stack& stack_top(Player_Stack::Type type);
 		Player_Stack stack_pop(Player_Stack::Type type);
@@ -95,16 +95,21 @@ class Player : public Basic_Player
 		uint32_t flag;
 		int note_count;
 		int rest_count;
+		int16_t track_state[Event::CHANNEL_CMD_COUNT];
+		uint32_t track_update_mask;
 		void handle_event();
 		void event_hook();
 		bool loop_hook();
 		void end_hook();
 	protected:
-		int track_state[Event::CHANNEL_CMD_COUNT];
-		uint32_t track_update_mask;
+		bool get_update_flag(Event::Type type) const;
+		void clear_update_flag(Event::Type type);
 		virtual void write_event();
 	public:
 		Player(Song& song, Track& track, Player_Flag flag = PLAYER_NO_FLAG);
+		bool coarse_volume_flag() const;
+		bool bpm_flag() const;
+		int16_t get_var(Event::Type type) const;
 		void play_tick();
 		void skip_ticks(unsigned int ticks);
 };

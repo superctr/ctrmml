@@ -62,7 +62,7 @@ void Driver::ym2612_w(uint8_t port, uint8_t reg, uint8_t ch, uint8_t op, uint16_
 	}
 }
 
-void Driver::sn76489_w(uint8_t port, uint8_t reg, uint8_t ch, uint8_t data)
+void Driver::sn76489_w(uint8_t reg, uint8_t ch, uint8_t data)
 {
 	uint8_t cmd1, cmd2;
 	if(reg == 0) // frequency

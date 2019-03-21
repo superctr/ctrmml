@@ -19,7 +19,7 @@ Basic_Player::Basic_Player(Song& song, Track& track)
 }
 
 //! Throws an InputError.
-void Basic_Player::error(const char* message)
+void Basic_Player::error(const char* message) const
 {
 	throw InputError(reference, message);
 }
@@ -117,7 +117,6 @@ void Basic_Player::step_event()
 	on_time = event.on_time;
 	off_time = event.off_time;
 	reference = event.reference;
-	event_hook();
 	// Handle events
 	switch(event.type)
 	{
@@ -184,7 +183,9 @@ void Basic_Player::step_event()
 					end_hook();
 				}
 			}
+			break;
 		default:
+			event_hook();
 			break;
 	}
 }
@@ -204,6 +205,7 @@ Player::Player(Song& song, Track& track, Player_Flag flag)
 {
 }
 
+#define FLAG(flag) (track_update_mask & (1<<(flag - Event::CHANNEL_MODE)))
 #define FLAG_SET(flag) { track_update_mask |= (1<<(flag - Event::CHANNEL_MODE)); }
 #define FLAG_CLR(flag) { track_update_mask &= ~(1<<(flag - Event::CHANNEL_MODE)); }
 #define CH_STATE(var) track_state[var - Event::CHANNEL_MODE]
@@ -250,6 +252,42 @@ void Player::handle_event()
 	}
 }
 
+//! Get the update flag for \p type.
+bool Player::get_update_flag(Event::Type type) const
+{
+	if(type < Event::CHANNEL_MODE || type >= Event::CMD_COUNT)
+		error("BUG: Unsupported event type");
+	return FLAG(type);
+}
+
+//! Clear the update flag for \p type.
+void Player::clear_update_flag(Event::Type type)
+{
+	if(type < Event::CHANNEL_MODE || type >= Event::CMD_COUNT)
+		error("BUG: Unsupported event type");
+	FLAG_CLR(type);
+}
+
+//! Return true if coarse volume.
+bool Player::coarse_volume_flag() const
+{
+	return FLAG(VOL_BIT);
+}
+
+//! Return true if BPM set.
+bool Player::bpm_flag() const
+{
+	return FLAG(BPM_BIT);
+}
+
+//! Get event variable.
+int16_t Player::get_var(Event::Type type) const
+{
+	if(type < Event::CHANNEL_MODE || type >= Event::CMD_COUNT)
+		error("BUG: Unsupported event type");
+	return CH_STATE(type);
+}
+
 void Player::event_hook()
 {
 	handle_event();
@@ -264,7 +302,7 @@ bool Player::loop_hook()
 
 void Player::end_hook()
 {
-	event = {Event::REST, 0, 0, 0, reference};
+	event = {Event::END, 0, 0, 0, reference};
 	write_event();
 }
 
@@ -273,7 +311,7 @@ void Player::write_event()
 	// Handle NOTE and REST events here.
 	if(event.type == Event::NOTE)
 		note_count++;
-	else if(event.type == Event::REST)
+	else if(event.type == Event::REST || event.type == Event::END)
 		rest_count++;
 }
 
