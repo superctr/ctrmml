@@ -5,13 +5,17 @@
 #include "song.h"
 
 //! Constructs a Track.
-Track::Track()
+/*!
+ * \param ppqn Pulses per quarter note, used to set the default duration
+ * and can also be used as a reference for input handlers.
+ */
+Track::Track(uint16_t ppqn)
 	: flag(0),
 	ch(0),
 	last_note_pos(-1),
 	octave(DEFAULT_OCTAVE),
-	measure_len(DEFAULT_MEASURE_LEN),
-	default_duration(measure_len/4),
+	measure_len(ppqn * 4),
+	default_duration(measure_len / 4),
 	quantize(DEFAULT_QUANTIZE),
 	quantize_parts(DEFAULT_QUANTIZE_PARTS)
 {

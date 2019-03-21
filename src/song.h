@@ -20,6 +20,8 @@ class Song
 	private:
 		Tag_Map tag_map;
 		Track_Map track_map;
+		uint16_t ppqn;
+
 	public:
 		Song();
 
@@ -28,9 +30,15 @@ class Song
 		void add_tag_list(const std::string &key, const std::string &value);
 		void set_tag(const std::string& key, std::string value);
 		Tag& get_tag(const std::string& key);
-		const std::string& get_tag_front(const std::string& key);
+		const std::string& get_tag_front(const std::string& key) const;
+
 		Track& get_track(uint16_t id);
+		Track& make_track(uint16_t id);
+
 		Track_Map& get_track_map();
+
+		uint16_t get_ppqn() const;
+		void set_ppqn(uint16_t new_ppqn);
 };
 #endif
 

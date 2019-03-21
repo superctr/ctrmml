@@ -86,8 +86,6 @@ class Track
 		uint16_t off_time(uint16_t duration);
 
 	public:
-		Track();
-
 		//! Default octave setting.
 		static const int DEFAULT_OCTAVE = 5;
 		//! Default measure length (whole note duration).
@@ -96,6 +94,8 @@ class Track
 		static const uint16_t DEFAULT_QUANTIZE = 8;
 		//! Default quantize divisor.
 		static const uint16_t DEFAULT_QUANTIZE_PARTS = 8;
+
+		Track(uint16_t ppqn = DEFAULT_MEASURE_LEN/4);
 
 		bool is_enabled();
 		bool in_drum_mode();

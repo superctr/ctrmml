@@ -291,7 +291,7 @@ void MML_Input::parse_mml()
 		seek(col);
 		track_id = track_list[i];
 		track_offset = i;
-		track = &get_song().get_track_map()[track_id];
+		track = &get_song().make_track(track_id);
 		parse_mml_track(0);
 	}
 }

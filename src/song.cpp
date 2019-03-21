@@ -8,7 +8,8 @@
 //! Constructs a Song.
 Song::Song()
 	: tag_map(),
-	track_map()
+	track_map(),
+	ppqn(24)
 {
 }
 
@@ -31,7 +32,7 @@ Tag& Song::get_tag(const std::string& key)
 /*!
  * \exception std::out_of_range if not found
  */
-const std::string& Song::get_tag_front(const std::string& key)
+const std::string& Song::get_tag_front(const std::string& key) const
 {
 	return tag_map.at(key).front();
 }
@@ -49,6 +50,7 @@ void Song::add_tag(const std::string& key, std::string value)
 }
 
 //! Set the value to the tag with the specified key.
+//! This function is also used to set the song settings (title, platform, ppqn, etc)
 /*!
  * If key is not found, a new tag is created
  */
@@ -151,10 +153,32 @@ Track_Map& Song::get_track_map()
 
 //! Get a reference to the track with the specified id.
 /*!
- * \exception std::out_of_range if not found. Use get_track_map()[] to create track if needed.
+ * \exception std::out_of_range if not found. Use make_track() to create track if needed.
  */
 Track& Song::get_track(uint16_t id)
 {
 	return track_map.at(id);
+}
+
+//! Get a reference to the track with the specified id.
+//! If the track is not found, a new one is created.
+Track& Song::make_track(uint16_t id)
+{
+	if(!track_map.count(id))
+		return track_map.emplace(id, Track(ppqn)).first->second;
+	else
+		return track_map.at(id);
+}
+
+//! Gets the global Pulses per quarter note (PPQN) setting.
+uint16_t Song::get_ppqn() const
+{
+	return ppqn;
+}
+
+//! Sets the global Pulses per quarter note (PPQN) setting.
+void Song::set_ppqn(uint16_t new_ppqn)
+{
+	ppqn = new_ppqn;
 }
 

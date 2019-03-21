@@ -327,7 +327,7 @@ void MD_Channel::write_event()
 			// todo: correct BPM calc
 			if(bpm_flag())
 			{
-				driver->tempo_delta = (get_var(Event::TEMPO)*256 / 150) - 1;
+				driver->tempo_delta = driver->tempo_convert(get_var(Event::TEMPO));
 				printf("set tempo to %02x (%d bpm)\n", driver->tempo_delta, get_var(Event::TEMPO));
 			}
 			else
@@ -405,9 +405,9 @@ uint16_t MD_Channel::get_psg_pitch() const
 }
 
 //! Update a channel
-void MD_Channel::update(bool sequence_update)
+void MD_Channel::update(int seq_ticks)
 {
-	if(sequence_update)
+	while(seq_ticks--)
 		play_tick();
 	update_envelope();
 }
@@ -659,8 +659,17 @@ MD_Driver::MD_Driver(unsigned int rate, VGM_Writer* vgm, bool is_pal)
 		vgm->poke8(0x2a, 0x10);
 		vgm->poke8(0x2b, 0x03);
 	}
-	seq_counter = seq_delta = rate/60.0;
+	seq_rate = (is_pal) ? 50.0 : 60.0;
+	seq_counter = seq_delta = rate/seq_rate;
 	pcm_counter = pcm_delta = rate/100.0; //not used anyway
+}
+
+uint8_t MD_Driver::tempo_convert(uint16_t bpm)
+{
+	double base_tempo = 120. / (song->get_ppqn() * (1./seq_rate));
+	double fract = (bpm / base_tempo)*256.;
+	uint16_t new_tempo = (fract + 0.5) - 1;
+	return std::min<uint16_t>(0xff, new_tempo);
 }
 
 //! Initiate playback
@@ -694,8 +703,8 @@ void MD_Driver::reset()
 void MD_Driver::seq_update()
 {
 	uint16_t next_counter = tempo_counter + tempo_delta + 1;
-	uint8_t tempo_step = next_counter >> 8;
-	tempo_counter = next_counter & 0xff;
+	uint8_t tempo_step = next_counter >> 7;
+	tempo_counter = next_counter & 0x7f;
 	for(auto it = channels.begin(); it != channels.end(); it++)
 	{
 		MD_Channel* ch = it->get();
