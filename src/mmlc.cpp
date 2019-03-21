@@ -47,12 +47,22 @@ Song convert_file(const char* filename)
 	return song;
 }
 
-void generate_vgm(Song& song, const char* filename)
+void generate_vgm(Song& song, const char* filename, int max_seconds)
 {
 	VGM_Writer vgm(filename, 0x61, 0x100);
 	MD_Driver driver(44100, &vgm);
+	long max_time = max_seconds * 44100;
 	driver.play_song(song);
-
+	double elapsed_time;
+	double delta = 0;
+	while(elapsed_time < max_time)
+	{
+		vgm.delay(delta);
+		delta = driver.play_step();
+		elapsed_time += delta;
+	}
+	vgm.delay(max_time-elapsed_time);
+	vgm.stop();
 }
 
 int main(int argc, char* argv[])
@@ -67,7 +77,7 @@ int main(int argc, char* argv[])
 	try
 	{
 		Song song = convert_file(argv[1]);
-		generate_vgm(song, "");
+		generate_vgm(song, "experiment.vgm", 60);
 	}
 	catch (InputError& error)
 	{

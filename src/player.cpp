@@ -201,6 +201,7 @@ Player::Player(Song& song, Track& track, Player_Flag flag)
 	flag(flag),
 	note_count(0),
 	rest_count(0),
+	track_state(),
 	track_update_mask(0)
 {
 }
@@ -238,10 +239,11 @@ void Player::handle_event()
 			FLAG_SET(BPM_BIT);
 			break;
 		default:
-			if(event.type > Event::CHANNEL_MODE && event.type < Event::CMD_COUNT)
+			if(event.type >= Event::CHANNEL_MODE && event.type < Event::CMD_COUNT)
 			{
 				int type = event.type - Event::CHANNEL_MODE;
 				track_state[type] = event.param;
+				printf("%d = %04x\n",type,event.param);
 				track_update_mask |= 1<<type;
 				if(type == Event::VOL_FINE)
 					FLAG_CLR(VOL_BIT);

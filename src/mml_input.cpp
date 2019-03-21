@@ -69,7 +69,7 @@ int MML_Input::expect_signed()
 int MML_Input::read_note(int c)
 {
 	// would be nice to support key signatures...
-	static const int note_values[8] = {8,11,0,2,4,5,7,11}; // abcdefgh
+	static const int note_values[8] = {9,11,0,2,4,5,7,11}; // abcdefgh
 	int val = c - 'a';
 	// linear if in drum mode
 	if(!track->in_drum_mode())
@@ -142,7 +142,7 @@ bool MML_Input::mml_basic()
 	else if(c == '&')
 		mml_slur();
 	else if(c == 'o')
-		track->set_octave(expect_parameter());
+		track->set_octave(expect_parameter() - 1);
 	else if(c == '<')
 		track->change_octave(-1);
 	else if(c == '>')

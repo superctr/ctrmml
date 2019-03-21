@@ -47,7 +47,7 @@ public:
 	}
 	void test_mml_note_flat_sharp()
 	{
-		mml_input->read_line("A o3c+d-");
+		mml_input->read_line("A o4c+d-");
 		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(0).type);
 		CPPUNIT_ASSERT_EQUAL((int16_t)37, song->get_track(0).get_event(0).param);
 		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(1).type);
@@ -55,7 +55,7 @@ public:
 	}
 	void test_mml_note_octave()
 	{
-		mml_input->read_line("A o3cd>e<f");
+		mml_input->read_line("A o4cd>e<f");
 		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(0).type);
 		CPPUNIT_ASSERT_EQUAL((int16_t)36, song->get_track(0).get_event(0).param);
 		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(1).type);
@@ -109,7 +109,7 @@ public:
 	}
 	void test_mml_conditional()
 	{
-		mml_input->read_line("ABC o3c{d/e/f}g");
+		mml_input->read_line("ABC o4c{d/e/f}g");
 		CPPUNIT_ASSERT(song->get_track(0).get_event_count() == 3);
 		CPPUNIT_ASSERT(song->get_track(1).get_event_count() == 3);
 		CPPUNIT_ASSERT(song->get_track(2).get_event_count() == 3);

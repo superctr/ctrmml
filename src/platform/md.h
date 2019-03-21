@@ -63,7 +63,7 @@ class MD_Channel : public Player
 		void write_event();
 	public:
 		MD_Channel(MD_Driver& driver, int id);
-		void update();
+		void update(bool sequence_update);
 };
 
 //! Megadrive FM channel
@@ -95,6 +95,7 @@ class MD_PSG : public MD_Channel
 	protected:
 		int id;
 		std::vector<uint8_t>* env_data;
+		bool env_keyoff;
 		uint8_t env_pos;
 		uint8_t env_delay;
 		void set_envelope(std::vector<uint8_t>* idata);
@@ -154,10 +155,10 @@ class MD_Driver : public Driver
 		MD_Data data;
 		Song* song;
 		std::vector<std::unique_ptr<MD_Channel>> channels;
-		double seq_rate;
-		double pcm_rate;
 		double seq_delta;
 		double pcm_delta;
+		double seq_counter;
+		double pcm_counter;
 
 		uint8_t tempo_delta;
 		uint8_t tempo_counter;

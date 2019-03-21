@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <cctype>
 #include <climits>
+#include <algorithm>
 
 #include "md.h"
 #include "../song.h"
@@ -295,7 +296,7 @@ void MD_Channel::write_event()
 			}
 			if(get_update_flag(Event::VOL_FINE))
 			{
-				set_ins();
+				set_vol();
 				clear_update_flag(Event::VOL_FINE);
 			}
 			pitch = (event.param + get_var(Event::TRANSPOSE))<<8;
@@ -306,19 +307,32 @@ void MD_Channel::write_event()
 				set_pitch();
 				key_on();
 			}
+			else
+			{
+				set_pitch();
+				slur_flag = false;
+			}
 			break;
 		case Event::REST:
 		case Event::END:
 			key_off();
 			break;
+		case Event::SLUR:
+			slur_flag = 1;
+			break;
 		case Event::TEMPO:
 		case Event::TEMPO_BPM:
 			// todo: correct BPM calc
 			if(bpm_flag())
+			{
 				driver->tempo_delta = (get_var(Event::TEMPO)*256 / 150) - 1;
+				printf("set tempo to %02x (%d bpm)\n", driver->tempo_delta, get_var(Event::TEMPO));
+			}
 			else
+			{
 				driver->tempo_delta = get_var(Event::TEMPO);
-			printf("set tempo to %02x\n", driver->tempo_delta);
+				printf("set tempo to %02x (direct)\n", driver->tempo_delta);
+			}
 			break;
 		case Event::CHANNEL_MODE:
 			set_type();
@@ -345,7 +359,8 @@ uint8_t MD_Channel::write_fm_operator(int idx, int bank, int id, const std::vect
 //! Write a 4op FM instrument
 void MD_Channel::write_fm_4op(int bank, int id)
 {
-	const std::vector<uint8_t>& idata = driver->data.data_bank.at(driver->data.envelope_map[get_var(Event::INS)]);
+	uint16_t ins_id = get_var(Event::INS);
+	const std::vector<uint8_t>& idata = driver->data.data_bank.at(driver->data.envelope_map[ins_id]);
 	driver->ym2612_w(bank, 0x40, id, 0, 0x7f); // tl=max
 	driver->ym2612_w(bank, 0x40, id, 1, 0x7f);
 	driver->ym2612_w(bank, 0x40, id, 2, 0x7f);
@@ -359,6 +374,8 @@ void MD_Channel::write_fm_4op(int bank, int id)
 	// set fb/con
 	driver->ym2612_w(bank, 0xb0, id, 0, idata[28]);
 	con = idata[28] & 7;
+	// set ins transpose
+	ins_transpose = driver->data.ins_transpose[ins_id];
 }
 
 uint16_t MD_Channel::get_fm_pitch() const
@@ -376,8 +393,8 @@ uint16_t MD_Channel::get_fm_pitch() const
 uint16_t MD_Channel::get_psg_pitch() const
 {
 	static const uint16_t freqtab[13] = {851, 803, 758, 715, 675, 637, 601, 568, 536, 506, 477, 450, 425};
-	uint8_t note = (pitch >> 8) + ins_transpose;
-	uint8_t octave = note / 12;
+	uint8_t note = (pitch >> 8);
+	uint8_t octave = (note / 12)-1;
 	uint8_t detune = pitch & 0xff;
 	const uint16_t* base = &freqtab[note % 12];
 	uint16_t set_pitch = base[0] + (((base[1] - base[0]) * detune) >> 8);
@@ -386,9 +403,10 @@ uint16_t MD_Channel::get_psg_pitch() const
 }
 
 //! Update a channel
-void MD_Channel::update()
+void MD_Channel::update(bool sequence_update)
 {
-	play_tick();
+	if(sequence_update)
+		play_tick();
 	update_envelope();
 }
 
@@ -454,7 +472,6 @@ void MD_FM::set_pitch()
 void MD_FM::set_type()
 {
 	type = get_var(Event::CHANNEL_MODE);
-	printf("<FM%d> set type to %d\n", bank*3 + id, type);
 }
 
 void MD_FM::update_envelope()
@@ -482,17 +499,19 @@ void MD_PSG::set_envelope(std::vector<uint8_t>* idata)
 
 void MD_PSG::update_envelope()
 {
+	if(!is_enabled())
+		return;
 	// faster decay if key off
-	if(env_delay < 0x20 || event.type == Event::REST)
+	if(env_delay < 0x20 || env_keyoff)
 	{
 		// sustain command
-		if(env_data->at(env_pos) == 0x01 && event.type == Event::REST)
+		if(env_data->at(env_pos) == 0x01 && env_keyoff)
 		{
 			env_pos++;
-			event.type = Event::TIE; // remove keyoff flag to set normal delay
+			env_keyoff = 0;
 		}
 		// jump command
-		else if(env_data->at(env_pos) == 0x02 && event.type != Event::REST)
+		else if(env_data->at(env_pos) == 0x02 && !env_keyoff)
 		{
 			env_pos = env_data->at(env_pos+1);
 		}
@@ -504,10 +523,10 @@ void MD_PSG::update_envelope()
 			env_pos++;
 		}
 		// unknown command or stop command
-		else if(event.type == Event::REST)
+		else if(event.type == env_keyoff)
 		{
 			driver->sn76489_w(1, id, 15); // mute
-			event.type = Event::TIE; // remove keyoff flag to optimize writes
+			env_keyoff = false; // remove keyoff flag to optimize writes
 		}
 	}
 	else
@@ -542,14 +561,17 @@ void MD_PSGMelody::key_on()
 {
 	env_pos = 0;
 	env_delay = 0x1f;
+	env_keyoff = 0;
 }
 
 void MD_PSGMelody::key_off()
 {
 	// Mute channel if at the end.
 	if(event.type == Event::END)
+	{
 		driver->sn76489_w(1, id, 15);
-	event.type = Event::REST;
+	}
+	env_keyoff = 1;
 }
 
 void MD_PSGMelody::set_pitch()
@@ -561,7 +583,6 @@ void MD_PSGMelody::set_pitch()
 void MD_PSGMelody::set_type()
 {
 	type = get_var(Event::CHANNEL_MODE);
-	printf("<PSG%d> set type to %d\n", id, type);
 }
 
 //! Constructs a MD_PSGNoise.
@@ -617,15 +638,22 @@ void MD_PSGNoise::set_pitch()
 void MD_PSGNoise::set_type()
 {
 	type = get_var(Event::CHANNEL_MODE);
-	printf("<PSGN> set type to %d\n", type);
 }
 
 //! Driver constructor
 MD_Driver::MD_Driver(unsigned int rate, VGM_Writer* vgm, bool is_pal)
-	: Driver(rate, vgm), tempo_delta(0), tempo_counter(0)
+	: Driver(rate, vgm), tempo_delta(255), tempo_counter(0)
 {
-	seq_rate = rate/60.0;
-	pcm_rate = rate/16000.0;
+	if(vgm)
+	{
+		vgm->poke32(0x2c, 7670454); // YM2612
+		vgm->poke32(0x0c, 3579575); // SN76489 (SEGA PSG)
+		vgm->poke16(0x28, 0x0009);
+		vgm->poke8(0x2a, 0x10);
+		vgm->poke8(0x2b, 0x03);
+	}
+	seq_counter = seq_delta = rate/60.0;
+	pcm_counter = pcm_delta = rate/100.0; //not used anyway
 }
 
 //! Initiate playback
@@ -634,6 +662,9 @@ void MD_Driver::play_song(Song& song)
 	this->song = &song;
 	channels.clear();
 	data.read_song(song);
+	// setup tempo
+	tempo_delta = 255;
+	tempo_counter = 0;
 	// setup channels
 	for(auto it=song.get_track_map().begin(); it != song.get_track_map().end(); it++)
 	{
@@ -655,11 +686,14 @@ void MD_Driver::reset()
 
 void MD_Driver::seq_update()
 {
+	uint16_t next_counter = tempo_counter + tempo_delta + 1;
+	uint8_t tempo_step = next_counter >> 8;
+	tempo_counter = next_counter & 0xff;
 	for(auto it = channels.begin(); it != channels.end(); it++)
 	{
 		MD_Channel* ch = it->get();
 		if(ch->is_enabled())
-			ch->update();
+			ch->update(tempo_step);
 	}
 }
 
@@ -695,27 +729,21 @@ int MD_Driver::loop_count()
 //! Return delta until the next event.
 double MD_Driver::play_step()
 {
-	if(seq_delta < seq_rate)
+	if(seq_counter < seq_delta)
 	{
 		// update tracks
-		seq_delta += seq_rate;
+		seq_counter += seq_delta;
 		seq_update();
 	}
-	if(pcm_delta < pcm_rate)
+	if(pcm_counter < pcm_delta)
 	{
 		// update pcm
-		pcm_delta += pcm_rate;
+		pcm_counter += pcm_delta;
 	}
 	// get the time to the next event
-	if(seq_delta < pcm_delta)
-	{
-		pcm_delta -= seq_delta;
-		return seq_delta;
-	}
-	else
-	{
-		seq_delta -= pcm_delta;
-		return pcm_delta;
-	}
+	double next_delta = std::min(seq_counter, pcm_counter);
+	seq_counter -= next_delta;
+	pcm_counter -= next_delta;
+	return next_delta;
 }
 

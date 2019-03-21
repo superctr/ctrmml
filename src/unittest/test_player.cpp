@@ -42,7 +42,7 @@ public:
 	}
 	void test_loop()
 	{
-		mml_input->read_line("A o3[cd/e]3");
+		mml_input->read_line("A o4[cd/e]3");
 		auto player = Player(*song, song->get_track(0));
 		player.step_event();
 		CPPUNIT_ASSERT_EQUAL(Event::LOOP_START, player.get_event().type);
@@ -69,7 +69,7 @@ public:
 	}
 	void test_loop_position()
 	{
-		mml_input->read_line("A L o3cd");
+		mml_input->read_line("A L o4cd");
 		auto player = Player(*song, song->get_track(0));
 		player.step_event();
 		CPPUNIT_ASSERT_EQUAL(Event::SEGNO, player.get_event().type);
@@ -89,8 +89,8 @@ public:
 	}
 	void test_jump()
 	{
-		mml_input->read_line("A *10 o3e");
-		mml_input->read_line("*10 o3cd");
+		mml_input->read_line("A *10 o4e");
+		mml_input->read_line("*10 o4cd");
 		auto player = Player(*song, song->get_track(0));
 		player.step_event();
 		CPPUNIT_ASSERT_EQUAL(Event::JUMP, player.get_event().type);
