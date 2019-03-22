@@ -55,13 +55,20 @@ void generate_vgm(Song& song, const std::string& filename, int max_seconds)
 	driver.play_song(song);
 	double elapsed_time;
 	double delta = 0;
+	bool looped_or_finished = 0;
 	while(elapsed_time < max_time)
 	{
 		vgm.delay(delta);
 		delta = driver.play_step();
 		elapsed_time += delta;
+		if(!driver.is_playing() || driver.loop_count() > 1)
+		{
+			looped_or_finished = 1;
+			break;
+		}
 	}
-	vgm.delay(max_time-elapsed_time);
+	if(!looped_or_finished)
+		vgm.delay(max_time-elapsed_time);
 	vgm.stop();
 	vgm.write_tag();
 }
@@ -78,7 +85,7 @@ int main(int argc, char* argv[])
 	try
 	{
 		Song song = convert_file(argv[1]);
-		generate_vgm(song, output_filename(argv[1], ".vgm"), 60);
+		generate_vgm(song, output_filename(argv[1], ".vgm"), 300);
 	}
 	catch (InputError& error)
 	{
