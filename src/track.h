@@ -39,6 +39,7 @@ struct Event
 		VOL_ENVELOPE,	//!< Set volume envelope ID.
 		PITCH_ENVELOPE, //!< Set pitch envelope ID.
 		PAN_ENVELOPE,	//!< Set pan envelope ID.
+		PORTAMENTO,		//!< Set pitch envelope ID.
 		DRUM_MODE,		//!< Set drum mode.
 		TEMPO,			//!< Set platform-specific tempo.
 		// special

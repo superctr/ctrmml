@@ -47,6 +47,7 @@ class MD_Channel : public Player
 	protected:
 		virtual void set_ins() = 0;
 		virtual void set_vol() = 0;
+		virtual void set_pan() = 0;
 		virtual void key_on() = 0;
 		virtual void key_off() = 0;
 		virtual void set_pitch() = 0;
@@ -60,8 +61,8 @@ class MD_Channel : public Player
 		MD_Driver* driver;
 		bool slur_flag; //!< Flag to disable key on for the next note
 		uint16_t pitch; //!< Current pitch (256 'cents' per semitone)
+		uint16_t pitch_target; //< Target pitch for portamento
 		int8_t ins_transpose; //!< Instrument transpose (for FM 2op). compiled files should have this already 'cooked'
-		uint8_t pan_lfo; //!< FM panning & lfo parameters
 		uint8_t con; //!< FM connection
 		uint8_t tl[4]; // also used for Ch3 mode
 		void write_event();
@@ -82,8 +83,10 @@ class MD_FM : public MD_Channel
 		int type;
 		uint8_t bank : 1; //!< YM2612 port id.
 		uint8_t id : 2; //!< YM2612 channel id.
+		uint8_t pan_lfo; //!< FM panning & lfo parameters
 		void set_ins();
 		void set_vol();
+		void set_pan();
 		void key_on();
 		void key_off();
 		void set_pitch();
@@ -104,6 +107,7 @@ class MD_PSG : public MD_Channel
 		uint8_t env_pos; //!< Envelope position
 		uint8_t env_delay; //!< Envelope delay and current volume
 		void set_envelope(std::vector<uint8_t>* idata);
+		void set_pan();
 		void update_envelope();
 	public:
 		MD_PSG(MD_Driver& driver, int track_id, int channel_id);

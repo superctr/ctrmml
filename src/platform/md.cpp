@@ -276,7 +276,6 @@ MD_Channel::MD_Channel(MD_Driver& driver, int id)
 	slur_flag(0),
 	pitch(0),
 	ins_transpose(0),
-	pan_lfo(0xc0), // L/R enabled
 	con(0)
 {
 }
@@ -301,17 +300,28 @@ void MD_Channel::write_event()
 				set_vol();
 				clear_update_flag(Event::VOL_FINE);
 			}
-			pitch = (event.param + get_var(Event::TRANSPOSE))<<8;
-			pitch += get_var(Event::DETUNE);
+			if(event.type != Event::TIE)
+			{
+				pitch_target = (event.param + get_var(Event::TRANSPOSE))<<8;
+				pitch_target += get_var(Event::DETUNE);
+			}
 			if(!slur_flag)
 			{
 				key_off();
-				set_pitch();
+				if(!get_var(Event::PORTAMENTO))
+				{
+					pitch = pitch_target;
+					set_pitch();
+				}
 				key_on();
 			}
 			else
 			{
-				set_pitch();
+				if(!get_var(Event::PORTAMENTO))
+				{
+					pitch = pitch_target;
+					set_pitch();
+				}
 				slur_flag = false;
 			}
 			break;
@@ -338,6 +348,9 @@ void MD_Channel::write_event()
 			break;
 		case Event::CHANNEL_MODE:
 			set_type();
+			break;
+		case Event::PAN:
+			set_pan();
 			break;
 		default:
 			break;
@@ -410,6 +423,21 @@ void MD_Channel::update(int seq_ticks)
 	while(seq_ticks--)
 		play_tick();
 	update_envelope();
+	if(get_var(Event::PORTAMENTO))
+	{
+		int16_t difference = pitch_target - pitch;
+		int16_t step = difference >> 8;
+		if(difference < 0)
+			step--;
+		else
+			step++;
+		pitch += (step*get_var(Event::PORTAMENTO)) >> 1;
+		if(((pitch_target - pitch) ^ difference) < 0)
+			pitch = pitch_target;
+
+		if(pitch != pitch_target)
+			set_pitch();
+	}
 }
 
 //! Constructs a MD_FM.
@@ -417,7 +445,8 @@ MD_FM::MD_FM(MD_Driver& driver, int track_id, int channel_id)
 	: MD_Channel(driver, track_id),
 	type(MD_FM::NORMAL),
 	bank(channel_id / 3),
-	id(channel_id % 3)
+	id(channel_id % 3),
+	pan_lfo(0xc0) // L/R enabled
 {
 	driver.ym2612_w(bank, 0x40, id, 0, 0x7f); //tl=max
 	driver.ym2612_w(bank, 0x40, id, 1, 0x7f);
@@ -432,6 +461,17 @@ void MD_FM::set_ins()
 	write_fm_4op(bank, id);
 }
 
+void MD_FM::set_pan()
+{
+	pan_lfo &= 0x0f; // mask out panning
+	int8_t mml_pan = get_var(Event::PAN);
+	if(mml_pan >= 0 && mml_pan < 4)
+		pan_lfo |= mml_pan << 6; // 1=right, 2=left, 3=both
+	else
+		error("Unsupported panning value");
+	driver->ym2612_w(bank, 0xb4, id, 0, pan_lfo);
+}
+
 void MD_FM::set_vol()
 {
 	static const uint8_t opn_con_op[8] = {3,3,3,3,2,1,1,0};
@@ -439,9 +479,11 @@ void MD_FM::set_vol()
 	if(coarse_volume_flag())
 	{
 		if(vol > 15)
-			vol = 15;
-		else // 2db per step
-			vol = 2 + (15-vol)*3 - (15-vol)/3;
+			vol = 0;
+		else
+			vol = 15-vol;
+		// 2db per step
+		vol = 2 + vol*3 - vol/3;
 	}
 		
 	for(int op=3; op>=0; op--)
@@ -535,6 +577,11 @@ void MD_PSG::update_envelope()
 	{
 		env_delay -= 0x10;
 	}
+}
+
+void MD_PSG::set_pan()
+{
+	error("Panning not supported for PSG channels");
 }
 
 //! Constructs a MD_PSGMelody.
@@ -722,10 +769,10 @@ bool MD_Driver::is_playing()
 	for(auto it = channels.begin(); it != channels.end(); it++)
 	{
 		MD_Channel* ch = it->get();
-		if(!ch->is_enabled())
-			return false;
+		if(ch->is_enabled())
+			return true;
 	}
-	return true;
+	return false;
 }
 
 //! Get loop count (untested)

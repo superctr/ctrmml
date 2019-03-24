@@ -64,6 +64,7 @@ the previously specified channels will be used.
 -	`E<0..255>` - Set envelope. 0 to disable. &ast;
 -	`M<0..255>` - Set pitch envelope. 0 to disable. &ast;
 -	`P<0..255>` - Set pan envelope. 0 to disable. &ast;
+-	`G<0..255>` - Set portamento. 0 to disable. &ast;
 -	`D<0..255>` - If D is set to a non-zero value, enable drum mode and set the
 	index to the parameter value. Notes `abcdefgh` represent 0-7 and is added
 	to the index and commands are read from that macro track before playing a
@@ -74,7 +75,7 @@ the previously specified channels will be used.
 	or rest. If unable (such as if the previous note was at the end of a loop,
 	a warning is thrown. This can be used to bring back tracks in unison after
 	a delayed echo track.
--	`G<note><duration>` - Grace note. Basically similar to above, except a
+-	`~<note><duration>` - Grace note. Basically similar to above, except a
 	note is added with the same duration as the borrow.
 -	`S<duration>,<value>` - Shuffle. When enabled, vary the length of each
 	`<duration>` by `value` amount. Turn off with `S0`.

@@ -101,6 +101,10 @@ void MML_Input::mml_reverse_rest(int duration)
 	{
 		parse_error("unable to backtrack");
 	}
+	catch (std::length_error&)
+	{
+		parse_error("previous note is not long enough");
+	}
 }
 
 void MML_Input::mml_grace()
@@ -153,7 +157,7 @@ bool MML_Input::mml_basic()
 		track->set_quantize(expect_parameter());
 	else if(c == 'R')
 		mml_reverse_rest(read_duration());
-	else if(c == 'G')
+	else if(c == '~')
 		mml_grace();
 	else
 	{
@@ -210,6 +214,8 @@ bool MML_Input::mml_envelope()
 		track->add_event(Event::PITCH_ENVELOPE, expect_parameter());
 	else if(c == 'P')
 		track->add_event(Event::PAN_ENVELOPE, expect_parameter());
+	else if(c == 'G')
+		track->add_event(Event::PORTAMENTO, expect_parameter());
 	else if(c == 'D')
 		track->set_drum_mode(expect_parameter());
 	else if(c == 't')

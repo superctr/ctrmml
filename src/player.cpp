@@ -158,6 +158,7 @@ void Basic_Player::step_event()
 			break;
 		case Event::SEGNO:
 			loop_position = position;
+			event_hook();
 			break;
 		case Event::JUMP:
 			try
