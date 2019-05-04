@@ -7,11 +7,14 @@
 #include <cmath>
 #include <ctime>
 
-#if defined(__unix__)
+#if defined(_WIN32)
+#include <windows.h>
+#else
 #include <cuchar>
 #endif
-// windows?
-#include <wchar.h>
+
+#include <clocale>
+#include <cwchar>
 
 #include "vgm.h"
 
@@ -107,6 +110,18 @@ VGM_Writer::~VGM_Writer()
 }
 
 //! Gets the current buffer position
+uint32_t VGM_Writer::get_sample_count()
+{
+	return sample_count;
+}
+
+//! Gets the current loop position
+uint32_t VGM_Writer::get_loop_sample()
+{
+	return loop_sample;
+}
+
+//! Gets the current buffer position
 uint32_t VGM_Writer::get_position()
 {
 	return buffer_pos - buffer;
@@ -195,11 +210,22 @@ void VGM_Writer::write(uint8_t command, uint16_t port, uint16_t reg, uint16_t da
 void VGM_Writer::add_gd3(const char* s)
 {
 	long l;
-#if defined(_WIN32) && defined(__MINGW32__) && !defined(__NO_ISOCEXT)
-	l = _snwprintf((wchar_t*)buffer_pos,256,L"%S", s);
-	buffer_pos += (l+1)*2;
-#elif defined(__unix__)
 	long max=256;
+#if defined(_WIN32)
+	l = MultiByteToWideChar(CP_UTF8,0,s,-1,(wchar_t*)buffer_pos,max);
+	if(l == 0)
+	{
+		std::cerr << "Something very bad happened. MultiByteToWideChar failed\n";
+		buffer_pos += 2;
+	}
+	else
+	{
+		buffer_pos += l * sizeof(wchar_t);
+		if(l == max)
+			buffer_pos += 2;
+	}
+#else
+	std::setlocale(LC_ALL, "en_US.utf8");
 	static std::mbstate_t mbstate;
 	while((l = std::mbrtoc16((char16_t*)buffer_pos,s,max,&mbstate)))
 	{
@@ -215,14 +241,11 @@ void VGM_Writer::add_gd3(const char* s)
 		}
 	}
 	buffer_pos += 2;
-#else
-	l = swprintf((wchar_t*)buffer_pos,256,L"%s", s);
-	buffer_pos += (l+1)*2;
-#endif // defined
+#endif
 }
 
 //! Write GD3 tags. Always call this after VGM_Writer::stop().
-void VGM_Writer::write_tag()
+void VGM_Writer::write_tag(const VGM_Tag& tag)
 {
 	reserve(2000);
 	std::time_t t;
@@ -236,17 +259,23 @@ void VGM_Writer::write_tag()
 	uint32_t len_s = get_position();
 	buffer_pos += 4;
 
-	add_gd3(""); // Track name
-	add_gd3(""); // Track name (native)
-	add_gd3(""); // Game name
-	add_gd3(""); // Game name (native)
-	add_gd3(""); // System name
-	add_gd3(""); // System name (native)
-	add_gd3(""); // Author name
-	add_gd3(""); // Author name (native)
-	add_gd3(ts); // Time
-	add_gd3(""); // Pack author
-	add_gd3(tracknotes.c_str()); // Notes
+	add_gd3(tag.title.c_str()); // Track name
+	add_gd3(tag.title_j.c_str()); // Track name (native)
+	add_gd3(tag.game.c_str()); // Game name
+	add_gd3(tag.game_j.c_str()); // Game name (native)
+	add_gd3(tag.system.c_str()); // System name
+	add_gd3(tag.system_j.c_str()); // System name (native)
+	add_gd3(tag.author.c_str()); // Author name
+	add_gd3(tag.author_j.c_str()); // Author name (native)
+	if(tag.date.size())
+		add_gd3(tag.date.c_str()); // Date
+	else
+		add_gd3(ts);
+	add_gd3(tag.creator.c_str()); // Pack author
+	if(tag.notes.size())
+		add_gd3(tag.notes.c_str()); // Notes
+	else
+		add_gd3(tracknotes.c_str());
 
 	poke32(len_s, get_position()-len_s-4); // length
 }

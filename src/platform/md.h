@@ -38,6 +38,8 @@ class MD_Data
 		std::map<uint16_t, int> ins_transpose;
 		//! Maps Song instrument numbers to InstrumentType
 		std::map<uint16_t, InstrumentType> ins_type;
+
+		MD_Data();
 		void read_song(Song& song);
 };
 
@@ -178,6 +180,8 @@ class MD_Driver : public Driver
 		uint8_t tempo_convert(uint16_t bpm);
 		uint8_t tempo_delta;
 		uint8_t tempo_counter;
+
+		bool loop_trigger;
 
 		void seq_update();
 

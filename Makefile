@@ -13,6 +13,7 @@ CORE_OBJS = \
 	$(OBJ)/stringf.o \
 	$(OBJ)/vgm.o \
 	$(OBJ)/driver.o \
+	$(OBJ)/wave.o \
 	$(OBJ)/platform/md.o
 
 MMLC_OBJS = \

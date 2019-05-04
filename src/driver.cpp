@@ -17,6 +17,14 @@ void Driver::write(uint8_t command, uint16_t port, uint16_t reg, uint16_t data)
 		vgm_writer->write(command, port, reg, data);
 }
 
+void Driver::set_loop()
+{
+	if(vgm_writer)
+	{
+		vgm_writer->set_loop();
+	}
+}
+
 void Driver::ym2612_w(uint8_t port, uint8_t reg, uint8_t ch, uint8_t op, uint16_t data)
 {
 	if(reg == 0x28)

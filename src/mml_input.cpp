@@ -241,7 +241,7 @@ void MML_Input::parse_mml_track(int conditional_block)
 			do c = get_token();
 			while(c != 0 && c != '/' && c != ';');
 			if(c != '/')
-				throw std::invalid_argument("unterminated conditonal block");
+				parse_error("unterminated conditonal block");
 			c = 0;
 			offset--;
 		}
@@ -277,7 +277,7 @@ void MML_Input::parse_mml_track(int conditional_block)
 				continue;
 			else if(mml_envelope() == false)
 				continue;
-			throw std::invalid_argument("unknown MML command...");
+			parse_error("unknown MML command");
 		}
 	}
 	if(conditional_block)
@@ -285,7 +285,7 @@ void MML_Input::parse_mml_track(int conditional_block)
 		while(c != 0 && c != '}' && c != ';')
 			c = get_token();
 		if(c != '}')
-			throw std::invalid_argument("unexpected conditional block");
+			parse_error("unexpected conditional block");
 	}
 }
 
@@ -372,7 +372,7 @@ void MML_Input::parse_line()
 			tag_key.clear();
 			do
 			{
-				tag_key.push_back(c);
+				tag_key.push_back(std::tolower(c));
 				c = get();
 			}
 			while (c != 0 && !std::isspace(c));

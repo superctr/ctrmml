@@ -11,6 +11,14 @@
 #include "../input.h"
 #include "../stringf.h"
 
+MD_Data::MD_Data()
+	: data_bank()
+	, envelope_map()
+	, ins_transpose()
+	, ins_type()
+{
+}
+
 int MD_Data::add_unique_data(const std::vector<uint8_t>& data)
 {
 	unsigned int i;
@@ -275,8 +283,10 @@ MD_Channel::MD_Channel(MD_Driver& driver, int id)
 	driver(&driver),
 	slur_flag(0),
 	pitch(0),
+	pitch_target(0),
 	ins_transpose(0),
-	con(0)
+	con(0),
+	tl()
 {
 }
 
@@ -285,6 +295,9 @@ void MD_Channel::write_event()
 {
 	switch(event.type)
 	{
+		case Event::SEGNO:
+			driver->loop_trigger = true;
+			break;
 		case Event::TIE:
 			slur_flag = true;
 		case Event::NOTE:
@@ -334,7 +347,6 @@ void MD_Channel::write_event()
 			break;
 		case Event::TEMPO:
 		case Event::TEMPO_BPM:
-			// todo: correct BPM calc
 			if(bpm_flag())
 			{
 				driver->tempo_delta = driver->tempo_convert(get_var(Event::TEMPO));
@@ -528,6 +540,7 @@ MD_PSG::MD_PSG(MD_Driver& driver, int track_id, int channel_id)
 	: MD_Channel(driver, track_id),
 	id(channel_id % 4),
 	env_data(&driver.data.data_bank.at(0)),
+	env_keyoff(false),
 	env_pos(3),
 	env_delay(0)
 {
@@ -660,6 +673,7 @@ void MD_PSGNoise::key_on()
 {
 	env_pos = 0;
 	env_delay = 0x1f;
+	env_keyoff = 0;
 }
 
 void MD_PSGNoise::key_off()
@@ -696,7 +710,7 @@ void MD_PSGNoise::set_type()
  * \param is_pal Use 50hz sequence update rate
  */
 MD_Driver::MD_Driver(unsigned int rate, VGM_Writer* vgm, bool is_pal)
-	: Driver(rate, vgm), tempo_delta(255), tempo_counter(0)
+	: Driver(rate, vgm), tempo_delta(255), tempo_counter(0), loop_trigger(0)
 {
 	if(vgm)
 	{
@@ -711,6 +725,7 @@ MD_Driver::MD_Driver(unsigned int rate, VGM_Writer* vgm, bool is_pal)
 	pcm_counter = pcm_delta = rate/100.0; //not used anyway
 }
 
+//! Converts BPM to fractional tempo
 uint8_t MD_Driver::tempo_convert(uint16_t bpm)
 {
 	double base_tempo = 120. / (song->get_ppqn() * (1./seq_rate));
@@ -726,8 +741,9 @@ void MD_Driver::play_song(Song& song)
 	channels.clear();
 	data.read_song(song);
 	// setup tempo
-	tempo_delta = 255;
+	tempo_delta = 128;
 	tempo_counter = 0;
+	loop_trigger = 0;
 	// setup channels
 	for(auto it=song.get_track_map().begin(); it != song.get_track_map().end(); it++)
 	{
@@ -804,6 +820,12 @@ double MD_Driver::play_step()
 	{
 		// update pcm
 		pcm_counter += pcm_delta;
+	}
+	if(loop_trigger && loop_count() == 0)
+	{
+		printf("set loop position\n");
+		set_loop();
+		loop_trigger = 0;
 	}
 	// get the time to the next event
 	double next_delta = std::min(seq_counter, pcm_counter);

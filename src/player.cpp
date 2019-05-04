@@ -184,7 +184,7 @@ void Basic_Player::step_event()
 			}
 			else
 			{
-				if(loop_hook() && loop_position != -1)
+				if(loop_position != -1 && loop_hook())
 				{
 					position = loop_position;
 					loop_count++;

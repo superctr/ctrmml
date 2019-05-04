@@ -77,8 +77,6 @@ the previously specified channels will be used.
 	a delayed echo track.
 -	`~<note><duration>` - Grace note. Basically similar to above, except a
 	note is added with the same duration as the borrow.
--	`S<duration>,<value>` - Shuffle. When enabled, vary the length of each
-	`<duration>` by `value` amount. Turn off with `S0`.
 -	`t<0..255>` - Set tempo in BPM.
 -	`T<0..255>` - Set tempo using the platform's native timer values. &ast;
 -	`[/]<0..255>` - Loop block. The section after the `/` is skipped at the
@@ -95,7 +93,13 @@ the previously specified channels will be used.
 
 ### Platforms
 #### Megadrive
-#### FM instruments
+##### Limitations
+Pan envelopes not supported. Currently pitch envelopes also not supported.
+
+Pan range is 0-3. Bit 1 enables the right channel, bit 2 enables the
+left channel.
+
+##### FM instruments
 FM instruments are defined as below: (Commas between values are optional)
 
 	@1	fm ; finger bass
@@ -107,7 +111,7 @@ FM instruments are defined as below: (Commas between values are optional)
 		 31  15   0   5   4  38   0   4   0   0
 		 31  27   0  11   1   0   0   1   0   0
 
-#### PSG instruments
+##### PSG instruments
 PSG instruments (envelopes) are defined as a sequence of values. 15 is max
 volume and 0 is silence.
 

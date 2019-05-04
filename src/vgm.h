@@ -4,6 +4,22 @@
 #include "core.h"
 #include <string>
 
+//! Structure for song tags
+struct VGM_Tag
+{
+	std::string title;
+	std::string author;
+	std::string creator;
+	std::string date;
+	std::string system;
+	std::string notes;
+	std::string game;
+	std::string title_j;
+	std::string author_j;
+	std::string system_j;
+	std::string game_j;
+};
+
 //! Writes VGM files.
 class VGM_Writer
 {
@@ -32,11 +48,13 @@ class VGM_Writer
 		virtual ~VGM_Writer();
 
 		uint32_t get_position();
+		uint32_t get_sample_count();
+		uint32_t get_loop_sample();
 		void delay(double count);
 		void set_loop();
 		void stop();
 		void write(uint8_t command, uint16_t port, uint16_t reg, uint16_t data);
-		void write_tag();
+		void write_tag(const VGM_Tag& tag = {});
 		void poke32(uint32_t offset, uint32_t data);
 		void poke16(uint32_t offset, uint16_t data);
 		void poke8(uint32_t offset, uint8_t data);

@@ -20,6 +20,7 @@ class Driver
 
 		void ym2612_w(uint8_t port, uint8_t reg, uint8_t ch, uint8_t op, uint16_t data);
 		void sn76489_w(uint8_t reg, uint8_t ch, uint16_t data);
+		void set_loop();
 
 		//! Play a song
 		virtual void play_song(Song& song) = 0;

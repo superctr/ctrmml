@@ -47,6 +47,34 @@ Song convert_file(const char* filename)
 	return song;
 }
 
+std::string safe_get_tag(Song& song, const std::string& tagname)
+{
+	if(song.get_tag_map()[tagname].size())
+		return song.get_tag_map()[tagname].front();
+	else
+		return "";
+}
+
+VGM_Tag get_tags(Song& song)
+{
+	VGM_Tag tag;
+	Tag_Map tag_map = song.get_tag_map();
+
+	tag.title = safe_get_tag(song,"#title");
+	tag.title_j = safe_get_tag(song,"#titlej");
+	tag.author = safe_get_tag(song,"#author");
+	tag.author_j = safe_get_tag(song,"#authorj");
+	tag.system = safe_get_tag(song,"#system");
+	tag.system_j = safe_get_tag(song,"#systemj");
+	tag.game = safe_get_tag(song,"#game");
+	tag.game_j = safe_get_tag(song,"#gamej");
+	tag.creator = safe_get_tag(song,"#creator");
+	tag.notes = safe_get_tag(song,"#notes");
+	tag.date = safe_get_tag(song,"#vgmdate");
+
+	return tag;
+}
+
 void generate_vgm(Song& song, const std::string& filename, int max_seconds)
 {
 	VGM_Writer vgm(filename.c_str(), 0x61, 0x100);
@@ -61,7 +89,7 @@ void generate_vgm(Song& song, const std::string& filename, int max_seconds)
 		vgm.delay(delta);
 		delta = driver.play_step();
 		elapsed_time += delta;
-		if(!driver.is_playing() || driver.loop_count() > 1)
+		if(!driver.is_playing() || driver.loop_count() > 0)
 		{
 			looped_or_finished = 1;
 			break;
@@ -70,7 +98,7 @@ void generate_vgm(Song& song, const std::string& filename, int max_seconds)
 	if(!looped_or_finished)
 		vgm.delay(max_time-elapsed_time);
 	vgm.stop();
-	vgm.write_tag();
+	vgm.write_tag(get_tags(song));
 }
 
 int main(int argc, char* argv[])
