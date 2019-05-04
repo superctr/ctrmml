@@ -17,7 +17,7 @@ Wave_File::~Wave_File()
 	return;
 }
 
-Wave_File::load_file(const std::string& filename, uint8_t** buffer, uint32_t* filesize)
+int Wave_File::load_file(const std::string& filename, uint8_t** buffer, uint32_t* filesize)
 {
 	if(std::ifstream is{filename, std::ios::binary|std::ios::ate})
 	{
