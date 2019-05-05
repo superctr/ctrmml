@@ -118,7 +118,7 @@ volume and 0 is silence.
 	@10	psg
 		1 4 6 8 10 12 13 14 15
 
-Use `>` to specify sliding from one value to another
+Use `>` to specify sliding from one value to another (important: no space)
 
 	@11	psg
 		15>10
@@ -136,3 +136,40 @@ Set the sustain position with `/` or the loop position with `|`
 	@14 psg
 		0>14:7 | 15 10 5 0 5 10
 
+When specifying envelopes, there must be no space between the
+parameters in a node, as the space itself separates nodes.
+
+##### Pitch envelopes
+
+Pitch envelopes are specified with "@M<number>" and are used in MML
+sequences with the M<number> command.
+
+Pitch envelopes consist of up to 256 envelope nodes. Each node has
+an initial position, a length parameter and a delta parameter.
+The delta parameter is calculated from a "target" parameter and the
+length parameter.
+
+The parameters in the node are specified like this. As with PSG
+envelopes, there must be no space between parameters in one envelope
+node.
+
+	initial>target:length
+	initial>target        ; preset length
+	initial:length        ; no slide
+	|                     ; set loop position
+
+Simple arpeggio:
+
+	@M1 | 0 3 5
+
+Pitch slide from 2 semitones over 20 frames
+
+	@M1 -2>0:20 0 ;last '0' position needed to stop the slide
+
+Vibrato with some delay at the beginning
+
+	@M1 0:20 | 0>0.5:5 0.5>-0.5:10 -0.5>0:5
+
+Vibrato macro (does the same as above)
+
+	@M1 0:20 | V0:0.5:5

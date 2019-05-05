@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <cctype>
 #include <climits>
+#include <cmath>
 #include <algorithm>
 
 #include "md.h"
@@ -124,12 +125,17 @@ void MD_Data::read_fm_2op(uint16_t id, const Tag& tag)
 
 //! Read PSG volume envelope.
 /*!
- * Format:
- *   Value or Value:Length or | or /
+ * Envelope input format:
+ *   Value
+ *   Value:Length
+ *   Value>Target - slide
+ *   Value>Target:Length - slide
+ *   | - set loop position
+ *   / - wait until keyoff
  * Output format:
  *   00 - end
  *   01 - sustain
- *   02 <pos> - loop
+ *   02 pp - loop to <p>
  *   fv - value <v> for <f> frames.
  */
 void MD_Data::read_psg(uint16_t id, const Tag& tag)
@@ -160,26 +166,28 @@ void MD_Data::read_psg(uint16_t id, const Tag& tag)
 		else if(std::isdigit(*s))
 		{
 			uint8_t initial = std::strtol(s, (char**)&s, 0);
-			uint8_t final = initial;
+			uint8_t target = initial;
 			uint8_t length = 0;
 			double delta = 0, counter = 0;
+
 			if(*s == '>' && *++s)
-				final = strtol(s, (char**)&s, 0);
-			final = (final > 15) ? 15 : (final < 0) ? 0 : final; // bounds check
+				target = strtol(s, (char**)&s, 0);
+			target = (target > 15) ? 15 : (target < 0) ? 0 : target; // bounds check
 			initial = (initial > 15) ? 15 : (initial < 0) ? 0 : initial;
-			if(final != initial)
-				length = std::abs(final-initial)+1;
+
+			if(target != initial)
+				length = std::abs(target-initial)+1;
 			if(*s == ':' && *++s)
 				length = strtol(s, (char**)&s, 0);
 			if(length == 0)
 				length++;
 			else if(length > 1) // calculate slide
-				delta = (double)(final-initial)/(length-1);
+				delta = (double)(target-initial)/(length-1);
 			counter = initial + 0.5;
 			while(length--)
 			{
-				// last value is always the final
-				uint8_t val = (length) ? (int)counter : final;
+				// last value is always the slide target
+				uint8_t val = (length) ? (int)counter : target;
 				// add to duration of previous value if it's the same
 				if((int)counter == last && env_data[last_pos] < 0xf0)
 					env_data[last_pos] += 0x10;
@@ -213,9 +221,122 @@ void MD_Data::read_psg(uint16_t id, const Tag& tag)
 	ins_type[id] = INS_PSG;
 }
 
-std::string MD_Data::dump_data(uint16_t id)
+//! Read pitch envelope
+/*!
+ * Envelope input format:
+ *   Value
+ *   Value:Length
+ *   Value>Target - slide
+ *   Value>Target:Length - slide
+ *   V<Base>:<Depth>:<Rate> - vibrato macro, automatically sets loop position
+ *   | - set loop position
+ * Output format:
+ *   hh ll dd ss - set pitch to <hl>, change it with <d> for <s> frames.
+ *                 If <s> is ff, this is the final value
+ *   7F <pp> - loop to <p*4>
+ */
+void MD_Data::read_pitch(uint16_t id, const Tag& tag)
 {
-	int mapped_id = envelope_map[id];
+	std::vector<uint8_t> env_data;
+	int loop_pos = -1;
+	if(!tag.size())
+	{
+		std::cerr << stringf("warning: empty pitch envelope @M%d\n", id);
+		return;
+	}
+	for(auto it = tag.begin(); it != tag.end(); it++)
+	{
+		const char* s = it->c_str();
+		if(*s == '|')
+			loop_pos = env_data.size() / 4;
+		else if(std::isdigit(*s) || *s == '-')
+			add_pitch_node(s, &env_data);
+		else if(*s == 'V')
+		{
+			loop_pos = env_data.size() / 4;
+			add_pitch_vibrato(s, &env_data);
+		}
+		else
+			throw InputError(nullptr,stringf("undefined envelope value '%s'", s).c_str());
+	}
+	// end command
+	if(loop_pos == -1)
+	{
+		env_data.back() = 0xff;
+	}
+	else
+	{
+		env_data.push_back(0x7f);
+		env_data.push_back(loop_pos);
+	}
+	pitch_map[id] = add_unique_data(env_data);
+}
+
+//! Adds a node to the pitch envelope.
+void MD_Data::add_pitch_node(const char* s, std::vector<uint8_t>* env_data)
+{
+	double initial = std::strtod(s, (char**)&s);
+	double target = initial;
+	int length = 0;
+	double counter = 0;
+
+	if(*s == '>' && *++s)
+		target = strtod(s, (char**)&s);
+
+	if(target != initial)
+		length = std::lround(std::fabs(target-initial)+1.5) >> 4;
+	if(*s == ':' && *++s)
+		length = strtol(s, (char**)&s, 0);
+	if(length < 1)
+		length += 1;
+
+	counter = initial;
+	//std::cout << stringf("initial:%.2f, target=%.2f, len=%d", initial, target, length) << "\n";
+	while(length > 0)
+	{
+		double delta = (target-counter)/length;
+		uint16_t env_len = (length > 255) ? 255 : length;
+		int16_t env_initial = counter * 256;
+		int16_t env_delta = std::trunc(delta * 256);
+		env_initial = (env_initial > 0x7eff) ? 0x7eff : env_initial;
+		env_delta = (env_delta > 127) ? 127 : (env_delta < -128) ? -128: env_delta;
+		//std::cout << stringf("len:%d, from:%04x, chg:%d", env_len, env_initial, env_delta) << "\n";
+		env_data->push_back(env_initial >> 8);
+		env_data->push_back(env_initial & 0xff);
+		env_data->push_back(env_delta);
+		env_data->push_back(env_len - 1);
+		// apply delta and decrease length counter
+		counter += (env_delta * env_len) / 256;
+		length -= env_len;
+	}
+}
+
+//! Adds a node to the pitch envelope.
+void MD_Data::add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_data)
+{
+	// Vibrato macro
+	double vibrato_base = 0;
+	double vibrato_depth = 0.5;
+	int vibrato_rate = 5;
+
+	s++;
+	if(std::isdigit(*s) || *s == '-')
+		vibrato_base = strtod(s, (char**)&s);
+	if(*s == ':' && *++s)
+		vibrato_depth = strtod(s, (char**)&s);
+	if(*s == ':' && *++s)
+		vibrato_rate = strtol(s, (char**)&s, 0);
+	else
+		printf("wtf it is %c\n", *s);
+
+	vibrato_depth += vibrato_base;
+	add_pitch_node(stringf("%f>%f:%d", vibrato_base, vibrato_depth, vibrato_rate).c_str(), env_data);
+	add_pitch_node(stringf("%f>%f:%d", vibrato_depth, -vibrato_depth, vibrato_rate*2).c_str(), env_data);
+	add_pitch_node(stringf("%f>%f:%d", -vibrato_depth, vibrato_base, vibrato_rate).c_str(), env_data);
+}
+
+std::string MD_Data::dump_data(uint16_t id, uint16_t mapped_id)
+{
 	std::string out = stringf("%d = %d [%d]{", id, mapped_id, data_bank[mapped_id].size());
 	for(auto it = data_bank[mapped_id].begin(); it != data_bank[mapped_id].end(); it++)
 	{
@@ -236,19 +357,19 @@ void MD_Data::read_envelope(uint16_t id, const Tag& tag)
 	if(iequal("psg", type))
 	{
 		read_psg(id, Tag(it, tag.end()));
-		std::cout << "read PSG envelope " << dump_data(id) << "\n";
+		std::cout << "read PSG envelope " << dump_data(id, envelope_map[id]) << "\n";
 		return;
 	}
 	else if(iequal("fm", type))
 	{
 		read_fm_4op(id, Tag(it, tag.end()));
-		std::cout << "read FM envelope " << dump_data(id) << "\n";
+		std::cout << "read FM envelope " << dump_data(id, envelope_map[id]) << "\n";
 		return;
 	}
 	else if(iequal("2op", type))
 	{
 		read_fm_2op(id, Tag(it, tag.end()));
-		std::cout << "read 2op envelope " << dump_data(id) << "\n";
+		std::cout << "read 2op envelope " << dump_data(id, envelope_map[id]) << "\n";
 		return;
 	}
 	else
@@ -274,6 +395,11 @@ void MD_Data::read_song(Song& song)
 		{
 			read_envelope(id, it->second);
 		}
+		else if(std::sscanf(it->first.c_str(), "@m%hu", &id) == 1)
+		{
+			read_pitch(id, it->second);
+			std::cout << "read pitch envelope " << dump_data(id, pitch_map[id]) << "\n";
+		}
 	}
 }
 
@@ -282,8 +408,14 @@ MD_Channel::MD_Channel(MD_Driver& driver, int id)
 	: Player(*driver.song, driver.song->get_track(id)),
 	driver(&driver),
 	slur_flag(0),
+	key_on_flag(0),
+	note_pitch(0xffff),
+	porta_value(0),
+	last_pitch(0),
+	pitch_env_data(0),
+	pitch_env_delay(0),
+	pitch_env_pos(0),
 	pitch(0),
-	pitch_target(0),
 	ins_transpose(0),
 	con(0),
 	tl()
@@ -301,6 +433,7 @@ void MD_Channel::write_event()
 		case Event::TIE:
 			slur_flag = true;
 		case Event::NOTE:
+			key_on_flag = true;
 			if(get_update_flag(Event::INS))
 			{
 				set_ins();
@@ -315,27 +448,12 @@ void MD_Channel::write_event()
 			}
 			if(event.type != Event::TIE)
 			{
-				pitch_target = (event.param + get_var(Event::TRANSPOSE))<<8;
-				pitch_target += get_var(Event::DETUNE);
+				note_pitch = (event.param + get_var(Event::TRANSPOSE))<<8;
+				note_pitch += get_var(Event::DETUNE);
 			}
 			if(!slur_flag)
 			{
 				key_off();
-				if(!get_var(Event::PORTAMENTO))
-				{
-					pitch = pitch_target;
-					set_pitch();
-				}
-				key_on();
-			}
-			else
-			{
-				if(!get_var(Event::PORTAMENTO))
-				{
-					pitch = pitch_target;
-					set_pitch();
-				}
-				slur_flag = false;
 			}
 			break;
 		case Event::REST:
@@ -366,6 +484,61 @@ void MD_Channel::write_event()
 			break;
 		default:
 			break;
+	}
+}
+
+void MD_Channel::update_pitch()
+{
+	if(get_var(Event::PORTAMENTO))
+	{
+		int16_t difference = note_pitch - porta_value;
+		int16_t step = difference >> 8;
+		if(difference < 0)
+			step--;
+		else
+			step++;
+		porta_value += (step*get_var(Event::PORTAMENTO)) >> 1;
+		if(((note_pitch - porta_value) ^ difference) < 0)
+			porta_value = note_pitch;
+		pitch = porta_value;
+	}
+	else
+	{
+		porta_value = note_pitch;
+	}
+	pitch = porta_value;
+	if(get_var(Event::PITCH_ENVELOPE))
+	{
+		if(key_on_flag || !pitch_env_data)
+		{
+			pitch_env_data = &driver->data.data_bank.at(driver->data.pitch_map[get_var(Event::PITCH_ENVELOPE)]);
+			pitch_env_pos = 0;
+			pitch_env_delay = 0;
+			//std::cout << "reset pitch envelope id to " << driver->data.pitch_map[get_var(Event::PITCH_ENVELOPE)] << "\n";
+		}
+		uint16_t pos = pitch_env_pos << 2;
+		uint16_t command = (pitch_env_data->at(pos) << 8) | (pitch_env_data->at(pos+1));
+		int8_t delta = pitch_env_data->at(pos+2);
+		uint8_t length = pitch_env_data->at(pos+3);
+		//std::cout << stringf("pos=%d, time=%d/%d, delta=%d, ", pos, pitch_env_delay, length, delta);
+		if(pitch_env_delay == 0)
+			pitch_env_value = command;
+
+		if(pitch_env_delay == length)
+		{
+			int16_t next_command = (pitch_env_data->at(pos+4) << 8) | (pitch_env_data->at(pos+5));
+			if(next_command >= 0x7f00)
+				pitch_env_pos = next_command & 0xff;
+			else
+				pitch_env_pos++;
+			pitch_env_delay = 0;
+		}
+		else if(pitch_env_delay < 0xfe)
+			pitch_env_delay++;
+
+		pitch_env_value += delta;
+		//std::cout << stringf("val=%04x, next_pos=%d\n", pitch_env_value, pitch_env_pos);
+		pitch += pitch_env_value;
 	}
 }
 
@@ -405,7 +578,7 @@ void MD_Channel::write_fm_4op(int bank, int id)
 	ins_transpose = driver->data.ins_transpose[ins_id];
 }
 
-uint16_t MD_Channel::get_fm_pitch() const
+uint16_t MD_Channel::get_fm_pitch(uint16_t pitch) const
 {
 	static const uint16_t freqtab[13] = {644, 681, 722, 765, 810, 858, 910, 964, 1021, 1081, 1146, 1214, 1288};
 	uint8_t note = (pitch >> 8) + ins_transpose;
@@ -417,7 +590,7 @@ uint16_t MD_Channel::get_fm_pitch() const
 	return set_pitch;
 }
 
-uint16_t MD_Channel::get_psg_pitch() const
+uint16_t MD_Channel::get_psg_pitch(uint16_t pitch) const
 {
 	static const uint16_t freqtab[13] = {851, 803, 758, 715, 675, 637, 601, 568, 536, 506, 477, 450, 425};
 	uint8_t note = (pitch >> 8);
@@ -435,20 +608,18 @@ void MD_Channel::update(int seq_ticks)
 	while(seq_ticks--)
 		play_tick();
 	update_envelope();
-	if(get_var(Event::PORTAMENTO))
-	{
-		int16_t difference = pitch_target - pitch;
-		int16_t step = difference >> 8;
-		if(difference < 0)
-			step--;
-		else
-			step++;
-		pitch += (step*get_var(Event::PORTAMENTO)) >> 1;
-		if(((pitch_target - pitch) ^ difference) < 0)
-			pitch = pitch_target;
+	update_pitch();
 
-		if(pitch != pitch_target)
-			set_pitch();
+	if(pitch != last_pitch)
+		set_pitch();
+	last_pitch = pitch;
+
+	if(key_on_flag)
+	{
+		if(!slur_flag)
+			key_on();
+		slur_flag = false;
+		key_on_flag = false;
 	}
 }
 
@@ -521,7 +692,7 @@ void MD_FM::key_off()
 
 void MD_FM::set_pitch()
 {
-	uint16_t val = get_fm_pitch();
+	uint16_t val = get_fm_pitch(pitch);
 	driver->ym2612_w(bank, 0xa0, id, 0, val);
 }
 
@@ -558,6 +729,13 @@ void MD_PSG::update_envelope()
 {
 	if(!is_enabled())
 		return;
+	// reset envelope on keyon
+	if(key_on_flag)
+	{
+		env_pos = 0;
+		env_delay = 0x1f;
+		env_keyoff = 0;
+	}
 	// faster decay if key off
 	if(env_delay < 0x20 || env_keyoff)
 	{
@@ -621,9 +799,6 @@ void MD_PSGMelody::set_vol()
 
 void MD_PSGMelody::key_on()
 {
-	env_pos = 0;
-	env_delay = 0x1f;
-	env_keyoff = 0;
 }
 
 void MD_PSGMelody::key_off()
@@ -638,7 +813,7 @@ void MD_PSGMelody::key_off()
 
 void MD_PSGMelody::set_pitch()
 {
-	uint16_t val = get_psg_pitch();
+	uint16_t val = get_psg_pitch(pitch);
 	driver->sn76489_w(0, id, val);
 }
 
@@ -671,9 +846,6 @@ void MD_PSGNoise::set_vol()
 
 void MD_PSGNoise::key_on()
 {
-	env_pos = 0;
-	env_delay = 0x1f;
-	env_keyoff = 0;
 }
 
 void MD_PSGNoise::key_off()
@@ -688,7 +860,7 @@ void MD_PSGNoise::set_pitch()
 {
 	if(type == 1)
 	{
-		uint16_t val = get_psg_pitch();
+		uint16_t val = get_psg_pitch(pitch);
 		driver->sn76489_w(0, 2, val);
 		driver->sn76489_w(0, 3, 7);
 	}

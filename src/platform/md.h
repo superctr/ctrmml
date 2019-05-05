@@ -24,19 +24,24 @@ class MD_Data
 	private:
 		static const int data_count_max = 256;
 		int add_unique_data(const std::vector<uint8_t>& data);
-		std::string dump_data(uint16_t id); // debug function
+		std::string dump_data(uint16_t id, uint16_t mapped_id); // debug function
 		void read_fm_4op(uint16_t id, const Tag& tag);
 		void read_fm_2op(uint16_t id, const Tag& tag);
 		void read_psg(uint16_t id, const Tag& tag);
+		void read_pitch(uint16_t id, const Tag& tag);
+		void add_pitch_node(const char* s, std::vector<uint8_t>* env_data);
+		void add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_data);
 		void read_envelope(uint16_t id, const Tag& tag);
 
 	public:
 		std::vector<std::vector<uint8_t>> data_bank;
-		//! Maps Song instrument numbers to data_bank entries.
+		//! Maps the current song instruments to data_bank entries.
 		std::map<uint16_t, int> envelope_map;
-		//! Maps Song instrument numbers to transpose settings (for FM 2op only)
+		//! Maps the current song instrument to transpose settings (for FM 2op only)
 		std::map<uint16_t, int> ins_transpose;
-		//! Maps Song instrument numbers to InstrumentType
+		//! Maps the current song pitch envelopes to data_bank entries.
+		std::map<uint16_t, int> pitch_map;
+		//! Specify the instrument types of the defined song instruments.
 		std::map<uint16_t, InstrumentType> ins_type;
 
 		MD_Data();
@@ -47,6 +52,8 @@ class MD_Data
 class MD_Channel : public Player
 {
 	protected:
+		void write_event();
+
 		virtual void set_ins() = 0;
 		virtual void set_vol() = 0;
 		virtual void set_pan() = 0;
@@ -55,19 +62,29 @@ class MD_Channel : public Player
 		virtual void set_pitch() = 0;
 		virtual void set_type() = 0;
 		virtual void update_envelope() = 0;
+		void update_pitch();
 		uint8_t write_fm_operator(int idx, int bank, int id, const std::vector<uint8_t>& idata);
 		void write_fm_4op(int bank, int id);
-		uint16_t get_fm_pitch() const;
-		uint16_t get_psg_pitch() const;
+		uint16_t get_fm_pitch(uint16_t pitch) const;
+		uint16_t get_psg_pitch(uint16_t pitch) const;
 
 		MD_Driver* driver;
 		bool slur_flag; //!< Flag to disable key on for the next note
-		uint16_t pitch; //!< Current pitch (256 'cents' per semitone)
-		uint16_t pitch_target; //< Target pitch for portamento
+		bool key_on_flag;
+		// Portamento
+		uint16_t note_pitch; //< Target pitch for portamento
+		uint16_t porta_value; //!< Current pitch (256 'cents' per semitone)
+		uint16_t last_pitch; //!< Last pitch, used to optimize register writes
+		// Pitch envelopes
+		const std::vector<uint8_t>* pitch_env_data;
+		uint16_t pitch_env_value; //!< Pitch envelope value
+		uint8_t pitch_env_delay;
+		uint8_t pitch_env_pos;
+		// Target pitch
+		uint16_t pitch; //!< pitch with portamento and envelope calculated
 		int8_t ins_transpose; //!< Instrument transpose (for FM 2op). compiled files should have this already 'cooked'
 		uint8_t con; //!< FM connection
 		uint8_t tl[4]; // also used for Ch3 mode
-		void write_event();
 	public:
 		MD_Channel(MD_Driver& driver, int id);
 		void update(int seq_ticks);
@@ -104,7 +121,7 @@ class MD_PSG : public MD_Channel
 	protected:
 		//! Channel index
 		int id;
-		std::vector<uint8_t>* env_data; //!< Pointer to envelope data
+		const std::vector<uint8_t>* env_data; //!< Pointer to envelope data
 		bool env_keyoff; //!< Envelope key off flag
 		uint8_t env_pos; //!< Envelope position
 		uint8_t env_delay; //!< Envelope delay and current volume
