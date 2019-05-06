@@ -113,6 +113,11 @@ the previously specified channels will be used.
 
 ## Platforms
 ### Megadrive
+#### Channel mapping
+-	`ABCDEF` FM channels 1-6.
+-	`GHI` PSG melody channels 1-3.
+-	`J` PSG noise channel.
+
 #### Limitations
 Pan envelopes not supported.
 
