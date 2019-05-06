@@ -10,7 +10,16 @@ unsigned int MML_Input::read_duration()
 	int duration = 0, dot;
 	try
 	{
-		duration = track->get_measure_len() / get_num();
+		int c = get();
+		if(c == ':')
+		{
+			duration = get_num();
+		}
+		else
+		{
+			unget(c);
+			duration = track->get_measure_len() / get_num();
+		}
 		if(duration < 0)
 			throw std::out_of_range("MMLInput::read_duration()");
 	}
