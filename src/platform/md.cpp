@@ -323,7 +323,7 @@ void MD_Data::add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_data)
 	if(std::isdigit(*s) || *s == '-')
 		vibrato_base = strtod(s, (char**)&s);
 	if(*s == ':' && *++s)
-		vibrato_depth = strtod(s, (char**)&s);
+		vibrato_depth = strtod(s, (char**)&s) / 2.0;
 	if(*s == ':' && *++s)
 		vibrato_rate = strtol(s, (char**)&s, 0);
 	else
