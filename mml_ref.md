@@ -139,7 +139,7 @@ FM instruments are defined as below: (Commas between values are optional)
 ##### 2op chord macro
 Instrument type `2op` is used to duplicate FM instruments, modifying the
 operators' multiply ratios and setting a transpose (useful if the base note
-uses a multiplier which is not a power of 2). Disabled carrier modulators are
+uses a multiplier which is not a power of 2). Disabled carrier operators are
 also enabled, which can be useful if you use the same patch for both
 monophonic and polyphonic sounds.
 
@@ -187,8 +187,8 @@ When specifying envelopes, there must be no space between the
 parameters in a node, as the space itself separates nodes.
 
 #### Pitch envelopes
-Pitch envelopes are specified with "@M<number>" and are used in MML
-sequences with the M<number> command.
+Pitch envelopes are specified with `@M<number>` and are used in MML
+sequences with the `M<number>` command.
 
 Pitch envelopes consist of up to 256 envelope nodes. Each node has
 an initial position, a length parameter and a delta parameter.
