@@ -51,9 +51,14 @@ class MD_Data
 //! Megadrive abstract channel
 class MD_Channel : public Player
 {
+	private:
+		uint32_t parse_platform_event(const Tag& tag, int16_t* platform_state) override;
+		void write_event() override;
 	protected:
-		void write_event();
-
+		enum
+		{
+			EVENT_CHANNEL_MODE = 0
+		};
 		virtual void set_ins() = 0;
 		virtual void set_vol() = 0;
 		virtual void set_pan() = 0;
@@ -103,14 +108,14 @@ class MD_FM : public MD_Channel
 		uint8_t bank : 1; //!< YM2612 port id.
 		uint8_t id : 2; //!< YM2612 channel id.
 		uint8_t pan_lfo; //!< FM panning & lfo parameters
-		void set_ins();
-		void set_vol();
-		void set_pan();
-		void key_on();
-		void key_off();
-		void set_pitch();
-		void set_type();
-		void update_envelope();
+		void set_ins() override;
+		void set_vol() override;
+		void set_pan() override;
+		void key_on() override;
+		void key_off() override;
+		void set_pitch() override;
+		void set_type() override;
+		void update_envelope() override;
 	public:
 		MD_FM(MD_Driver& driver, int track_id, int channel_id);
 };
@@ -127,7 +132,7 @@ class MD_PSG : public MD_Channel
 		uint8_t env_delay; //!< Envelope delay and current volume
 		void set_envelope(std::vector<uint8_t>* idata);
 		void set_pan();
-		void update_envelope();
+		void update_envelope() override;
 	public:
 		MD_PSG(MD_Driver& driver, int track_id, int channel_id);
 };
@@ -142,12 +147,12 @@ class MD_PSGMelody : public MD_PSG
 	};
 	private:
 		int type;
-		void set_ins();
-		void set_vol();
-		void key_on();
-		void key_off();
-		void set_pitch();
-		void set_type();
+		void set_ins() override;
+		void set_vol() override;
+		void key_on() override;
+		void key_off() override;
+		void set_pitch() override;
+		void set_type() override;
 	public:
 		MD_PSGMelody(MD_Driver& driver, int track_id, int channel_id);
 };
@@ -162,12 +167,12 @@ class MD_PSGNoise : public MD_PSG
 	};
 	private:
 		int type;
-		void set_ins();
-		void set_vol();
-		void key_on();
-		void key_off();
-		void set_pitch();
-		void set_type();
+		void set_ins() override;
+		void set_vol() override;
+		void key_on() override;
+		void key_off() override;
+		void set_pitch() override;
+		void set_type() override;
 	public:
 		MD_PSGNoise(MD_Driver& driver, int track_id, int channel_id);
 };

@@ -23,6 +23,7 @@ struct Event
 		JUMP,			//!< Jump to a track. Param specifies the track number. Previous position is stored in stack.
 		END,			//!< Jump to the stack position, alternatively the loop position, alternatively stops the track.
 		SLUR,			//!< Indicates that the next note is legato
+		PLATFORM,		//!< Platform-specific commands, the parameter is associated with a tag from the song data.
 		// special channel commands. These affect the same memory as another command
 		TRANSPOSE_REL,	//!< Relative transpose.
 		VOL,			//!< Coarse volume. Param is between 0-15, should correspond to -2dB per step.
@@ -30,7 +31,6 @@ struct Event
 		VOL_FINE_REL,	//!< Relative fine volume. Platform-specific.
 		TEMPO_BPM,		//!< Set tempo in quarter notes per minute
 		// channel commands
-		CHANNEL_MODE,	//!< Platform-specific, always the first channel command
 		INS,			//!< Set instrument
 		TRANSPOSE,		//!< Set transpose
 		DETUNE,			//!< Set detune
@@ -44,7 +44,7 @@ struct Event
 		TEMPO,			//!< Set platform-specific tempo.
 		// special
 		CMD_COUNT,		//!< Command ID count.
-		CHANNEL_CMD = CHANNEL_MODE, //!< first channel cmd ID
+		CHANNEL_CMD = INS, //!< first channel cmd ID
 		CHANNEL_CMD_COUNT = CMD_COUNT - CHANNEL_CMD, //!< channel command count
 		INVALID = -1, //!< represents an invalid or unknown command.
 	};

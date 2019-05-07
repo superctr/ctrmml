@@ -25,7 +25,7 @@ void Basic_Player::error(const char* message) const
 	throw InputError(reference, message);
 }
 
-inline void Basic_Player::stack_underflow(int type)
+void Basic_Player::stack_underflow(int type)
 {
 	if(type == Player_Stack::LOOP)
 		error("unterminated '[]' loop");
@@ -50,7 +50,7 @@ void Basic_Player::stack_push(const Player_Stack& frame)
 Player_Stack& Basic_Player::stack_top(Player_Stack::Type type)
 {
 	if(!stack.size())
-		error("stack underflow (BUG, please report)");
+		stack_underflow(type);
 	Player_Stack& frame = stack.top();
 	if(frame.type != type)
 		stack_underflow(frame.type);
@@ -214,17 +214,19 @@ Player::Player(Song& song, Track& track, Player_Flag flag)
 	flag(flag),
 	note_count(0),
 	rest_count(0),
+	platform_state(),
+	platform_update_mask(0),
 	track_state(),
 	track_update_mask(0)
 {
 }
 
-#define FLAG(flag) (track_update_mask & (1<<(flag - Event::CHANNEL_MODE)))
-#define FLAG_SET(flag) { track_update_mask |= (1<<(flag - Event::CHANNEL_MODE)); }
-#define FLAG_CLR(flag) { track_update_mask &= ~(1<<(flag - Event::CHANNEL_MODE)); }
-#define CH_STATE(var) track_state[var - Event::CHANNEL_MODE]
-#define VOL_BIT 30 + Event::CHANNEL_MODE
-#define BPM_BIT 31 + Event::CHANNEL_MODE
+#define FLAG(flag) (track_update_mask & (1<<(flag - Event::CHANNEL_CMD)))
+#define FLAG_SET(flag) { track_update_mask |= (1<<(flag - Event::CHANNEL_CMD)); }
+#define FLAG_CLR(flag) { track_update_mask &= ~(1<<(flag - Event::CHANNEL_CMD)); }
+#define CH_STATE(var) track_state[var - Event::CHANNEL_CMD]
+#define VOL_BIT 30 + Event::CHANNEL_CMD
+#define BPM_BIT 31 + Event::CHANNEL_CMD
 void Player::handle_drum_mode()
 {
 	if(get_stack_type() != Player_Stack::DRUM_MODE)
@@ -266,6 +268,17 @@ void Player::handle_event()
 			if(CH_STATE(Event::DRUM_MODE))
 				handle_drum_mode();
 			break;
+		case Event::PLATFORM:
+			try
+			{
+				const Tag& tag = song->get_platform_command(event.param);
+				platform_update_mask |= parse_platform_event(tag, platform_state);
+			}
+			catch (std::out_of_range &)
+			{
+				error(stringf("Platform command %d is not defined", event.param).c_str());
+			}
+			break;
 		case Event::TRANSPOSE_REL:
 			CH_STATE(Event::TRANSPOSE) += event.param;
 			FLAG_SET(Event::TRANSPOSE);
@@ -289,9 +302,9 @@ void Player::handle_event()
 			FLAG_SET(BPM_BIT);
 			break;
 		default:
-			if(event.type >= Event::CHANNEL_MODE && event.type < Event::CMD_COUNT)
+			if(event.type >= Event::CHANNEL_CMD && event.type < Event::CMD_COUNT)
 			{
-				int type = event.type - Event::CHANNEL_MODE;
+				int type = event.type - Event::CHANNEL_CMD;
 				track_state[type] = event.param;
 				track_update_mask |= 1<<type;
 				if(type == Event::VOL_FINE)
@@ -306,7 +319,7 @@ void Player::handle_event()
 //! Get the update flag for \p type.
 bool Player::get_update_flag(Event::Type type) const
 {
-	if(type < Event::CHANNEL_MODE || type >= Event::CMD_COUNT)
+	if(type < Event::CHANNEL_CMD || type >= Event::CMD_COUNT)
 		error("BUG: Unsupported event type");
 	return FLAG(type);
 }
@@ -314,9 +327,25 @@ bool Player::get_update_flag(Event::Type type) const
 //! Clear the update flag for \p type.
 void Player::clear_update_flag(Event::Type type)
 {
-	if(type < Event::CHANNEL_MODE || type >= Event::CMD_COUNT)
+	if(type < Event::CHANNEL_CMD || type >= Event::CMD_COUNT)
 		error("BUG: Unsupported event type");
 	FLAG_CLR(type);
+}
+
+//! Get the update flag for the platform variable \p type.
+bool Player::get_platform_flag(unsigned int type) const
+{
+	if(type > 31)
+		return 0; // silently ignored
+	return (platform_update_mask >> type) & 1;
+}
+
+//! Clear the update flag for the platform variable \p type.
+void Player::clear_platform_flag(unsigned int type)
+{
+	if(type > 31)
+		return;
+	platform_update_mask &= ~(1 << type);
 }
 
 //! Return true if coarse volume.
@@ -331,10 +360,18 @@ bool Player::bpm_flag() const
 	return FLAG(BPM_BIT);
 }
 
+//! Get platform-specific variable.
+int16_t Player::get_platform_var(int type) const
+{
+	if(type > 31)
+		return 0;
+	return platform_state[type];
+}
+
 //! Get event variable.
 int16_t Player::get_var(Event::Type type) const
 {
-	if(type < Event::CHANNEL_MODE || type >= Event::CMD_COUNT)
+	if(type < Event::CHANNEL_CMD || type >= Event::CMD_COUNT)
 		error("BUG: Unsupported event type");
 	return CH_STATE(type);
 }
@@ -357,6 +394,17 @@ void Player::end_hook()
 	write_event();
 }
 
+//! Custom platform event parser.
+/*!
+ * Override functions should return a bitmask representing the event_state
+ * variables that were modified by the functions.
+ */
+uint32_t Player::parse_platform_event(const Tag& tag, int16_t* platform_state)
+{
+	return 0;
+}
+
+//! Default write_event handler. This simply increments a note and rest counter.
 void Player::write_event()
 {
 	// Handle NOTE and REST events here.

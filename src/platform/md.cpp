@@ -422,6 +422,19 @@ MD_Channel::MD_Channel(MD_Driver& driver, int id)
 {
 }
 
+//! Platform-exclusive command parser
+uint32_t MD_Channel::parse_platform_event(const Tag& tag, int16_t* platform_state)
+{
+	if(iequal(tag[0], "mode"))
+	{
+		if(tag.size() < 2)
+			error("not enough parameters for 'mode' command");
+		platform_state[EVENT_CHANNEL_MODE] = std::strtol(tag[1].c_str(), 0, 0);
+		return (1 << EVENT_CHANNEL_MODE);
+	}
+	return 0;
+}
+
 //! Event handler
 void MD_Channel::write_event()
 {
@@ -476,8 +489,12 @@ void MD_Channel::write_event()
 				printf("set tempo to %02x (direct)\n", driver->tempo_delta);
 			}
 			break;
-		case Event::CHANNEL_MODE:
-			set_type();
+		case Event::PLATFORM:
+			if(get_platform_flag(EVENT_CHANNEL_MODE))
+			{
+				set_type();
+				clear_platform_flag(EVENT_CHANNEL_MODE);
+			}
 			break;
 		case Event::PAN:
 			set_pan();
@@ -698,7 +715,7 @@ void MD_FM::set_pitch()
 
 void MD_FM::set_type()
 {
-	type = get_var(Event::CHANNEL_MODE);
+	type = get_platform_var(EVENT_CHANNEL_MODE);
 }
 
 void MD_FM::update_envelope()
@@ -819,7 +836,7 @@ void MD_PSGMelody::set_pitch()
 
 void MD_PSGMelody::set_type()
 {
-	type = get_var(Event::CHANNEL_MODE);
+	type = get_platform_var(EVENT_CHANNEL_MODE);
 }
 
 //! Constructs a MD_PSGNoise.
@@ -872,7 +889,7 @@ void MD_PSGNoise::set_pitch()
 
 void MD_PSGNoise::set_type()
 {
-	type = get_var(Event::CHANNEL_MODE);
+	type = get_platform_var(EVENT_CHANNEL_MODE);
 }
 
 //! constructs a MD_Driver.
@@ -1005,4 +1022,3 @@ double MD_Driver::play_step()
 	pcm_counter -= next_delta;
 	return next_delta;
 }
-

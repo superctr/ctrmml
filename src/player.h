@@ -49,7 +49,7 @@ class Basic_Player
 		unsigned int loop_count;
 		unsigned int stack_depth[Player_Stack::MAX_STACK_TYPE];
 		unsigned int max_stack_depth;
-		inline void stack_underflow(int type);
+		void stack_underflow(int type);
 
 	protected:
 		//! Current event.
@@ -97,22 +97,28 @@ class Player : public Basic_Player
 		uint32_t flag;
 		int note_count;
 		int rest_count;
+		int16_t platform_state[Event::CHANNEL_CMD_COUNT];
+		uint32_t platform_update_mask;
 		int16_t track_state[Event::CHANNEL_CMD_COUNT];
 		uint32_t track_update_mask;
 		void handle_drum_mode();
 		void handle_event();
-		void event_hook();
-		bool loop_hook();
-		void end_hook();
+		void event_hook() override;
+		bool loop_hook() override;
+		void end_hook() override;
 	protected:
+		bool get_platform_flag(unsigned int type) const;
+		void clear_platform_flag(unsigned int type);
 		bool get_update_flag(Event::Type type) const;
 		void clear_update_flag(Event::Type type);
+		virtual uint32_t parse_platform_event(const Tag& tag, int16_t* platform_state);
 		virtual void write_event();
 	public:
 		Player(Song& song, Track& track, Player_Flag flag = PLAYER_NO_FLAG);
 		bool coarse_volume_flag() const;
 		bool bpm_flag() const;
 		int16_t get_var(Event::Type type) const;
+		int16_t get_platform_var(int type) const;
 		void play_tick();
 		void skip_ticks(unsigned int ticks);
 };
@@ -124,9 +130,9 @@ class Player : public Basic_Player
 class Track_Validator : public Basic_Player
 {
 	private:
-		void event_hook();
-		bool loop_hook();
-		void end_hook();
+		void event_hook() override;
+		bool loop_hook() override;
+		void end_hook() override;
 		int segno_time;
 		unsigned int loop_time;
 	public:

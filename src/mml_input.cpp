@@ -94,6 +94,22 @@ int MML_Input::read_note(int c)
 	return val;
 }
 
+//! Platform-exclusive messages ('<key> <value> ...')
+void MML_Input::platform_exclusive()
+{
+	std::string str = "";
+	char c = get();
+	while(c && c != '\'')
+	{
+		str.push_back(c);
+		c = get();
+	}
+	if(c != '\'')
+		parse_error("unterminated platform-exclusive message");
+	int16_t param = get_song().register_platform_command(-1, str);
+	track->add_event(Event::PLATFORM, param);
+}
+
 void MML_Input::mml_slur()
 {
 	if(track->add_slur())
@@ -189,6 +205,8 @@ bool MML_Input::mml_control()
 		track->add_event(Event::SEGNO);
 	else if(c == '*')
 		track->add_event(Event::JUMP, expect_parameter());
+	else if(c == '\'')
+		platform_exclusive();
 	else
 	{
 		unget(c);
@@ -270,7 +288,7 @@ void MML_Input::parse_mml_track(int conditional_block)
 		else if(c == '{' && !conditional_block)
 			parse_mml_track(1);
 		else if(c == '%')
-			track->add_event(Event::CHANNEL_MODE, expect_parameter());
+			track->add_event(Event::PLATFORM, expect_parameter());
 		else if(c == 0)
 			return;
 		else

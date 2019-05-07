@@ -20,6 +20,8 @@ class Song_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST(test_get_track);
 	CPPUNIT_TEST_EXCEPTION(test_get_invalid_track, std::out_of_range);
 	CPPUNIT_TEST(test_get_track_map);
+	CPPUNIT_TEST(test_set_platform_command);
+	CPPUNIT_TEST(test_get_platform_command);
 	CPPUNIT_TEST_SUITE_END();
 private:
 	Song *song;
@@ -172,6 +174,23 @@ public:
 		// Doesn't exist, we should get std::out_of_range
 		Track &t = song->get_track(0);
 		t.add_note(12); // should not get this far
+	}
+	// Platform commands
+	void test_set_platform_command()
+	{
+		CPPUNIT_ASSERT_EQUAL((int16_t)-32768, song->register_platform_command(-1, "first"));
+		CPPUNIT_ASSERT_EQUAL((int16_t)123, song->register_platform_command(123, "second"));
+		CPPUNIT_ASSERT_EQUAL((int16_t)-32767, song->register_platform_command(-1, "third"));
+
+	}
+	void test_get_platform_command()
+	{
+		int16_t param1 = song->register_platform_command(-1, "first");
+		int16_t param2 = song->register_platform_command(123, "second");
+		int16_t param3 = song->register_platform_command(-1, "third");
+		CPPUNIT_ASSERT_EQUAL(std::string("first"), song->get_platform_command(param1).at(0));
+		CPPUNIT_ASSERT_EQUAL(std::string("second"), song->get_platform_command(param2).at(0));
+		CPPUNIT_ASSERT_EQUAL(std::string("third"), song->get_platform_command(param3).at(0));
 	}
 };
 

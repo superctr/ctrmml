@@ -4,12 +4,14 @@
 #include <string.h>
 #include "song.h"
 #include "track.h"
+#include "stringf.h"
 
 //! Constructs a Song.
 Song::Song()
 	: tag_map(),
 	track_map(),
-	ppqn(24)
+	ppqn(24),
+	platform_command_index(-32768)
 {
 }
 
@@ -143,6 +145,30 @@ void Song::add_tag_list(const std::string& key, const std::string& value)
 		s = nexts;
 	}
 	free(str);
+}
+
+//! Registers a platform command.
+/*!
+ * The command can later be retrieved with get_platform_command().
+ *
+ * \param param Set to -1 to use a sequential index.
+ * \return The tag's param ID.
+ */
+int16_t Song::register_platform_command(int16_t param, const std::string& value)
+{
+	if(param == -1)
+		param = platform_command_index++;
+	add_tag_list(stringf("cmd_%d", param), value);
+	return param;
+}
+
+//! Gets the registered platform command with the specified key.
+/*!
+ * \exception std::out_of_range if not found
+ */
+Tag& Song::get_platform_command(int16_t param)
+{
+	return tag_map.at(stringf("cmd_%d", param));
 }
 
 //! Get reference to the track map.

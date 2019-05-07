@@ -16,6 +16,7 @@ class MML_Input_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST(test_mml_tag_append);
 	CPPUNIT_TEST(test_mml_multi_track);
 	CPPUNIT_TEST(test_mml_conditional);
+	CPPUNIT_TEST(test_mml_platform_command);
 	CPPUNIT_TEST_SUITE_END();
 private:
 	Song *song;
@@ -127,6 +128,22 @@ public:
 		CPPUNIT_ASSERT_EQUAL((int16_t)38, song->get_track(0).get_event(1).param);
 		CPPUNIT_ASSERT_EQUAL((int16_t)40, song->get_track(1).get_event(1).param);
 		CPPUNIT_ASSERT_EQUAL((int16_t)41, song->get_track(2).get_event(1).param);
+	}
+	void test_mml_platform_command()
+	{
+		mml_input->read_line("A 'first second third'c 'foo bar baz'");
+		CPPUNIT_ASSERT(song->get_track(0).get_event_count() == 3);
+		CPPUNIT_ASSERT_EQUAL(Event::PLATFORM, song->get_track(0).get_event(0).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)-32768, song->get_track(0).get_event(0).param);
+		CPPUNIT_ASSERT_EQUAL(Event::PLATFORM, song->get_track(0).get_event(2).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)-32767, song->get_track(0).get_event(2).param);
+		// Check tags
+		CPPUNIT_ASSERT_EQUAL(std::string("first"), song->get_platform_command(-32768).at(0));
+		CPPUNIT_ASSERT_EQUAL(std::string("second"), song->get_platform_command(-32768).at(1));
+		CPPUNIT_ASSERT_EQUAL(std::string("third"), song->get_platform_command(-32768).at(2));
+		CPPUNIT_ASSERT_EQUAL(std::string("foo"), song->get_platform_command(-32767).at(0));
+		CPPUNIT_ASSERT_EQUAL(std::string("bar"), song->get_platform_command(-32767).at(1));
+		CPPUNIT_ASSERT_EQUAL(std::string("baz"), song->get_platform_command(-32767).at(2));
 	}
 };
 

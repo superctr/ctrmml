@@ -12,8 +12,10 @@
  *
  * The tags represent song metadata (for example title and author) as well as envelopes and other platform-specific data
  * that cannot be easily represented in a portable way. Tags consists of a string vector and tag map keys are also strings.
- * The # prefix is used for song metadata, @ for instruments or envelope data. % prefix is special and used for
- * platform-specific events.
+ * The # prefix is used for song metadata, @ for instruments or envelope data.
+ *
+ * The 'cmd_' prefix is special and used for platform-specific events. Use the register_platform_command() and
+ * get_platform_command() to set and retrieve these tags.
  */
 class Song
 {
@@ -21,6 +23,7 @@ class Song
 		Tag_Map tag_map;
 		Track_Map track_map;
 		uint16_t ppqn;
+		int16_t platform_command_index;
 
 	public:
 		Song();
@@ -31,6 +34,9 @@ class Song
 		void set_tag(const std::string& key, std::string value);
 		Tag& get_tag(const std::string& key);
 		const std::string& get_tag_front(const std::string& key) const;
+
+		int16_t register_platform_command(int16_t param, const std::string& value);
+		Tag& get_platform_command(int16_t param);
 
 		Track& get_track(uint16_t id);
 		Track& make_track(uint16_t id);

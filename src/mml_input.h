@@ -25,6 +25,7 @@ class MML_Input: public Line_Input
 		int expect_parameter();
 		int expect_signed();
 		int read_note(int c); // c is the first character
+		void platform_exclusive();
 
 		// Wrappers that provide error/warning messages
 		// or other functions

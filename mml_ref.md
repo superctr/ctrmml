@@ -1,4 +1,4 @@
-MML reference for ctrmml (2019-05-06)
+MML reference for ctrmml (2019-05-07)
 ========================
 
 ## Meta commands
@@ -8,11 +8,15 @@ comma-separated values. Strings can be enclosed in double quotes if needed.
 
 -	`#title`, `#composer`, `#author`, `#date`, `#comment` - Song metadata.
 -	`#platform` - Sets the MML target platform.
-	- **TODO**: available platforms
+	- **Note**: Currently only `megadrive` is supported.
 -	`@<num>` - Defines an instrument. Parameters are platform-specific.
 -	`@E<num>` - Defines an envelope.
 -	`@M<num>` - Defines a pitch envelope.
 -	`@P<num>` - Defines a pan envelope.
+-	`%<num>` - Defines a platform-exclusive command. This is roughly
+	equivalent to MIDI sysex messages, and it is executed by the MML tracks
+	with the `%` command. Alternatively a command can be defined from within
+	MML tracks with `'...'`.
 
 ## Addressing tracks
 A span of characters at the beginning of a line selects tracks. There must be
@@ -46,7 +50,11 @@ the previously specified channels will be used.
 	        bagfedc ; both use track A
 
 ## Command reference
--	`cdefgabh` - Notes. Optionally set duration after each note. If no
+
+### Basic commands
+-	`o<0..7>` - Set octave.
+-	`>`, `<` - Octave up and down, respectively.
+-	`cdefgabh` - Insert notes. Optionally set duration after each note. If no
 	duration is set, the duration set by the `l` command is used.
 	- Durations are calculated by dividing the value with the length of a
 	measure. Optionally a dot `.` can be specified to extend the duration by
@@ -55,32 +63,9 @@ the previously specified channels will be used.
 -	`^` - Tie. Extends duration of previous note.
 -	`&` - Slur. Used to connect two notes (legato).
 -	`r` - Rest. Optionally set duration after the rest.
--	`l<duration>` - Set default duration, used if not specified by notes,
-	rests, `R` or `G` commands.
 -	`q<1..8>` - Quantize. Used to set articulation.
--	`>`, `<` - Octave up and down, respectively.
--	`o<0..7>` - Set octave.
--	`k<-128..127>` - Set transpose. &ast;
--	`K<-128..127>` - Set detune. &ast;
--	`v<0-15>` - Set volume. &ast;
--	`)`, `(` - Volume up and down, respectively. You may specify the increment
-	or decrement, if you want.
--	`V<0..255>` - Set volume (fine). &ast;
--	`p<-128..127>` - Set panning. &ast;
--	`@<0..65535>` - Set instrument. &ast;
--	`E<0..255>` - Set envelope. 0 to disable. &ast;
--	`M<0..255>` - Set pitch envelope. 0 to disable. &ast;
--	`P<0..255>` - Set pan envelope. 0 to disable. &ast;
--	`G<0..255>` - Set portamento. 0 to disable. &ast;
--	`D<0..255>` - Drum mode. If set to a non-zero value, enable drum mode and
-	set the drum mode index to the parameter value.
-	- This changes the behavior of notes. `abcdefgh` represent 0-7 and is
-	added to the drum mode index. The macro track with this number is then
-	executed up to and including the first note encountered.
-	- The duration specified in the macro track is ignored and the calling
-	track is used instead.
--	`*<0..255>` - Play commands from another track before resuming at the
-	current position.
+-	`l<duration>` - Set default duration, used if not specified by notes,
+	rests, `R` or `~` commands.
 -	`R<duration>` - Reverse rest. This subtracts the value from the previous
 	note or rest.
 	- This can be used to bring back tracks in sync after a delayed echo
@@ -90,12 +75,12 @@ the previously specified channels will be used.
 -	`~<note><duration>` - Grace note. This subtracts from the length of the
 	previous note like the `R` command, then adds a note with the duration of
 	the borrow.
--	`t<0..255>` - Set tempo in BPM.
--	`T<0..255>` - Set tempo using the platform's native timer values. &ast;
 -	`[/]<0..255>` - Loop block. The section after the `/` is skipped at the
 	last iteration.
 -	`L` - Set loop point (segno). If this is present, playback resumes at this
 	point when the end of the track is reached.
+-	`*<0..255>` - Play commands from another track before resuming at the
+	current position.
 -	`{/}` - Conditional block. Using this block you can specify commands to
 	run on each	individual track, when multiple tracks are specified. Example:
 	`ABC {c/d+/g} {d/f/a}`
@@ -103,7 +88,35 @@ the previously specified channels will be used.
 -	`|` - Divider. This has no effect and can be used to divide measures or
 	bars, for aesthetic reasons.
 
-&ast; indicates that the range may depend on the platform.
+### Platform commands
+These commands are defined for all platforms, however how they are handled
+depends on the platform. They may be ignored or the accepted range may differ.
+
+-	`@<0..65535>` - Set instrument.
+-	`v<0-15>` - Set volume.
+-	`)`, `(` - Volume up and down, respectively. You may specify the increment
+	or decrement, if you want.
+-	`V<0..255>` - Set volume (fine).
+-	`p<-128..127>` - Set panning.
+-	`k<-128..127>` - Set transpose. &ast;
+-	`K<-128..127>` - Set detune. &ast;
+-	`E<0..255>` - Set envelope. 0 to disable.
+-	`M<0..255>` - Set pitch envelope. 0 to disable.
+-	`P<0..255>` - Set pan envelope. 0 to disable.
+-	`G<0..255>` - Set portamento. 0 to disable.
+-	`D<0..255>` - Drum mode. If set to a non-zero value, enable drum mode and
+	set the drum mode index to the parameter value.
+	- This changes the behavior of notes. `abcdefgh` represent 0-7 and is
+	added to the drum mode index. The macro track with this number is then
+	executed up to and including the first note encountered.
+	- The duration specified in the macro track is ignored and the calling
+	track is used instead.
+-	`t<0..255>` - Set tempo in BPM.
+-	`T<0..255>` - Set tempo using the platform's native timer values.
+-	`%<0..32767>` - Platform-exclusive command. This command executes a
+	platform-exclusive meta-command (see previous section) with the specified
+	number.
+-	`'<key> <value> ...'` - Inline definition of platform-specific commands.
 
 ### Comparison with other MML formats (incomplete)
 #### PMD
@@ -115,8 +128,14 @@ the previously specified channels will be used.
 ### Megadrive
 #### Channel mapping
 -	`ABCDEF` FM channels 1-6.
--	`GHI` PSG melody channels 1-3.
+-	`GHI` PSG tone channels 1-3.
 -	`J` PSG noise channel.
+
+#### Platform-exclusive commands
+-	`mode <0..1>` - For the PSG noise channel (`J`), this will enable the use
+	of the third tone channel (`I`) as the noise frequency source. There will
+	be a conflict if you try to control the frequency from both channels while
+	this is active.
 
 #### Limitations
 Pan envelopes not supported.
