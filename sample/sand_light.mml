@@ -93,7 +93,7 @@ J 'mode 1'
 A l16 L @1v14o3 [f+8.f+r4.f+8.f+r8.>>e&f+<<b | f8.fr4.f8.frf32f32frd+&f]4
 B l16 L @54v6o3 [f+8.f+r(2f+r(2f+r(2f+)6 f+8.f+r8. @2 (2 >d+r<g+ )2 | @54 [f8.fr4.]2]4
 C l16 L @57v6o3 [g+8.g+r(2g+r(2g+r(2g+)6 g+8.g+r8. @2 (2 r a+r   )2 | @57 [g8.gr4.]2]4
-D l16 L p2 @3v9o4 [f+@4f+f+@3f+r4. f+8.f+r8. >e&f+<&b | f@4ff@3fr4. f8.fr@4f32f32fr@3d+&f]4
+D l16 L p2 @3v8o4 [f+@4f+f+@3f+r4. f+8.f+r8. >e&f+<&b | f@4ff@3fr4. f8.fr@4f32f32fr@3d+&f]4
 E l1  L p1 @5v6o4 [f+^4f^4]4
 GH l16 L @10o5v11k0 {/(2K20r8} [[d+<a+/g+]7 >[d<ag]6/>d<a]4 {>d<a/}
 F l16 L [[a^ab^aa/rb^]4 /bb^]4 hgr
@@ -101,10 +101,10 @@ J l16 L D40v15 [abbcbba bab]16
 
 ; 5/4 | 3/4 | 4/4
 A g+8.g+r>c+&e&c+>q5d+<<q8d+8.frf+rg+>q5g+<q8g+8 | a+8.a+>c8q5ccq8c&dc+&g+ | <b>q5b<q8br8.q5b>brq8a+&beq5<eq8ef+8 | e8.er4r>e32e32<ef>q5f<q8f>q5f+<q8f+
-B @57f+1^4 | f2. | d+2.@55c+4 | f+1
-C @55a+1^4 | d+2. | @57f+2.d+4 | g+1
-D @65v8 o2a+1^4 | @67f2. | f+2.f+4g+1
-E @67v8 o3f+1^4 | @65d+2. | @67d+2.d+4@65f+1
+B v7 @57f+1^4 | f2. | d+2.@55c+4 | f+1
+C v7 @55a+1^4 | d+2. | @57f+2.d+4 | g+1
+D @65v7 o2a+1^4 | @67f2. | f+2.f+4g+1
+E @67v7 o3f+1^4 | @65d+2. | @67d+2.d+4@65f+1
 GH @11v13K0 <l1{d+/a+}^4 | l2.{g+/>c} | l1{a+/c+} | {b/d+<}
 F [d^^ab^^^^a^ ^a^b^/a^a^ | d^^^aaaab^a^]2 | d^^ab^^^^l32bbl16bbbbbb
 J [cabcbbc^cab cbbab/ac^b | bbaac^ac^aaa]2 | cabcbbc^^l32bbl16bbbbbb
