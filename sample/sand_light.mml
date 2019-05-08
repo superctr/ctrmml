@@ -1,0 +1,120 @@
+#title Sand light
+#game Cyber Sled
+#composer Shinji Hosoe
+#composerj 細江 慎治
+#programmer ctr
+#comment Mucom88 version by ctr 2019-01-28. ctrmml version 2019-05-08
+
+#format megadrive
+
+@1 fm 3 7 ;namco bass
+ 27 14 0 7 3 34 0 8 0 0
+ 31 10 0 8 6 53 0 2 0 0
+ 31 19 0 5 6 15 0 0 0 0
+ 31 6 0 9 14 0 0 0 0 0
+
+@2 fm 4 0 ;2op lead
+ 20 5 0 1 1 9 0 4 7 0
+ 31 8 4 7 2 0 0 4 0 0
+ 20 5 0 1 1 9 0 1 7 0
+ 31 8 4 7 2 127 0 1 0 0
+
+@3 fm 3 5 ;distgtr2
+ 18 0 7 1 0 60 0 10 3 0
+ 25 8 0 7 2 0 0 0 3 0
+ 20 0 0 1 0 30 0 4 1 0
+ 29 8 4 7 2 0 0 2 7 0
+
+@4 fm 3 5 ;distgtr_mute2
+ 18 0 14 1 0 60 0 10 3 0
+ 25 0 5 7 0 0 0 0 3 0
+ 20 0 0 1 0 30 0 4 1 0
+ 29 16 15 7 1 0 0 2 7 0
+
+@5 fm 4 0 ;2op piano
+ 20 0 0 1 0 30 0 4 3 0
+ 31 8 4 7 2 0 0 4 0 0
+ 20 0 0 1 0 30 0 4 6 0
+ 31 8 4 7 2 10 0 4 3 0
+
+@6 fm 4 0 ;2op piano (poly)
+ 20 0 0 1 0 30 0 4 3 0
+ 31 8 4 7 2 0 0 4 0 0
+ 20 0 0 1 0 30 0 4 3 0
+ 31 8 4 7 2 0 0 4 0 0
+
+@10 psg 15>11 / 10>0:15
+@11 psg 15>14 13>6:100 / 0
+@12 psg 15>12 11>6:20 / 6>0:75
+
+; pcm drum mode
+@30 pcm "pcm/bd_16k.wav"
+@31 pcm "pcm/sd_16k.wav"
+@32 pcm "pcm/crash2_16k.wav"
+@33 pcm "pcm/bd_crash2_16k.wav"
+@34 pcm "pcm/esd_16k.wav"
+@36 pcm "pcm/tom2m_16k.wav"
+@37 pcm "pcm/tom2h_16k.wav"
+
+*30 @30c ;D30a
+*31 @31c ;D30b
+*32 @32c ;D30c
+*33 @33c ;D30d
+*34 @34c ;D30e
+*36 @36c ;D30g
+*37 @37c ;D30h
+
+; psg drum mode
+@40 psg 12>0:4
+@41 psg 8>0:4
+@42 psg 12>10:3 9>6:6 5>0:20
+
+*40 @40o9b ;D40a
+*41 @41o9b ;D40b
+*42 @42o9b ;D40c
+
+; polyphonic lead
+@54 2op 2 5 5 4 4 0 ; n+4
+@55 2op 2 4 4 3 3 5 ; n+5
+@56 2op 2 7 7 5 5 -4 ; n+6
+@57 2op 2 6 6 4 4 0 ; n+7
+@58 2op 2 8 8 5 5 -4 ; n+8
+
+@64 2op 6 5 5 4 4 0 ; n+4
+@65 2op 6 4 4 3 3 5 ; n+5
+@67 2op 6 6 6 4 4 0 ; n+7
+
+A t115
+ABCDEGHJ r8.
+F l16 D30 bee
+J 'mode 1'
+
+; 5/8
+A l16 L @1v14o3 [f+8.f+r4.f+8.f+r8.>>e&f+<<b | f8.fr4.f8.frf32f32frd+&f]4
+B l16 L @54v6o3 [f+8.f+r(2f+r(2f+r(2f+)6 f+8.f+r8. @2 (2 >d+r<g+ )2 | @54 [f8.fr4.]2]4
+C l16 L @57v6o3 [g+8.g+r(2g+r(2g+r(2g+)6 g+8.g+r8. @2 (2 r a+r   )2 | @57 [g8.gr4.]2]4
+D l16 L p2 @3v9o4 [f+@4f+f+@3f+r4. f+8.f+r8. >e&f+<&b | f@4ff@3fr4. f8.fr@4f32f32fr@3d+&f]4
+E l1  L p1 @5v6o4 [f+^4f^4]4
+GH l16 L @10o5v11k0 {/(2K20r8} [[d+<a+/g+]7 >[d<ag]6/>d<a]4 {>d<a/}
+F l16 L [[a^ab^aa/rb^]4 /bb^]4 hgr
+J l16 L D40v15 [abbcbba bab]16
+
+; 5/4 | 3/4 | 4/4
+A g+8.g+r>c+&e&c+>q5d+<<q8d+8.frf+rg+>q5g+<q8g+8 | a+8.a+>c8q5ccq8c&dc+&g+ | <b>q5b<q8br8.q5b>brq8a+&beq5<eq8ef+8 | e8.er4r>e32e32<ef>q5f<q8f>q5f+<q8f+
+B @57f+1^4 | f2. | d+2.@55c+4 | f+1
+C @55a+1^4 | d+2. | @57f+2.d+4 | g+1
+D @65v8 o2a+1^4 | @67f2. | f+2.f+4g+1
+E @67v8 o3f+1^4 | @65d+2. | @67d+2.d+4@65f+1
+GH @11v13K0 <l1{d+/a+}^4 | l2.{g+/>c} | l1{a+/c+} | {b/d+<}
+F [d^^ab^^^^a^ ^a^b^/a^a^ | d^^^aaaab^a^]2 | d^^ab^^^^l32bbl16bbbbbb
+J [cabcbbc^cab cbbab/ac^b | bbaac^ac^aaa]2 | cabcbbc^^l32bbl16bbbbbb
+
+; 7/8
+A [[[f8rf&d+&f/a+f8>f<d+>d+<r8]2 /a+c8>c<d+>d+<r8]2 g+>g+<g>g<f>fr8 | f<f8&d+&f&>f<a+f8>f<d+>d+r8 | [<f8rf&d+>&f<a+c8>c<d+>d+<r8 / f8rf&d+>&f<a+f8>f<d+>d+r8]2]2
+B l8 [@55f2.r   g2.r d2.r c2.r | d2.r g2.r c2.r    c2.r]2
+C l8 [@58g2.r@57d+2.rd+2.rd2.r | d+2.rd+2.rd+2.r@56d+2.r]2
+D @5v7o4 [p2ffrfrr<p3ffp1rfrrfr >ffrfrr<p3ffp2rfrrfr]8
+E p3v7o4 [@65l8 a+16a+>cp1cp3<a+a+16a+p1a+p2a+2p3 | l16a+a+al8a+. | ff16fp1f4p3f16fp1fp3 | l16ggfl8gp1gp2gp1g4r16p3 | l16>ddcl8dp1dp3d<ga+r16 | >c16ccp1cp3cp1c16p3c4 | <ff16f.@64fp1fp2f4p3 | d+16d+d+fp1fp3fp1fr16p3]2
+GH @12v13 [{/k5} l8 a+16a+>c(c)<a+a+16a+(a+(a+2)2 | l16a+a+al8a+. | ff16f(f4)f16f(f) | l16ggfl8g(g(g(g4r16)3 | l16>ddcl8d(d)d<ga+r16 | >c16cc(c)c(c16)c4 | <ff16f.{/k4}f(f(f4)2 | d+16d+d+f(f)f(fr16)]2
+F [[[a^^ab^a/b^a^^b^]4 /b^abbb^]2 h^ah^b^]2
+J [[abc^]3ar]16

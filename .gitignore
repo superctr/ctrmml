@@ -1,6 +1,5 @@
 /bin/*
 /obj/*
 doxygen
-*.wav
 *.vgm
 ctrmml
