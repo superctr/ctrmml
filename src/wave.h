@@ -66,6 +66,7 @@ class Wave_Rom
 		std::vector<uint8_t> rom_data;
 		std::vector<Gap> gaps;
 		std::vector<Sample> samples;
+		std::string error_message;
 
 		virtual std::vector<uint8_t> encode_sample(const std::string& encoding_type, const std::vector<int16_t>& input);
 		virtual uint32_t fit_sample(unsigned long loop_start, unsigned long sample_size);
@@ -79,6 +80,7 @@ class Wave_Rom
 		unsigned int get_free_bytes();
 		const std::vector<Sample>& get_sample_headers();
 		const std::vector<uint8_t>& get_rom_data();
+		const std::string& get_error();
 };
 
 #endif

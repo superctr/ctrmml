@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "wave.h"
+#include "input.h"
 #include "vgm.h"
 #include "stringf.h"
 
@@ -209,23 +210,23 @@ unsigned int Wave_Rom::add_sample(const Tag& tag)
 	int status = -1;
 	if(!tag.size())
 	{
-		std::cerr << "Incomplete sample definition\n";
-		throw std::invalid_argument("Wave_Rom::add_sample");
+		error_message = "Incomplete sample definition";
+		throw InputError(nullptr, error_message.c_str());
 	}
 	std::string filename = tag[0];
 	Wave_File wf;
 	for(auto&& i : include_paths)
 	{
 		std::string fn = i + "/" + filename;
-		std::cout << "attempt to load " << fn << "\n";
+		//std::cout << "attempt to load " << fn << "\n";
 		status = wf.read(fn);
 		if(status == 0)
 			break;
 	}
 	if(status)
 	{
-		std::cerr << filename << " not found\n";
-		throw std::invalid_argument("Wave_Rom::add_sample");
+		error_message = filename + " not found";
+		throw InputError(nullptr, error_message.c_str());
 	}
 
 	// convert sample
@@ -235,8 +236,8 @@ unsigned int Wave_Rom::add_sample(const Tag& tag)
 	// TODO: we should call fit_sample here instead
 	if((start_pos + sample.size()) > max_size)
 	{
-		std::cerr << "ROM size overflow";
-		throw std::invalid_argument("Wave_Rom::add_sample");
+		error_message = "Sample does not fit in remaining ROM size";
+		throw InputError(nullptr, error_message.c_str());
 	}
 	current_size = start_pos + sample.size();
 
@@ -265,4 +266,9 @@ const std::vector<Wave_Rom::Sample>& Wave_Rom::get_sample_headers()
 const std::vector<uint8_t>& Wave_Rom::get_rom_data()
 {
 	return rom_data;
+}
+
+const std::string& Wave_Rom::get_error()
+{
+	return error_message;
 }

@@ -1103,7 +1103,6 @@ double MD_Driver::play_step()
 	}
 	if(loop_trigger && loop_count() == 0)
 	{
-		printf("set loop position\n");
 		set_loop();
 		reset_loop_count();
 		loop_trigger = 0;

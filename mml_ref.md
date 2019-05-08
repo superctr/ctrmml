@@ -120,6 +120,7 @@ depends on the platform. They may be ignored or the accepted range may differ.
 
 ### Comparison with other MML formats (incomplete)
 #### PMD
+-	`[:]` (loops) Use `/` to break loops.
 -	`l-<duration>` (borrow), use the `R<duration>` command instead.
 -	`&` (tie), use the `^` command.
 -	`&&` (slur), use the `&` command.

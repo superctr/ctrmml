@@ -174,7 +174,6 @@ void Basic_Player::step_event()
 		case Event::SEGNO:
 			loop_position = position;
 			loop_reset_position = position;
-			printf("loop_reset_position = %d\n",position);
 			event_hook();
 			break;
 		case Event::JUMP:
