@@ -81,7 +81,7 @@ void generate_vgm(Song& song, const std::string& filename, int max_seconds)
 	MD_Driver driver(44100, &vgm);
 	long max_time = max_seconds * 44100;
 	driver.play_song(song);
-	double elapsed_time;
+	double elapsed_time = 0;
 	double delta = 0;
 	bool looped_or_finished = 0;
 	while(elapsed_time < max_time)

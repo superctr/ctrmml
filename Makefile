@@ -1,8 +1,20 @@
 SRC = src
 OBJ = obj
-CFLAGS = -g -Wall
+
+CFLAGS = -Wall
 LDFLAGS =
+
+ifneq ($(RELEASE),1)
+CFLAGS += -g
+else
+CFLAGS += -O2
+LDFLAGS += -s
+endif
+
 LDFLAGS_TEST = -lcppunit
+ifeq ($(OS),Windows_NT)
+	LDFLAGS += -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic
+endif
 
 CORE_OBJS = \
 	$(OBJ)/track.o \
