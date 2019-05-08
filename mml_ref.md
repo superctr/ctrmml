@@ -98,8 +98,8 @@ depends on the platform. They may be ignored or the accepted range may differ.
 	or decrement, if you want.
 -	`V<0..255>` - Set volume (fine).
 -	`p<-128..127>` - Set panning.
--	`k<-128..127>` - Set transpose. &ast;
--	`K<-128..127>` - Set detune. &ast;
+-	`k<-128..127>` - Set transpose.
+-	`K<-128..127>` - Set detune.
 -	`E<0..255>` - Set envelope. 0 to disable.
 -	`M<0..255>` - Set pitch envelope. 0 to disable.
 -	`P<0..255>` - Set pan envelope. 0 to disable.
@@ -162,6 +162,8 @@ uses a multiplier which is not a power of 2). Disabled carrier operators are
 also enabled, which can be useful if you use the same patch for both
 monophonic and polyphonic sounds.
 
+This feature is similar to the "Tone Doubler" in NRTDRV.
+
 	@2 fm ;2op lead
 	;	ALG  FB
 		  4   0
@@ -204,6 +206,18 @@ Set the sustain position with `/` or the loop position with `|`
 
 When specifying envelopes, there must be no space between the
 parameters in a node, as the space itself separates nodes.
+
+#### PCM samples
+PCM samples are defined as instruments. The first (and currently only)
+parameter is the path to the sample (relative to that of the MML file).
+The sample rate specified in the WAV file is used, and if the WAV file
+has more than one channel, the first (left) channel is read.
+
+	@30 pcm "path/to/sample.wav"
+
+You can use a PCM sample from any FM or PCM channels. However, the
+panning settings from FM channel 6 (`F`) are used and the FM output
+from that channel is muted while PCM samples are playing.
 
 #### Pitch envelopes
 Pitch envelopes are specified with `@M<number>` and are used in MML

@@ -14,8 +14,11 @@
 
 MD_Data::MD_Data()
 	: data_bank()
+	, wave_rom(0x200000)
 	, envelope_map()
+	, wave_map()
 	, ins_transpose()
+	, pitch_map()
 	, ins_type()
 {
 }
@@ -335,6 +338,14 @@ void MD_Data::add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_data)
 	add_pitch_node(stringf("%f>%f:%d", -vibrato_depth, vibrato_base, vibrato_rate).c_str(), env_data);
 }
 
+void MD_Data::read_wave(uint16_t id, const Tag& tag)
+{
+	wave_map[id] = wave_rom.add_sample(tag);
+	//pitch_map[id] = add_unique_data(env_data);
+	ins_type[id] = INS_PCM;
+}
+
+
 std::string MD_Data::dump_data(uint16_t id, uint16_t mapped_id)
 {
 	std::string out = stringf("%d = %d [%d]{", id, mapped_id, data_bank[mapped_id].size());
@@ -372,6 +383,12 @@ void MD_Data::read_envelope(uint16_t id, const Tag& tag)
 		std::cout << "read 2op envelope " << dump_data(id, envelope_map[id]) << "\n";
 		return;
 	}
+	else if(iequal("pcm", type))
+	{
+		read_wave(id, Tag(it, tag.end()));
+		std::cout << "read wave sample " /*<< dump_data(id, envelope_map[id])*/ << "\n";
+		return;
+	}
 	else
 	{
 		throw InputError(nullptr, stringf("unknown envelope type %s\n",type.c_str()).c_str());
@@ -383,7 +400,10 @@ void MD_Data::read_song(Song& song)
 	// clear envelope and instrument maps
 	envelope_map.clear();
 	ins_transpose.clear();
+	pitch_map.clear();
+	wave_map.clear();
 	ins_type.clear();
+	wave_rom.set_include_paths(song.get_tag("include_path"));
 	// add a unique psg envelope to prevent possible errors
 	envelope_map[0] = add_unique_data({0x10, 0x01, 0x1f, 0x00});
 	ins_transpose[0] = 0;
@@ -407,6 +427,7 @@ void MD_Data::read_song(Song& song)
 MD_Channel::MD_Channel(MD_Driver& driver, int id)
 	: Player(*driver.song, driver.song->get_track(id)),
 	driver(&driver),
+	channel_id(id),
 	slur_flag(0),
 	key_on_flag(0),
 	note_pitch(0xffff),
@@ -466,11 +487,13 @@ void MD_Channel::write_event()
 			}
 			if(!slur_flag)
 			{
+				key_off_pcm();
 				key_off();
 			}
 			break;
 		case Event::REST:
 		case Event::END:
+			key_off_pcm();
 			key_off();
 			break;
 		case Event::SLUR:
@@ -577,6 +600,9 @@ uint8_t MD_Channel::write_fm_operator(int idx, int bank, int id, const std::vect
 void MD_Channel::write_fm_4op(int bank, int id)
 {
 	uint16_t ins_id = get_var(Event::INS);
+	if(driver->data.ins_type[ins_id] != MD_Data::INS_FM)
+		return;
+
 	const std::vector<uint8_t>& idata = driver->data.data_bank.at(driver->data.envelope_map[ins_id]);
 	driver->ym2612_w(bank, 0x40, id, 0, 0x7f); // tl=max
 	driver->ym2612_w(bank, 0x40, id, 1, 0x7f);
@@ -619,6 +645,35 @@ uint16_t MD_Channel::get_psg_pitch(uint16_t pitch) const
 	return set_pitch;
 }
 
+void MD_Channel::key_on_pcm()
+{
+	int16_t ins_id = get_var(Event::INS);
+	if(driver->data.ins_type[ins_id] == MD_Data::INS_PCM)
+	{
+		int wave_header_id = driver->data.wave_map[ins_id];
+		Wave_Rom::Sample sample = driver->data.wave_rom.get_sample_headers().at(wave_header_id);
+		driver->last_pcm_channel = channel_id;
+		driver->ym2612_w(0, 0x2b, 0, 0, 0x80); // DAC enable
+		if(driver->vgm_writer)
+		{
+			driver->vgm_writer->dac_start(0x00, sample.start_pos, sample.size, sample.rate);
+		}
+	}
+}
+
+void MD_Channel::key_off_pcm()
+{
+	if(driver->last_pcm_channel == channel_id)
+	{
+		driver->ym2612_w(0, 0x2b, 0, 0, 0x00); // DAC disable
+		if(driver->vgm_writer)
+		{
+			driver->vgm_writer->dac_stop(0x00);
+		}
+		driver->last_pcm_channel = -1;
+	}
+}
+
 //! Update a channel
 void MD_Channel::update(int seq_ticks)
 {
@@ -634,7 +689,10 @@ void MD_Channel::update(int seq_ticks)
 	if(key_on_flag)
 	{
 		if(!slur_flag)
+		{
+			key_on_pcm();
 			key_on();
+		}
 		slur_flag = false;
 		key_on_flag = false;
 	}
@@ -801,7 +859,10 @@ MD_PSGMelody::MD_PSGMelody(MD_Driver& driver, int track_id, int channel_id)
 
 void MD_PSGMelody::set_ins()
 {
-	std::vector<uint8_t>* idata = &driver->data.data_bank.at(driver->data.envelope_map[get_var(Event::INS)]);
+	int16_t ins_id = get_var(Event::INS);
+	if(driver->data.ins_type[ins_id] != MD_Data::INS_PSG)
+		return;
+	std::vector<uint8_t>* idata = &driver->data.data_bank.at(driver->data.envelope_map[ins_id]);
 	set_envelope(idata);
 }
 
@@ -848,7 +909,10 @@ MD_PSGNoise::MD_PSGNoise(MD_Driver& driver, int track_id, int channel_id)
 
 void MD_PSGNoise::set_ins()
 {
-	std::vector<uint8_t>* idata = &driver->data.data_bank.at(driver->data.envelope_map[get_var(Event::INS)]);
+	int16_t ins_id = get_var(Event::INS);
+	if(driver->data.ins_type[ins_id] != MD_Data::INS_PSG)
+		return;
+	std::vector<uint8_t>* idata = &driver->data.data_bank.at(driver->data.envelope_map[ins_id]);
 	set_envelope(idata);
 }
 
@@ -899,7 +963,12 @@ void MD_PSGNoise::set_type()
  * \param is_pal Use 50hz sequence update rate
  */
 MD_Driver::MD_Driver(unsigned int rate, VGM_Writer* vgm, bool is_pal)
-	: Driver(rate, vgm), tempo_delta(255), tempo_counter(0), loop_trigger(0)
+	: Driver(rate, vgm)
+	, vgm_writer(vgm)
+	, tempo_delta(255)
+	, tempo_counter(0)
+	, last_pcm_channel(-1)
+	, loop_trigger(0)
 {
 	if(vgm)
 	{
@@ -929,6 +998,15 @@ void MD_Driver::play_song(Song& song)
 	this->song = &song;
 	channels.clear();
 	data.read_song(song);
+	if(vgm_writer)
+	{
+		const std::vector<uint8_t>& dbdata = data.wave_rom.get_rom_data();
+		vgm_writer->datablock(0x00,
+			dbdata.size() - data.wave_rom.get_free_bytes(),
+			dbdata.data(),
+			dbdata.size());
+		vgm_writer->dac_setup(0x00, 0x02, 0x00, 0x2a, 0x00);
+	}
 	// setup tempo
 	tempo_delta = 128;
 	tempo_counter = 0;

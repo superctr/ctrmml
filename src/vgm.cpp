@@ -204,7 +204,56 @@ void VGM_Writer::write(uint8_t command, uint16_t port, uint16_t reg, uint16_t da
 		*buffer_pos++ = (reg&0xff);
 		*buffer_pos++ = (data&0xff);
 	}
+}
 
+//! DAC stream setup
+void VGM_Writer::dac_setup(uint8_t sid, uint8_t chip_id, uint32_t port, uint32_t reg, uint8_t db_id)
+{
+	reserve(100);
+	add_delay();
+	*buffer_pos++ = 0x90;
+	*buffer_pos++ = sid;
+	*buffer_pos++ = chip_id;
+	*buffer_pos++ = port;
+	*buffer_pos++ = reg;
+	*buffer_pos++ = 0x91;
+	*buffer_pos++ = sid;
+	*buffer_pos++ = db_id;
+	*buffer_pos++ = 1;
+	*buffer_pos++ = 0;
+}
+
+//! DAC stream playback
+void VGM_Writer::dac_start(uint8_t sid, uint32_t start, uint32_t length, uint32_t freq)
+{
+	reserve(100);
+	add_delay();
+	*buffer_pos++ = 0x92;
+	*buffer_pos++ = sid;
+	*buffer_pos++ = freq & 0xff;
+	*buffer_pos++ = freq >> 8;
+	*buffer_pos++ = freq >> 16;
+	*buffer_pos++ = freq >> 24;
+	*buffer_pos++ = 0x93;
+	*buffer_pos++ = sid;
+	*buffer_pos++ = start & 0xff;
+	*buffer_pos++ = start >> 8;
+	*buffer_pos++ = start >> 16;
+	*buffer_pos++ = start >> 24;
+	*buffer_pos++ = 0x01;
+	*buffer_pos++ = length & 0xff;
+	*buffer_pos++ = length >> 8;
+	*buffer_pos++ = length >> 16;
+	*buffer_pos++ = length >> 24;
+}
+
+//! DAC stream playback
+void VGM_Writer::dac_stop(uint8_t sid)
+{
+	reserve(100);
+	add_delay();
+	*buffer_pos++ = 0x94;
+	*buffer_pos++ = sid;
 }
 
 void VGM_Writer::add_gd3(const char* s)
@@ -317,9 +366,16 @@ uint8_t VGM_Writer::peek8(uint32_t offset)
 }
 
 //! Adds a datablock.
-void VGM_Writer::datablock(uint8_t dbtype, uint32_t dbsize, uint8_t* datablock, uint32_t maxsize, uint32_t mask, uint32_t flags)
+/*!
+ * NOTE: mask argument is currently ignored. So leave it -1.
+ */
+void VGM_Writer::datablock(uint8_t dbtype, uint32_t dbsize, const uint8_t* db, uint32_t maxsize, uint32_t mask, uint32_t flags, uint32_t offset)
 {
 	reserve(dbsize + 100);
 	add_delay();
+	add_datablockcmd(dbtype, dbsize | flags, maxsize, offset);
+	for(uint32_t i = 0; i < dbsize; i++)
+	{
+		*buffer_pos++ = *db++;
+	}
 }
-

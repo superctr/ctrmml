@@ -54,6 +54,10 @@ class VGM_Writer
 		void set_loop();
 		void stop();
 		void write(uint8_t command, uint16_t port, uint16_t reg, uint16_t data);
+		void dac_setup(uint8_t sid, uint8_t chip_id, uint32_t port, uint32_t reg, uint8_t db_id);
+		void dac_start(uint8_t sid, uint32_t start, uint32_t length, uint32_t freq);
+		void dac_stop(uint8_t sid);
+
 		void write_tag(const VGM_Tag& tag = {});
 		void poke32(uint32_t offset, uint32_t data);
 		void poke16(uint32_t offset, uint16_t data);
@@ -61,8 +65,7 @@ class VGM_Writer
 		uint32_t peek32(uint32_t offset);
 		uint16_t peek16(uint32_t offset);
 		uint8_t peek8(uint32_t offset);
-		void datablock(uint8_t dbtype, uint32_t dbsize, uint8_t* datablock, uint32_t maxsize, uint32_t mask, uint32_t flags);
+		void datablock(uint8_t dbtype, uint32_t dbsize, const uint8_t* db, uint32_t maxsize, uint32_t mask = 0xffffffff, uint32_t flags = 0, uint32_t offset = 0);
 };
 
 #endif
-

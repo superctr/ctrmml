@@ -1,4 +1,5 @@
 #include "input.h"
+#include "song.h"
 #include <cctype>
 #include <cstring>
 #include <cstdio>
@@ -111,12 +112,14 @@ void Input::parse_warning(const char* msg)
 }
 
 //! Open a file and parse it.
-/*! This sets the filename and calls parse_file().
+/*! This adds the filepath to the include_path tag,
+ * sets the filename and calls parse_file().
  *
  * \exception InputError in case of a read or parse error.
  */
 void Input::open_file(const std::string& fn)
 {
+	song->add_tag("include_path", fn.substr(0, fn.find_last_of("/\\")));
 	filename = fn;
 	parse_file();
 }

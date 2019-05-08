@@ -7,7 +7,10 @@
 //#define DEBUG_PSG(fmt,...) { printf(fmt, __VA_ARGS__); }
 
 Driver::Driver(unsigned int rate, VGM_Writer* vgm)
-	: vgm_writer(vgm), delta(0), rate(rate), finished(0)
+	: vgm_writer(vgm)
+	, delta(0)
+	, rate(rate)
+	, finished(0)
 {
 }
 

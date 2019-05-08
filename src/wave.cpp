@@ -1,9 +1,15 @@
-#include "wave.h"
-#include "vgm.h"
+/*
+	This code is a bit ugly and should be refactored when I have the time...
+*/
+#include <iostream>
 #include <fstream>
+#include <algorithm>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "wave.h"
+#include "vgm.h"
+#include "stringf.h"
 
 Wave_File::Wave_File(uint16_t channels, uint32_t rate, uint16_t bits)
 	: channels(channels), sbits(bits), srate(rate)
@@ -35,7 +41,7 @@ uint32_t Wave_File::parse_chunk(const uint8_t *fdata)
 {
 	uint32_t chunkid = *(uint32_t*)(fdata);
 	uint32_t chunksize = *(uint32_t*)(fdata+4);
-	printf("Parse the %c%c%c%c chunk with %d size\n", fdata[0],fdata[1],fdata[2],fdata[3], chunksize);
+	//printf("Parse the %c%c%c%c chunk with %d size\n", fdata[0],fdata[1],fdata[2],fdata[3], chunksize);
 	uint32_t pos = 0;
 	switch(chunkid)
 	{
@@ -55,6 +61,8 @@ uint32_t Wave_File::parse_chunk(const uint8_t *fdata)
 				fprintf(stderr,"unsupported format\n");
 				return 0;
 			}
+			if(data.size() != channels)
+				data.resize(channels);
 			break;
 		case 0x61746164: // 'data'
 			if(step == 0)
@@ -65,18 +73,20 @@ uint32_t Wave_File::parse_chunk(const uint8_t *fdata)
 				{
 					if(sbits == 8)
 					{
-						data[ch][pos] = (*d ^ 0x80) << 8;
+						data[ch].push_back((*d ^ 0x80) << 8);
 						d++;
 					}
 					else if(sbits == 16)
 					{
-						data[ch][pos] = *(int16_t*)d;
+						data[ch].push_back(*(int16_t*)d);
 						d += 2;
 					}
 				}
 				pos++;
 			}
-			slength = pos;
+			slength = data[0].size();
+			lstart = 0;
+			lend = 0;
 			break;
 		case 0x6c706d73: // 'smpl'
 			use_smpl_chunk = 1;
@@ -90,6 +100,7 @@ uint32_t Wave_File::parse_chunk(const uint8_t *fdata)
 			{
 				lstart = *(uint32_t*)(fdata+0x2c+8);
 				lend = *(uint32_t*)(fdata+0x2c+12) + 1;
+				slength = lend;
 			}
 			break;
 	}
@@ -154,13 +165,99 @@ int Wave_File::read(const std::string& filename)
 	return 0;
 }
 
-
 Wave_Rom::Wave_Rom(unsigned long max_size)
 	: max_size(max_size)
+	, current_size(0)
+	, include_paths{""}
+	, rom_data()
+	, gaps()
 {
+	rom_data.resize(max_size, 0);
 }
 
 Wave_Rom::~Wave_Rom()
 {
 	return;
+}
+
+//! Encode the sample, convert it from 16-bit data to 8-bit.
+std::vector<uint8_t> Wave_Rom::encode_sample(const std::string& encoding_type, const std::vector<int16_t>& input)
+{
+	// default encoder, simply convert 16-bit to 8-bit unsigned
+	std::vector<uint8_t> output;
+	for(auto&& i : input)
+	{
+		output.push_back((i >> 8) ^ 0x80);
+	}
+	return output;
+}
+
+//! This function simply returns the next possible start address for the rom.
+uint32_t Wave_Rom::fit_sample(unsigned long loop_start, unsigned long sample_size)
+{
+	return current_size;
+}
+
+void Wave_Rom::set_include_paths(const Tag& tag)
+{
+	include_paths = tag;
+}
+
+//! Add sample to the waverom.
+unsigned int Wave_Rom::add_sample(const Tag& tag)
+{
+	int status = -1;
+	std::string filename = tag[0];
+	Wave_File wf;
+	for(auto&& i : include_paths)
+	{
+		std::string fn = i + "/" + filename;
+		std::cout << "attempt to load " << fn << "\n";
+		status = wf.read(fn);
+		if(status == 0)
+			break;
+	}
+	if(status)
+	{
+		std::cerr << filename << " not found\n";
+		throw std::invalid_argument("add_sample");
+	}
+
+	// convert sample
+	std::vector<uint8_t> sample = encode_sample("", wf.data[0]);
+	unsigned long start_pos = fit_sample(wf.lstart, sample.size());
+
+	// TODO: we should call fit_sample here instead
+	if((start_pos + sample.size()) > max_size)
+	{
+		std::cerr << "ROM size overflow";
+		throw std::invalid_argument("add_sample");
+	}
+	current_size = start_pos + sample.size();
+
+	std::copy_n(sample.begin(),wf.slength, rom_data.begin() + start_pos);
+	samples.push_back({
+		start_pos,
+		wf.slength,
+		wf.lstart,
+		wf.lend,
+		wf.srate,
+		wf.transpose});
+
+	return samples.size() - 1;
+}
+
+unsigned int Wave_Rom::get_free_bytes()
+{
+	return max_size - current_size;
+}
+
+const std::vector<Wave_Rom::Sample>& Wave_Rom::get_sample_headers()
+{
+	return samples;
+}
+
+const std::vector<uint8_t>& Wave_Rom::get_rom_data()
+{
+	return rom_data;
 }

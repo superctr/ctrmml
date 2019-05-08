@@ -5,6 +5,7 @@
 #include "../player.h"
 #include "../driver.h"
 #include "../vgm.h"
+#include "../wave.h"
 #include <map>
 #include <memory>
 #include <vector>
@@ -15,12 +16,6 @@ class MD_Driver;
 //! Megadrive driver data bank
 class MD_Data
 {
-	enum InstrumentType
-	{
-		INS_UNDEFINED = 0,
-		INS_PSG = 1,
-		INS_FM = 2
-	};
 	private:
 		static const int data_count_max = 256;
 		int add_unique_data(const std::vector<uint8_t>& data);
@@ -31,12 +26,25 @@ class MD_Data
 		void read_pitch(uint16_t id, const Tag& tag);
 		void add_pitch_node(const char* s, std::vector<uint8_t>* env_data);
 		void add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_data);
+		void read_wave(uint16_t id, const Tag& tag);
 		void read_envelope(uint16_t id, const Tag& tag);
 
 	public:
+		enum InstrumentType
+		{
+			INS_UNDEFINED = 0,
+			INS_PSG = 1,
+			INS_FM = 2,
+			INS_PCM = 3
+		};
+		//! Data bank, holds all instrument and envelope data
 		std::vector<std::vector<uint8_t>> data_bank;
+		//! Waverom bank, holds PCM samples.
+		Wave_Rom wave_rom;
 		//! Maps the current song instruments to data_bank entries.
 		std::map<uint16_t, int> envelope_map;
+		//! Maps the PCM instruments to a wave_rom header.
+		std::map<uint16_t, int> wave_map;
 		//! Maps the current song instrument to transpose settings (for FM 2op only)
 		std::map<uint16_t, int> ins_transpose;
 		//! Maps the current song pitch envelopes to data_bank entries.
@@ -72,8 +80,11 @@ class MD_Channel : public Player
 		void write_fm_4op(int bank, int id);
 		uint16_t get_fm_pitch(uint16_t pitch) const;
 		uint16_t get_psg_pitch(uint16_t pitch) const;
+		void key_on_pcm();
+		void key_off_pcm();
 
 		MD_Driver* driver;
+		int channel_id;
 		bool slur_flag; //!< Flag to disable key on for the next note
 		bool key_on_flag;
 		// Portamento
@@ -192,6 +203,8 @@ class MD_Driver : public Driver
 	private:
 		MD_Data data;
 		Song* song;
+		VGM_Writer* vgm_writer;
+
 		std::vector<std::unique_ptr<MD_Channel>> channels;
 		double seq_rate;
 		double seq_delta;
@@ -202,6 +215,7 @@ class MD_Driver : public Driver
 		uint8_t tempo_convert(uint16_t bpm);
 		uint8_t tempo_delta;
 		uint8_t tempo_counter;
+		int last_pcm_channel;
 
 		bool loop_trigger;
 
