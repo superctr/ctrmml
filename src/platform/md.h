@@ -220,6 +220,7 @@ class MD_Driver : public Driver
 		bool loop_trigger;
 
 		void seq_update();
+		void reset_loop_count();
 
 	public:
 		MD_Driver(unsigned int rate, VGM_Writer* vgm, bool is_pal = false);

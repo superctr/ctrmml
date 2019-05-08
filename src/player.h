@@ -45,8 +45,10 @@ class Basic_Player
 		bool enabled;
 		int position;
 		int loop_position;
+		int loop_reset_position; // Position to increment the loop count
 		std::stack<Player_Stack> stack;
 		unsigned int loop_count;
+		unsigned int loop_reset_count;
 		unsigned int stack_depth[Player_Stack::MAX_STACK_TYPE];
 		unsigned int max_stack_depth;
 		void stack_underflow(int type);
@@ -84,6 +86,7 @@ class Basic_Player
 		unsigned int get_loop_count() const;
 		const Event& get_event() const;
 		void step_event();
+		void reset_loop_count();
 };
 
 //! Generic track player.

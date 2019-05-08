@@ -482,7 +482,7 @@ void MD_Channel::write_event()
 			}
 			if(event.type != Event::TIE)
 			{
-				note_pitch = (event.param + get_var(Event::TRANSPOSE))<<8;
+				note_pitch = (event.param + get_var(Event::TRANSPOSE) + ins_transpose)<<8;
 				note_pitch += get_var(Event::DETUNE);
 			}
 			if(!slur_flag)
@@ -491,8 +491,9 @@ void MD_Channel::write_event()
 				key_off();
 			}
 			break;
-		case Event::REST:
 		case Event::END:
+			driver->loop_trigger = true;
+		case Event::REST: // continue
 			key_off_pcm();
 			key_off();
 			break;
@@ -624,7 +625,7 @@ void MD_Channel::write_fm_4op(int bank, int id)
 uint16_t MD_Channel::get_fm_pitch(uint16_t pitch) const
 {
 	static const uint16_t freqtab[13] = {644, 681, 722, 765, 810, 858, 910, 964, 1021, 1081, 1146, 1214, 1288};
-	uint8_t note = (pitch >> 8) + ins_transpose;
+	uint8_t note = (pitch >> 8);
 	uint8_t octave = note / 12;
 	uint8_t detune = pitch & 0xff;
 	const uint16_t* base = &freqtab[note % 12];
@@ -957,7 +958,7 @@ void MD_PSGNoise::set_type()
 }
 
 //! constructs a MD_Driver.
-/*
+/*!
  * \param rate Sample rate.
  * \param vgm Optional VGM writer. Set to nullptr to disable VGM logging.
  * \param is_pal Use 50hz sequence update rate
@@ -1043,6 +1044,18 @@ void MD_Driver::seq_update()
 	}
 }
 
+//! Reset loop count
+void MD_Driver::reset_loop_count()
+{
+	if(!channels.size())
+		return;
+
+	for(auto it = channels.begin(); it != channels.end(); it++)
+	{
+		it->get()->reset_loop_count();
+	}
+}
+
 //! Return true if driver is currently playing a song, false otherwise.
 bool MD_Driver::is_playing()
 {
@@ -1068,7 +1081,7 @@ int MD_Driver::loop_count()
 	for(auto it = channels.begin(); it != channels.end(); it++)
 	{
 		MD_Channel* ch = it->get();
-		if(ch->get_loop_count() < loop_count)
+		if(ch->is_enabled() && ch->get_loop_count() < loop_count)
 			loop_count = ch->get_loop_count();
 	}
 	return loop_count;
@@ -1092,6 +1105,7 @@ double MD_Driver::play_step()
 	{
 		printf("set loop position\n");
 		set_loop();
+		reset_loop_count();
 		loop_trigger = 0;
 	}
 	// get the time to the next event

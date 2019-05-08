@@ -1,5 +1,7 @@
-#include "player.h"
+#include <algorithm>
 #include <stdexcept>
+
+#include "player.h"
 #include "input.h"
 #include "song.h"
 #include "track.h"
@@ -11,7 +13,10 @@ Basic_Player::Basic_Player(Song& song, Track& track)
 	enabled(true),
 	position(0),
 	loop_position(-1),
+	loop_reset_position(-1),
+	stack(),
 	loop_count(0),
+	loop_reset_count(0),
 	max_stack_depth(10),
 	play_time(0),
 	on_time(0),
@@ -93,7 +98,15 @@ unsigned int Basic_Player::get_play_time() const
 //! Gets the current loop count.
 unsigned int Basic_Player::get_loop_count() const
 {
-	return loop_count;
+	return std::min(loop_reset_count, loop_count);
+}
+
+//! Resets the loop count.
+void Basic_Player::reset_loop_count()
+{
+	loop_count = 0;
+	loop_reset_count = 0;
+	loop_reset_position = (position) ? position-1 : 0;
 }
 
 //! Gets the last parsed event.
@@ -113,6 +126,8 @@ void Basic_Player::step_event()
 	play_time += on_time + off_time;
 	on_time = 0;
 	off_time = 0;
+	if(position == loop_reset_position)
+		loop_reset_count = loop_count;
 	try
 	{
 		// Read the next event
@@ -158,6 +173,8 @@ void Basic_Player::step_event()
 			break;
 		case Event::SEGNO:
 			loop_position = position;
+			loop_reset_position = position;
+			printf("loop_reset_position = %d\n",position);
 			event_hook();
 			break;
 		case Event::JUMP:

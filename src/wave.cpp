@@ -207,6 +207,11 @@ void Wave_Rom::set_include_paths(const Tag& tag)
 unsigned int Wave_Rom::add_sample(const Tag& tag)
 {
 	int status = -1;
+	if(!tag.size())
+	{
+		std::cerr << "Incomplete sample definition\n";
+		throw std::invalid_argument("Wave_Rom::add_sample");
+	}
 	std::string filename = tag[0];
 	Wave_File wf;
 	for(auto&& i : include_paths)
@@ -220,7 +225,7 @@ unsigned int Wave_Rom::add_sample(const Tag& tag)
 	if(status)
 	{
 		std::cerr << filename << " not found\n";
-		throw std::invalid_argument("add_sample");
+		throw std::invalid_argument("Wave_Rom::add_sample");
 	}
 
 	// convert sample
@@ -231,7 +236,7 @@ unsigned int Wave_Rom::add_sample(const Tag& tag)
 	if((start_pos + sample.size()) > max_size)
 	{
 		std::cerr << "ROM size overflow";
-		throw std::invalid_argument("add_sample");
+		throw std::invalid_argument("Wave_Rom::add_sample");
 	}
 	current_size = start_pos + sample.size();
 

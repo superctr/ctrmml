@@ -62,15 +62,23 @@ VGM_Tag get_tags(Song& song)
 
 	tag.title = safe_get_tag(song,"#title");
 	tag.title_j = safe_get_tag(song,"#titlej");
-	tag.author = safe_get_tag(song,"#author");
-	tag.author_j = safe_get_tag(song,"#authorj");
+	tag.author = safe_get_tag(song,"#composer");
+	tag.author_j = safe_get_tag(song,"#composerj");
 	tag.system = safe_get_tag(song,"#system");
 	tag.system_j = safe_get_tag(song,"#systemj");
 	tag.game = safe_get_tag(song,"#game");
 	tag.game_j = safe_get_tag(song,"#gamej");
-	tag.creator = safe_get_tag(song,"#creator");
-	tag.notes = safe_get_tag(song,"#notes");
+	tag.creator = safe_get_tag(song,"#programmer");
+	tag.notes = safe_get_tag(song,"#comment");
 	tag.date = safe_get_tag(song,"#vgmdate");
+
+	// Fallback tags
+	if(!tag.author.size())
+		tag.creator = safe_get_tag(song,"#author");
+	if(!tag.creator.size())
+		tag.creator = safe_get_tag(song,"#programer");
+	if(!tag.creator.size())
+		tag.creator = tag.author;
 
 	return tag;
 }
