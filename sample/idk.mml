@@ -1,0 +1,149 @@
+#title Idk
+#composer ctr
+#date 2019-05-03
+#platform megadrive
+
+@1 fm 3 0 ;bass
+ 31 0 19 5 0 23 0 0 0 0
+ 31 6 0 4 3 19 0 0 0 0
+ 31 15 0 5 4 38 0 4 0 0
+ 31 27 0 11 1 0 0 1 0 0
+
+@3 fm 5 5 ;synpad
+ 21 0 0 3 0 23 0 2 7 0
+ 28 14 0 6 1 0 0 2 0 0
+ 17 0 0 15 0 19 0 2 4 0
+ 31 15 0 15 3 15 0 4 1 0
+
+@5 psg 15>11:5 / 10>0:20
+
+;====================================================================
+; Drums (drum mode D30)
+;====================================================================
+@30 pcm "pcm/bd_16k.wav"
+*30 @30p3c ; D30a kick
+
+@31 pcm "pcm/sd_16k.wav"
+*31 @31p3c ; D30b snare
+
+@32 pcm "pcm/tom2h_16k.wav"
+*32 @32p2c ; D30c tom
+
+@33 pcm "pcm/tom2l_16k.wav"
+*33 @33p1c ; D30d tom2
+
+;====================================================================
+; PSG drums (drum mode D40)
+;====================================================================
+@40 psg 13>0:4 ; D40a closed hat
+*40 @40o9b
+@41 psg 9>0:4  ; D40b closed hat (muted)
+*41 @41o9b
+@42 psg 13>11:3 10>6:6 5>0:20 ; D40c open hat
+*42 @42o9b
+@43 psg 12>6:3 5>1:15 1>0:20 ; D40d ride
+*43 @43o9d
+@44 psg 12>0:4  ; D40e closed hat (muted2)
+*44 @41o9b
+
+;====================================================================
+; Pitch envelopes
+;====================================================================
+@M1 0:20 V0:0.6:3
+@M2 -0.8>0:6 0
+
+;====================================================================
+; Intro
+;====================================================================
+A t140
+ABCD @3 v6q7 {p2)/p3/p1)/p3}
+E @1 v12
+F v12D30
+GH @5 v15
+H (2r16K40
+J 'mode 1'v15D40
+
+;ABCDFGH r1
+;J l4aaa l8aa
+
+ABCD o4 l4.{c/e/g/b}l4{c/e-/g/b-}{<a-/c/e-/g}l8{a-/<b/e-/g-}
+EGH r1
+F l4 rrrr8a8
+J l4 d.ddd8
+
+;====================================================================
+; Part 1
+;====================================================================
+A L l1 o3f^ f^  l4f.>>f ^8.^8. <f2 ^ ^8^8 f2^8>f^8 <f1
+B L l1 o3a^ a^  l4a. >a ^8.^8.  a2 ^ ^8a8 ^2^8 ^^8  e1
+C L l1 o4c^>c^< l4c.  ^>c8.^8. <c2>c ^8^8 c2^8 ^^8 <a1
+D L l1 o4e^>e^< l4e.  ^ ^8.e8.  d2 ^>d8^8 e2^8 ^e8  c1
+E L l16 [o3d^d^ad^>c^<dad>c<a>cd <d^d^ad^>c^<da>c<agf^]6
+GH L l1 rrrr rrrr
+F l4 [aa/aa]4 l16a^bbbdc^ l4 [abab8c8 abab]2
+J l8 [d.d.d.d.dd]4 [[dededed/a]2c]2
+
+A l4 o3f.^.f f. ^. ^ f.^.^ f. ^. ^
+B l4 o3a.^.a>a. ^.<a a.^.^ a. ^. ^
+C l4 o4c.c.^>c.<c. ^ c.c.^ c.>c. ^
+D l4 o4e.e.^ e. ^. ^ e.e.^>e. ^.<e
+GH l4o3 M1 a.>d.ga1 >c.<b.ge1<
+F L[abab8/c8]2 d16d16 [ab/ab8c8]2 a8b16d8c16(b16)b16
+J Lbe16e16bebeba bebebebc bebebeba bebebebc
+
+;====================================================================
+; Part 2 (repeat 1x)
+;====================================================================
+A [[o3f.^.f f. ^. ^ f.^.^  f. ^. ^]2
+B [[o3a.^.a>a. ^.<a a.^.^  a. ^. ^]2
+C [[o4c.c.^>c.<c. ^ c.c.^  c.>c. ^]2
+D [[o4e.e.^ e. ^. ^ e.e.^/>e. ^.<e]2 r8>e8^^d
+E [[o3d^d^ad^>c^<dad>c<a>cd <d^d^ad^>c^<da>c<agf^]4
+G l1 M2 [afec a>cd2^8f4e8<a
+H l1 M2 [edc<a >ega2^8>c4<b8e
+F [[[abab8/c8]2 /d16d16]3 c16b16 [ab/ab8c8]2 a8b16d8c16(b16)b16]4
+J [[be16e16bebeba bebebebc]3 bebebeba bebebebc]4
+
+A k-2 o3f.^.^ f. ^. ^ f.^.^ f. ^. ^
+B k-2 o4c.^.^>c.<c. ^ c.c.^ c.>c. ^
+C k-2 o4e.e.^ e. ^. ^ e.e.^>e. ^.<e
+D k-2 o4a.a.^ a. ^. a a.^.^ a. ^. ^
+E l16k-2 [o3d^d^ad^>c^<dad>c<a>cd <d^d^ad^>c^<da>c<agf^]2
+G l1 [g2^8f4g8>d2./<b-8a8]2 >c8d8
+H l1 [d2^8c4d8g2./f8e-8]2 f8g8
+
+A k0 o4c.^.^>c. c. ^<e.e.^ e.>e. ^ ]2
+B k0 o4e.e.^ e. ^. ^ f.^.^ f. ^.>f ]2
+C k0 o4f.^.^ f. ^. ^ a.^.^ a. ^.>a ]2
+D k0 o4a.a.^ a. ^. a>c.c.^ c. c. ^ ]2
+E l16k0 [o3d^d^ad^>c^<dad>c<a>cd <d^d^ad^>c^<da>c<agf^]2 ]2
+G l4 e.e.e c.c.c e.efe8 c.c^^8 ]2
+H l4 a.a.a a.a.a a.a^^8 a.a^^8 ]2
+
+;====================================================================
+; Part 3 (reprise)
+;====================================================================
+A [o3f.^.f f. ^. ^ f.^.^ f. ^. ^ k-2 o3f.^.^ f. ^. ^ f.^.^ f. ^. ^ k0]2
+B [o3a.^.a>a. ^.<a a.^.^ a. ^. ^ k-2 o4c.^.^>c.<c. ^ c.c.^ c.>c. ^ k0]2
+C [o4c.c.^>c.<c. ^ c.c.^ c.>c. ^ k-2 o4e.e.^ e. ^. ^ e.e.^>e. ^.<e k0]2
+D [o4e.e.^ e. ^. ^ e.e.^>e. ^.<e k-2 o4a.a.^ a. ^. a a.^.^ a. ^. ^ k0]2
+E l16 [[[o3d^d^ad^>c^<dad>c<a>cd <d^d^ad^>c^<da>c<agf^]2 k-2]2 k0]2
+GH l4o3 M1 a.>d.ga1 >c.<b.ge1 <g.>c.fg2.f8g8 b-.a.fg1
+GH <a.>d.ga2.g8.a16 >c.<b.g>e1 d.<b-.fd2.f8g8 b-.a.fg1
+F [[[abab8/c8]2 d16d16]3 [ab/ab8c8]2 a8b16d8c16(b16)b16]2
+J [[be16e16bebeba bebebebc]3 bebebeba bebebebc]2
+
+;====================================================================
+; Part 4 (break)
+;====================================================================
+ABCD l1 rrrr rrrr
+GH l1 M0 rrrr rrrr
+E l16 [o3d^d^ad^>c^<dad>c<a>cd <d^d^ad^>c^<da>c<agf^]4
+F [aa/aa]4 l16a^bbbdc^ l4 [abab8c8 abab]2
+J [d.d.d.d.dd]4 [[dededed/a]2c]2
+
+;====================================================================
+; Part 5 (loop)
+;====================================================================
+F [[abab8/c8]2 d16d16]3 [ab/ab8c8]2 a8b16d8c16(b16)b16
+J [be16e16bebeba bebebebc]3 bebebeba bebebebc
