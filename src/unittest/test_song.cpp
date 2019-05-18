@@ -22,6 +22,7 @@ class Song_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST(test_get_track_map);
 	CPPUNIT_TEST(test_set_platform_command);
 	CPPUNIT_TEST(test_get_platform_command);
+	CPPUNIT_TEST(test_get_tag_order_list);
 	CPPUNIT_TEST_SUITE_END();
 private:
 	Song *song;
@@ -191,6 +192,17 @@ public:
 		CPPUNIT_ASSERT_EQUAL(std::string("first"), song->get_platform_command(param1).at(0));
 		CPPUNIT_ASSERT_EQUAL(std::string("second"), song->get_platform_command(param2).at(0));
 		CPPUNIT_ASSERT_EQUAL(std::string("third"), song->get_platform_command(param3).at(0));
+	}
+	void test_get_tag_order_list()
+	{
+		song->add_tag("Tag1", "first");
+		song->add_tag("Tag3", "second");
+		song->add_tag("Tag2", "third");
+
+		tag = &song->get_tag_order_list();
+		CPPUNIT_ASSERT_EQUAL(std::string("Tag1"), tag->at(0));
+		CPPUNIT_ASSERT_EQUAL(std::string("Tag3"), tag->at(1));
+		CPPUNIT_ASSERT_EQUAL(std::string("Tag2"), tag->at(2));
 	}
 };
 

@@ -30,6 +30,30 @@ Tag& Song::get_tag(const std::string& key)
 	return tag_map.at(key);
 }
 
+//! Gets the tag with the specified key, otherwise creates a new tag.
+/*!
+ * If a new tag is created, an entry is added to the 'tag_order' tag.
+ */
+Tag& Song::get_or_make_tag(const std::string& key)
+{
+	auto lookup = tag_map.find(key);
+	if(lookup != tag_map.end())
+	{
+		return lookup->second;
+	}
+	else
+	{
+		tag_map["tag_order"].push_back(key);
+		return tag_map[key];
+	}
+}
+
+//! Gets the tag order list.
+Tag& Song::get_tag_order_list()
+{
+	return tag_map["tag_order"];
+}
+
 //! Gets the first value of the tag with the specified key.
 /*!
  * \exception std::out_of_range if not found
@@ -48,7 +72,7 @@ void Song::add_tag(const std::string& key, std::string value)
 	// delete trailing spaces
 	while(!value.empty() && isspace(value.back()))
 		value.pop_back();
-	tag_map[key].push_back(value);
+	get_or_make_tag(key).push_back(value);
 }
 
 //! Set the value to the tag with the specified key.
@@ -61,8 +85,9 @@ void Song::set_tag(const std::string& key, std::string value)
 	// delete trailing spaces
 	while(!value.empty() && isspace(value.back()))
 		value.pop_back();
-	tag_map[key].clear();
-	tag_map[key].push_back(value);
+	Tag& tag = get_or_make_tag(key);
+	tag.clear();
+	tag.push_back(value);
 }
 
 //! add double-quote-enclosed string
@@ -102,7 +127,7 @@ static char* add_tag_enclosed(Tag *tag, char* s)
  */
 void Song::add_tag_list(const std::string& key, const std::string& value)
 {
-	Tag *tag = &tag_map[key];
+	Tag *tag = &get_or_make_tag(key);
 	char *str = strdup(value.c_str());
 	char *s = str;
 	int last_char = 0;

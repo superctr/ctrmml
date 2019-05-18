@@ -420,16 +420,18 @@ void MD_Data::read_song(Song& song)
 	envelope_map[0] = add_unique_data({0x10, 0x01, 0x1f, 0x00});
 	ins_transpose[0] = 0;
 	ins_type[0] = MD_Data::INS_UNDEFINED;
-	for(auto it = song.get_tag_map().begin(); it != song.get_tag_map().end(); it++)
+	Tag& tag_order = song.get_tag_order_list();
+	for(auto it = tag_order.begin(); it != tag_order.end(); it++)
 	{
 		uint16_t id;
-		if(std::sscanf(it->first.c_str(), "@%hu", &id) == 1)
+		Tag& tag = song.get_tag(*it);
+		if(std::sscanf(it->c_str(), "@%hu", &id) == 1)
 		{
-			read_envelope(id, it->second);
+			read_envelope(id, tag);
 		}
-		else if(std::sscanf(it->first.c_str(), "@m%hu", &id) == 1)
+		else if(std::sscanf(it->c_str(), "@m%hu", &id) == 1)
 		{
-			read_pitch(id, it->second);
+			read_pitch(id, tag);
 			std::cout << "read pitch envelope " << dump_data(id, pitch_map[id]) << "\n";
 		}
 	}

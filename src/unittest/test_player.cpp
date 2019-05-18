@@ -71,13 +71,14 @@ public:
 	{
 		mml_input->read_line("A L o4cd");
 		auto player = Player(*song, song->get_track(0));
+		CPPUNIT_ASSERT_EQUAL(-1, player.get_loop_count());
 		player.step_event();
 		CPPUNIT_ASSERT_EQUAL(Event::SEGNO, player.get_event().type);
 		// three loops
 		for(int i=0; i<3; i++)
 		{
 			player.step_event();
-			CPPUNIT_ASSERT_EQUAL((unsigned int)i, player.get_loop_count());
+			CPPUNIT_ASSERT_EQUAL((int)i, player.get_loop_count());
 			CPPUNIT_ASSERT_EQUAL(Event::NOTE, player.get_event().type);
 			CPPUNIT_ASSERT_EQUAL((int16_t)36, player.get_event().param);
 			player.step_event();
