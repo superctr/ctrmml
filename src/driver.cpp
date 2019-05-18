@@ -51,9 +51,9 @@ void Driver::ym2612_w(uint8_t port, uint8_t reg, uint8_t ch, uint8_t op, uint16_
 		if(reg >= 0xa8 && op == 0)
 			reg += 1;
 		else if(reg >= 0xa8 && op == 1)
-			reg += 0;
-		else if(reg >= 0xa8 && op == 2)
 			reg += 2;
+		else if(reg >= 0xa8 && op == 2)
+			reg += 0;
 		else if(reg >= 0xa8 && op == 3)
 			reg = 0xa2;
 		DEBUG_FM("opn-fnum  port %d reg %02x data %04x (ch %d op %d)\n", port, reg, data, ch, op);

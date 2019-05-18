@@ -65,21 +65,35 @@ class MD_Channel : public Player
 	protected:
 		enum
 		{
-			EVENT_CHANNEL_MODE = 0
+			EVENT_CHANNEL_MODE = 0,
+			EVENT_LFO = 1,
+			EVENT_LFO_DELAY = 2,
+			EVENT_LFO_CONFIG = 3,
+			EVENT_FM3 = 4,
+			EVENT_WRITE_ADDR = 5,
+			EVENT_WRITE_DATA = 6
 		};
-		virtual void set_ins() = 0;
-		virtual void set_vol() = 0;
-		virtual void set_pan() = 0;
-		virtual void key_on() = 0;
-		virtual void key_off() = 0;
-		virtual void set_pitch() = 0;
-		virtual void set_type() = 0;
-		virtual void update_envelope() = 0;
+		virtual void v_set_ins() = 0;
+		virtual void v_set_vol() = 0;
+		virtual void v_set_pan() = 0;
+		virtual void v_key_on() = 0;
+		virtual void v_key_off() = 0;
+		virtual void v_set_pitch() = 0;
+		virtual void v_set_type() = 0;
+		virtual void v_update_envelope() = 0;
 		void update_pitch();
 		uint8_t write_fm_operator(int idx, int bank, int id, const std::vector<uint8_t>& idata);
 		void write_fm_4op(int bank, int id);
 		uint16_t get_fm_pitch(uint16_t pitch) const;
 		uint16_t get_psg_pitch(uint16_t pitch) const;
+
+		void key_on();
+		void key_off();
+		void set_pitch();
+		void set_vol();
+
+		void set_vol_fm3();
+		void set_pitch_fm3();
 		void key_on_pcm();
 		void key_off_pcm();
 
@@ -119,14 +133,14 @@ class MD_FM : public MD_Channel
 		uint8_t bank : 1; //!< YM2612 port id.
 		uint8_t id : 2; //!< YM2612 channel id.
 		uint8_t pan_lfo; //!< FM panning & lfo parameters
-		void set_ins() override;
-		void set_vol() override;
-		void set_pan() override;
-		void key_on() override;
-		void key_off() override;
-		void set_pitch() override;
-		void set_type() override;
-		void update_envelope() override;
+		void v_set_ins() override;
+		void v_set_vol() override;
+		void v_set_pan() override;
+		void v_key_on() override;
+		void v_key_off() override;
+		void v_set_pitch() override;
+		void v_set_type() override;
+		void v_update_envelope() override;
 	public:
 		MD_FM(MD_Driver& driver, int track_id, int channel_id);
 };
@@ -142,8 +156,10 @@ class MD_PSG : public MD_Channel
 		uint8_t env_pos; //!< Envelope position
 		uint8_t env_delay; //!< Envelope delay and current volume
 		void set_envelope(std::vector<uint8_t>* idata);
-		void set_pan();
-		void update_envelope() override;
+		void v_key_on() override;
+		void v_key_off() override;
+		void v_set_pan() override;
+		void v_update_envelope() override;
 	public:
 		MD_PSG(MD_Driver& driver, int track_id, int channel_id);
 };
@@ -158,12 +174,10 @@ class MD_PSGMelody : public MD_PSG
 	};
 	private:
 		int type;
-		void set_ins() override;
-		void set_vol() override;
-		void key_on() override;
-		void key_off() override;
-		void set_pitch() override;
-		void set_type() override;
+		void v_set_ins() override;
+		void v_set_vol() override;
+		void v_set_pitch() override;
+		void v_set_type() override;
 	public:
 		MD_PSGMelody(MD_Driver& driver, int track_id, int channel_id);
 };
@@ -178,14 +192,29 @@ class MD_PSGNoise : public MD_PSG
 	};
 	private:
 		int type;
-		void set_ins() override;
-		void set_vol() override;
-		void key_on() override;
-		void key_off() override;
-		void set_pitch() override;
-		void set_type() override;
+		void v_set_ins() override;
+		void v_set_vol() override;
+		void v_set_pitch() override;
+		void v_set_type() override;
 	public:
 		MD_PSGNoise(MD_Driver& driver, int track_id, int channel_id);
+};
+
+//! Megadrive dummy channel
+class MD_Dummy : public MD_Channel
+{
+	private:
+		int id;
+		void v_set_ins() override;
+		void v_set_vol() override;
+		void v_set_pan() override;
+		void v_key_on() override;
+		void v_key_off() override;
+		void v_set_pitch() override;
+		void v_set_type() override;
+		void v_update_envelope() override;
+	public:
+		MD_Dummy(MD_Driver& driver, int track_id, int channel_id);
 };
 
 //! Megadrive sound driver
@@ -215,6 +244,9 @@ class MD_Driver : public Driver
 		uint8_t tempo_convert(uint16_t bpm);
 		uint8_t tempo_delta;
 		uint8_t tempo_counter;
+		uint8_t fm3_mask;
+		uint8_t fm3_con;
+		uint8_t fm3_tl[4];
 		int last_pcm_channel;
 
 		bool loop_trigger;

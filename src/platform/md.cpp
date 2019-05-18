@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <stdexcept>
 #include <cctype>
 #include <climits>
@@ -467,6 +468,42 @@ uint32_t MD_Channel::parse_platform_event(const Tag& tag, int16_t* platform_stat
 		platform_state[EVENT_CHANNEL_MODE] = std::strtol(tag[1].c_str(), 0, 0);
 		return (1 << EVENT_CHANNEL_MODE);
 	}
+	else if(iequal(tag[0], "lfo"))
+	{
+		if(tag.size() < 3)
+			error("not enough parameters for 'lfo' command");
+		platform_state[EVENT_LFO] = (std::strtol(tag[1].c_str(), 0, 0) << 3) | (std::strtol(tag[2].c_str(), 0, 0));
+		return (1 << EVENT_LFO);
+	}
+	else if(iequal(tag[0], "lfodelay"))
+	{
+		if(tag.size() < 2)
+			error("not enough parameters for 'lfodelay' command");
+		platform_state[EVENT_LFO_DELAY] = std::strtol(tag[1].c_str(), 0, 0);
+		return (1 << EVENT_LFO_DELAY);
+	}
+	else if(iequal(tag[0], "lfoconfig"))
+	{
+		if(tag.size() < 2)
+			error("not enough parameters for 'lfoconfig' command");
+		platform_state[EVENT_LFO_CONFIG] = std::strtol(tag[1].c_str(), 0, 0);
+		return (1 << EVENT_LFO_CONFIG);
+	}
+	else if(iequal(tag[0], "fm3"))
+	{
+		if(tag.size() < 2)
+			error("not enough parameters for 'fm3' command");
+		platform_state[EVENT_FM3] = (std::strtol(tag[1].c_str(), 0, 2) ^ 0x0f) & 0x0f;
+		return (1 << EVENT_FM3);
+	}
+	else if(iequal(tag[0], "write"))
+	{
+		if(tag.size() < 3)
+			error("not enough parameters for 'write' command");
+		platform_state[EVENT_WRITE_ADDR] = std::strtol(tag[1].c_str(), 0, 0);
+		platform_state[EVENT_WRITE_DATA] = std::strtol(tag[2].c_str(), 0, 0);
+		return (1 << EVENT_WRITE_ADDR);
+	}
 	return 0;
 }
 
@@ -481,10 +518,11 @@ void MD_Channel::write_event()
 		case Event::TIE:
 			slur_flag = true;
 		case Event::NOTE:
-			key_on_flag = true;
+			if(event.type == Event::NOTE)
+				key_on_flag = true;
 			if(get_update_flag(Event::INS))
 			{
-				set_ins();
+				v_set_ins();
 				set_vol();
 				clear_update_flag(Event::INS);
 				clear_update_flag(Event::VOL_FINE);
@@ -501,14 +539,12 @@ void MD_Channel::write_event()
 			}
 			if(!slur_flag)
 			{
-				key_off_pcm();
 				key_off();
 			}
 			break;
 		case Event::END:
 			driver->loop_trigger = true;
 		case Event::REST: // continue
-			key_off_pcm();
 			key_off();
 			break;
 		case Event::SLUR:
@@ -528,14 +564,16 @@ void MD_Channel::write_event()
 			}
 			break;
 		case Event::PLATFORM:
-			if(get_platform_flag(EVENT_CHANNEL_MODE))
+			if(get_platform_flag(EVENT_FM3))
 			{
-				set_type();
-				clear_platform_flag(EVENT_CHANNEL_MODE);
+				last_pitch = 0xffff;
+				v_key_off();
+				clear_platform_flag(EVENT_FM3);
 			}
+			v_set_type();
 			break;
 		case Event::PAN:
-			set_pan();
+			v_set_pan();
 			break;
 		default:
 			break;
@@ -667,6 +705,90 @@ uint16_t MD_Channel::get_psg_pitch(uint16_t pitch) const
 	return set_pitch;
 }
 
+void MD_Channel::key_on()
+{
+	if(get_platform_var(EVENT_FM3))
+	{
+		driver->fm3_mask |= ~get_platform_var(EVENT_FM3);
+		driver->ym2612_w(0, 0x28, 2, 0, driver->fm3_mask);
+	}
+	else
+	{
+		key_on_pcm();
+		v_key_on();
+	}
+}
+
+void MD_Channel::key_off()
+{
+	if(get_platform_var(EVENT_FM3))
+	{
+		driver->fm3_mask &= get_platform_var(EVENT_FM3);
+		driver->ym2612_w(0, 0x28, 2, 0, driver->fm3_mask);
+	}
+	else
+	{
+		key_off_pcm();
+		v_key_off();
+	}
+}
+
+void MD_Channel::set_pitch()
+{
+	if(get_platform_var(EVENT_FM3))
+		set_pitch_fm3();
+	else
+		v_set_pitch();
+}
+
+void MD_Channel::set_vol()
+{
+	if(get_platform_var(EVENT_FM3))
+		set_vol_fm3();
+	else
+		v_set_vol();
+}
+
+void MD_Channel::set_pitch_fm3()
+{
+	int mask = get_platform_var(EVENT_FM3);
+	for(int op=0; op<4; op++)
+	{
+		uint16_t val = get_fm_pitch(pitch);
+		if(~mask & 1)
+			driver->ym2612_w(0, 0xa8, 0, op, val);
+		mask >>= 1;
+	}
+}
+
+void MD_Channel::set_vol_fm3()
+{
+	static const uint8_t opn_con_op[8] = {3,3,3,3,2,1,1,0};
+	static const uint8_t fm3_op_mask[4] = {1,4,2,8};
+	int vol = get_var(Event::VOL_FINE);
+	if(coarse_volume_flag())
+	{
+		if(vol > 15)
+			vol = 0;
+		else
+			vol = 15-vol;
+		// 2db per step
+		vol = 2 + vol*3 - vol/3;
+	}
+
+	int mask = get_platform_var(EVENT_FM3);
+	for(int op=3; op>=0; op--)
+	{
+		uint8_t max_tl = driver->fm3_tl[op];
+		if(op >= opn_con_op[driver->fm3_con])
+			max_tl += vol;
+		if(max_tl > 127)
+			max_tl = 127;
+		if(fm3_op_mask[op] & ~mask)
+			driver->ym2612_w(0, 0x40, 2, op, max_tl);
+	}
+}
+
 void MD_Channel::key_on_pcm()
 {
 	int16_t ins_id = get_var(Event::INS);
@@ -701,7 +823,7 @@ void MD_Channel::update(int seq_ticks)
 {
 	while(seq_ticks--)
 		play_tick();
-	update_envelope();
+	v_update_envelope();
 	update_pitch();
 
 	if(pitch != last_pitch)
@@ -711,10 +833,7 @@ void MD_Channel::update(int seq_ticks)
 	if(key_on_flag)
 	{
 		if(!slur_flag)
-		{
-			key_on_pcm();
 			key_on();
-		}
 		slur_flag = false;
 		key_on_flag = false;
 	}
@@ -736,12 +855,17 @@ MD_FM::MD_FM(MD_Driver& driver, int track_id, int channel_id)
 	driver.ym2612_w(bank, 0xb4, id, 0, pan_lfo); //enable panning
 }
 
-void MD_FM::set_ins()
+void MD_FM::v_set_ins()
 {
 	write_fm_4op(bank, id);
+	if(bank == 0 && id == 2)
+	{
+		driver->fm3_con = con;
+		std::memcpy(driver->fm3_tl, tl, sizeof(driver->fm3_tl));
+	}
 }
 
-void MD_FM::set_pan()
+void MD_FM::v_set_pan()
 {
 	pan_lfo &= 0x0f; // mask out panning
 	int8_t mml_pan = get_var(Event::PAN);
@@ -752,7 +876,7 @@ void MD_FM::set_pan()
 	driver->ym2612_w(bank, 0xb4, id, 0, pan_lfo);
 }
 
-void MD_FM::set_vol()
+void MD_FM::v_set_vol()
 {
 	static const uint8_t opn_con_op[8] = {3,3,3,3,2,1,1,0};
 	int vol = get_var(Event::VOL_FINE);
@@ -765,7 +889,7 @@ void MD_FM::set_vol()
 		// 2db per step
 		vol = 2 + vol*3 - vol/3;
 	}
-		
+
 	for(int op=3; op>=0; op--)
 	{
 		uint8_t max_tl = tl[op];
@@ -777,28 +901,35 @@ void MD_FM::set_vol()
 	}
 }
 
-void MD_FM::key_on()
+void MD_FM::v_key_on()
 {
 	driver->ym2612_w(bank, 0x28, id, 0, 15);
 }
 
-void MD_FM::key_off()
+void MD_FM::v_key_off()
 {
 	driver->ym2612_w(bank, 0x28, id, 0, 0);
 }
 
-void MD_FM::set_pitch()
+void MD_FM::v_set_pitch()
 {
 	uint16_t val = get_fm_pitch(pitch);
 	driver->ym2612_w(bank, 0xa0, id, 0, val);
 }
 
-void MD_FM::set_type()
+void MD_FM::v_set_type()
 {
-	type = get_platform_var(EVENT_CHANNEL_MODE);
+	// FM3 special mode
+	if(bank == 0 && id == 2)
+	{
+		if(get_platform_var(EVENT_FM3))
+			driver->ym2612_w(bank, 0x27, id, 0, 0x40);
+		else
+			driver->ym2612_w(bank, 0x27, id, 0, 0x00);
+	}
 }
 
-void MD_FM::update_envelope()
+void MD_FM::v_update_envelope()
 {
 	// Nothing needs to be done for FM
 }
@@ -822,12 +953,25 @@ void MD_PSG::set_envelope(std::vector<uint8_t>* idata)
 	env_delay = 15;
 }
 
-void MD_PSG::update_envelope()
+void MD_PSG::v_key_on()
+{
+}
+
+void MD_PSG::v_key_off()
+{
+	// Mute channel if at the end.
+	if(event.type == Event::END || get_platform_var(EVENT_FM3))
+		driver->sn76489_w(1, id, 15);
+	event.type = Event::REST;
+}
+
+
+void MD_PSG::v_update_envelope()
 {
 	if(!is_enabled())
 		return;
 	// reset envelope on keyon
-	if(key_on_flag)
+	if(key_on_flag && !get_platform_var(EVENT_FM3))
 	{
 		env_pos = 0;
 		env_delay = 0x1f;
@@ -851,7 +995,7 @@ void MD_PSG::update_envelope()
 		if(env_data->at(env_pos) > 0x0f)
 		{
 			env_delay = env_data->at(env_pos);
-			set_vol();
+			v_set_vol();
 			env_pos++;
 		}
 		// unknown command or stop command
@@ -867,7 +1011,7 @@ void MD_PSG::update_envelope()
 	}
 }
 
-void MD_PSG::set_pan()
+void MD_PSG::v_set_pan()
 {
 	error("Panning not supported for PSG channels");
 }
@@ -879,7 +1023,7 @@ MD_PSGMelody::MD_PSGMelody(MD_Driver& driver, int track_id, int channel_id)
 {
 }
 
-void MD_PSGMelody::set_ins()
+void MD_PSGMelody::v_set_ins()
 {
 	int16_t ins_id = get_var(Event::INS);
 	if(driver->data.ins_type[ins_id] != MD_Data::INS_PSG)
@@ -888,7 +1032,7 @@ void MD_PSGMelody::set_ins()
 	set_envelope(idata);
 }
 
-void MD_PSGMelody::set_vol()
+void MD_PSGMelody::v_set_vol()
 {
 	uint8_t vol = 15 - get_var(Event::VOL_FINE);
 	vol += env_delay & 0x0f;
@@ -897,29 +1041,14 @@ void MD_PSGMelody::set_vol()
 	driver->sn76489_w(1, id, vol);
 }
 
-void MD_PSGMelody::key_on()
-{
-}
-
-void MD_PSGMelody::key_off()
-{
-	// Mute channel if at the end.
-	if(event.type == Event::END)
-	{
-		driver->sn76489_w(1, id, 15);
-	}
-	env_keyoff = 1;
-}
-
-void MD_PSGMelody::set_pitch()
+void MD_PSGMelody::v_set_pitch()
 {
 	uint16_t val = get_psg_pitch(pitch);
 	driver->sn76489_w(0, id, val);
 }
 
-void MD_PSGMelody::set_type()
+void MD_PSGMelody::v_set_type()
 {
-	type = get_platform_var(EVENT_CHANNEL_MODE);
 }
 
 //! Constructs a MD_PSGNoise.
@@ -929,7 +1058,7 @@ MD_PSGNoise::MD_PSGNoise(MD_Driver& driver, int track_id, int channel_id)
 {
 }
 
-void MD_PSGNoise::set_ins()
+void MD_PSGNoise::v_set_ins()
 {
 	int16_t ins_id = get_var(Event::INS);
 	if(driver->data.ins_type[ins_id] != MD_Data::INS_PSG)
@@ -938,7 +1067,7 @@ void MD_PSGNoise::set_ins()
 	set_envelope(idata);
 }
 
-void MD_PSGNoise::set_vol()
+void MD_PSGNoise::v_set_vol()
 {
 	uint8_t vol = 15 - get_var(Event::VOL_FINE);
 	vol += env_delay & 0x0f;
@@ -947,19 +1076,7 @@ void MD_PSGNoise::set_vol()
 	driver->sn76489_w(1, id, vol);
 }
 
-void MD_PSGNoise::key_on()
-{
-}
-
-void MD_PSGNoise::key_off()
-{
-	// Mute channel if at the end.
-	if(event.type == Event::END)
-		driver->sn76489_w(1, id, 15);
-	event.type = Event::REST;
-}
-
-void MD_PSGNoise::set_pitch()
+void MD_PSGNoise::v_set_pitch()
 {
 	if(type == 1)
 	{
@@ -973,10 +1090,55 @@ void MD_PSGNoise::set_pitch()
 	}
 }
 
-void MD_PSGNoise::set_type()
+void MD_PSGNoise::v_set_type()
 {
-	type = get_platform_var(EVENT_CHANNEL_MODE);
+	if(get_platform_flag(EVENT_CHANNEL_MODE))
+	{
+		type = get_platform_var(EVENT_CHANNEL_MODE);
+		clear_platform_flag(EVENT_CHANNEL_MODE);
+	}
 }
+
+//! Constructs a dummy channel.
+MD_Dummy::MD_Dummy(MD_Driver& driver, int track_id, int channel_id)
+	: MD_Channel(driver, track_id),
+	id(channel_id)
+{
+}
+
+void MD_Dummy::v_set_ins()
+{
+}
+
+void MD_Dummy::v_set_pan()
+{
+}
+
+void MD_Dummy::v_set_vol()
+{
+}
+
+void MD_Dummy::v_key_on()
+{
+}
+
+void MD_Dummy::v_key_off()
+{
+}
+
+void MD_Dummy::v_set_pitch()
+{
+}
+
+void MD_Dummy::v_set_type()
+{
+}
+
+void MD_Dummy::v_update_envelope()
+{
+}
+
+
 
 //! constructs a MD_Driver.
 /*!
@@ -989,6 +1151,9 @@ MD_Driver::MD_Driver(unsigned int rate, VGM_Writer* vgm, bool is_pal)
 	, vgm_writer(vgm)
 	, tempo_delta(255)
 	, tempo_counter(0)
+	, fm3_mask(0)
+	, fm3_con(0)
+	, fm3_tl()
 	, last_pcm_channel(-1)
 	, loop_trigger(0)
 {
@@ -1041,8 +1206,10 @@ void MD_Driver::play_song(Song& song)
 			channels.push_back(std::make_unique<MD_FM>(*this, id, id));
 		else if(id < 9)
 			channels.push_back(std::make_unique<MD_PSGMelody>(*this, id, id-6));
-		else if(id == 9)
+		else if(id < 10)
 			channels.push_back(std::make_unique<MD_PSGNoise>(*this, id, id-6));
+		else if(id < 16)
+			channels.push_back(std::make_unique<MD_Dummy>(*this, id, id-10));
 	}
 }
 

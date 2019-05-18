@@ -131,12 +131,16 @@ depends on the platform. They may be ignored or the accepted range may differ.
 -	`ABCDEF` FM channels 1-6.
 -	`GHI` PSG tone channels 1-3.
 -	`J` PSG noise channel.
+-   `KLMNOP` Dummy channels. May be used for FM3 special mode.
 
 #### Platform-exclusive commands
 -	`mode <0..1>` - For the PSG noise channel (`J`), this will enable the use
 	of the third tone channel (`I`) as the noise frequency source. There will
 	be a conflict if you try to control the frequency from both channels while
 	this is active.
+-	`fm3 <mask>` - Enables FM3 special mode. Mask defines the operators that
+	are affected by this channel. Example: `fm3 0011` to use operators 1 and 2.
+	Set the mask to `1111` to disable the special mode.
 
 #### Limitations
 Pan envelopes not supported.
