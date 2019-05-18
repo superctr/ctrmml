@@ -330,7 +330,7 @@ void MD_Data::add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_data)
 	if(*s == ':' && *++s)
 		vibrato_rate = strtol(s, (char**)&s, 0);
 	else
-		printf("wtf it is %c\n", *s);
+		printf("Invalid vibrato definition: '%s'\n", s);
 
 	vibrato_depth += vibrato_base;
 	add_pitch_node(stringf("%f>%f:%d", vibrato_base, vibrato_depth, vibrato_rate).c_str(), env_data);
@@ -340,8 +340,20 @@ void MD_Data::add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_data)
 
 void MD_Data::read_wave(uint16_t id, const Tag& tag)
 {
-	wave_map[id] = wave_rom.add_sample(tag);
-	//pitch_map[id] = add_unique_data(env_data);
+	std::vector<uint8_t> env_data;
+	int wave_header_id;
+	Wave_Rom::Sample sample;
+
+	wave_header_id = wave_map[id] = wave_rom.add_sample(tag);
+	sample = wave_rom.get_sample_headers().at(wave_header_id);
+	// TODO: rate. VGM playback reads directly from the wave_header.
+	env_data.push_back((sample.start_pos >> 16) & 0xff);
+	env_data.push_back((sample.start_pos >> 8) & 0xff);
+	env_data.push_back((sample.start_pos >> 0) & 0xff);
+	env_data.push_back((sample.size >> 16) & 0xff);
+	env_data.push_back((sample.size >> 8) & 0xff);
+	env_data.push_back((sample.size >> 0) & 0xff);
+	envelope_map[id] = add_unique_data(env_data);
 	ins_type[id] = INS_PCM;
 }
 
@@ -386,7 +398,7 @@ void MD_Data::read_envelope(uint16_t id, const Tag& tag)
 	else if(iequal("pcm", type))
 	{
 		read_wave(id, Tag(it, tag.end()));
-		std::cout << "read wave sample " /*<< dump_data(id, envelope_map[id])*/ << "\n";
+		std::cout << "read wave sample " << dump_data(id, envelope_map[id]) << "\n";
 		return;
 	}
 	else
@@ -552,10 +564,17 @@ void MD_Channel::update_pitch()
 	{
 		if(key_on_flag || !pitch_env_data)
 		{
-			pitch_env_data = &driver->data.data_bank.at(driver->data.pitch_map[get_var(Event::PITCH_ENVELOPE)]);
-			pitch_env_pos = 0;
-			pitch_env_delay = 0;
-			//std::cout << "reset pitch envelope id to " << driver->data.pitch_map[get_var(Event::PITCH_ENVELOPE)] << "\n";
+			int pitch_id = driver->data.pitch_map[get_var(Event::PITCH_ENVELOPE)];
+			if(!pitch_id)
+			{
+				error("Invalid pitch envelope");
+			}
+			else
+			{
+				pitch_env_data = &driver->data.data_bank.at(pitch_id);
+				pitch_env_pos = 0;
+				pitch_env_delay = 0;
+			}
 		}
 		uint16_t pos = pitch_env_pos << 2;
 		uint16_t command = (pitch_env_data->at(pos) << 8) | (pitch_env_data->at(pos+1));
