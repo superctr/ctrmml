@@ -1074,7 +1074,7 @@ bool MD_Driver::is_playing()
 //! Get loop count (untested)
 int MD_Driver::loop_count()
 {
-	unsigned int loop_count = INT_MAX;
+	int loop_count = INT_MAX;
 	if(!channels.size())
 		return 0;
 

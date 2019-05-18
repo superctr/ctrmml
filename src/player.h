@@ -47,8 +47,8 @@ class Basic_Player
 		int loop_position;
 		int loop_reset_position; // Position to increment the loop count
 		std::stack<Player_Stack> stack;
-		unsigned int loop_count;
-		unsigned int loop_reset_count;
+		int loop_count;
+		int loop_reset_count;
 		unsigned int stack_depth[Player_Stack::MAX_STACK_TYPE];
 		unsigned int max_stack_depth;
 		void stack_underflow(int type);
@@ -83,7 +83,7 @@ class Basic_Player
 		Basic_Player(Song& song, Track& track);
 		bool is_enabled() const;
 		unsigned int get_play_time() const;
-		unsigned int get_loop_count() const;
+		int get_loop_count() const;
 		const Event& get_event() const;
 		void step_event();
 		void reset_loop_count();

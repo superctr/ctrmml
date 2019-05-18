@@ -15,7 +15,7 @@ Basic_Player::Basic_Player(Song& song, Track& track)
 	loop_position(-1),
 	loop_reset_position(-1),
 	stack(),
-	loop_count(0),
+	loop_count(-1),
 	loop_reset_count(0),
 	max_stack_depth(10),
 	play_time(0),
@@ -96,7 +96,10 @@ unsigned int Basic_Player::get_play_time() const
 }
 
 //! Gets the current loop count.
-unsigned int Basic_Player::get_loop_count() const
+/*!
+ * If the track has not reached the loop point or if it's a non-looping track, returns -1.
+ */
+int Basic_Player::get_loop_count() const
 {
 	return std::min(loop_reset_count, loop_count);
 }
@@ -104,9 +107,12 @@ unsigned int Basic_Player::get_loop_count() const
 //! Resets the loop count.
 void Basic_Player::reset_loop_count()
 {
-	loop_count = 0;
-	loop_reset_count = 0;
-	loop_reset_position = (position) ? position-1 : 0;
+	if(loop_count != -1)
+	{
+		loop_count = 0;
+		loop_reset_count = 0;
+		loop_reset_position = (position) ? position-1 : 0;
+	}
 }
 
 //! Gets the last parsed event.
@@ -172,6 +178,8 @@ void Basic_Player::step_event()
 				stack_pop(Player_Stack::LOOP);
 			break;
 		case Event::SEGNO:
+			loop_count = 0;
+			loop_reset_count = 0;
 			loop_position = position;
 			loop_reset_position = position;
 			event_hook();
