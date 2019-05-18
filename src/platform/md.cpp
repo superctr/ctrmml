@@ -963,6 +963,7 @@ void MD_PSG::v_key_off()
 	if(event.type == Event::END || get_platform_var(EVENT_FM3))
 		driver->sn76489_w(1, id, 15);
 	event.type = Event::REST;
+	env_keyoff = true;
 }
 
 
