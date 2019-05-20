@@ -515,31 +515,28 @@ void MD_Channel::write_event()
 		case Event::SEGNO:
 			driver->loop_trigger = true;
 			break;
-		case Event::TIE:
-			slur_flag = true;
 		case Event::NOTE:
-			if(event.type == Event::NOTE)
+			note_pitch = (event.param + get_var(Event::TRANSPOSE) + ins_transpose)<<8;
+			note_pitch += get_var(Event::DETUNE);
+			if(!slur_flag)
+			{
+				key_off();
 				key_on_flag = true;
+			}
+			//continue
+		case Event::TIE:
 			if(get_update_flag(Event::INS))
 			{
 				v_set_ins();
 				set_vol();
 				clear_update_flag(Event::INS);
 				clear_update_flag(Event::VOL_FINE);
+				key_on_flag = true; //ok to retrigger envelopes
 			}
 			else if(get_update_flag(Event::VOL_FINE))
 			{
 				set_vol();
 				clear_update_flag(Event::VOL_FINE);
-			}
-			if(event.type != Event::TIE)
-			{
-				note_pitch = (event.param + get_var(Event::TRANSPOSE) + ins_transpose)<<8;
-				note_pitch += get_var(Event::DETUNE);
-			}
-			if(!slur_flag)
-			{
-				key_off();
 			}
 			break;
 		case Event::END:
@@ -602,7 +599,7 @@ void MD_Channel::update_pitch()
 	pitch = porta_value;
 	if(get_var(Event::PITCH_ENVELOPE))
 	{
-		if(key_on_flag || !pitch_env_data)
+		if(key_on_flag || !pitch_env_data || get_update_flag(Event::PITCH_ENVELOPE))
 		{
 			int pitch_id = driver->data.pitch_map[get_var(Event::PITCH_ENVELOPE)];
 			if(!pitch_id)
@@ -614,6 +611,7 @@ void MD_Channel::update_pitch()
 				pitch_env_data = &driver->data.data_bank.at(pitch_id);
 				pitch_env_pos = 0;
 				pitch_env_delay = 0;
+				clear_update_flag(Event::PITCH_ENVELOPE);
 			}
 		}
 		uint16_t pos = pitch_env_pos << 2;
@@ -1083,7 +1081,7 @@ void MD_PSGNoise::v_set_pitch()
 	{
 		uint16_t val = get_psg_pitch(pitch);
 		driver->sn76489_w(0, 2, val);
-		driver->sn76489_w(0, 3, 7);
+		//driver->sn76489_w(0, 3, 7);
 	}
 	else
 	{
@@ -1097,6 +1095,11 @@ void MD_PSGNoise::v_set_type()
 	{
 		type = get_platform_var(EVENT_CHANNEL_MODE);
 		clear_platform_flag(EVENT_CHANNEL_MODE);
+		if(type == 1)
+		{
+			driver->sn76489_w(0, 3, 7);
+		}
+		last_pitch = 0xffff;
 	}
 }
 
