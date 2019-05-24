@@ -46,7 +46,7 @@ int MD_Data::add_unique_data(const std::vector<uint8_t>& data)
 //! adds a 4op FM instrument. Data stored in operator order.
 void MD_Data::read_fm_4op(uint16_t id, const Tag& tag)
 {
-	std::vector<uint8_t> fm_data(29, 0);
+	std::vector<uint8_t> fm_data(30, 0);
 	std::vector<uint8_t> tag_data(42, 0);
 	auto it = tag.begin();
 	for(int i=0; i<42; i++)
@@ -56,6 +56,12 @@ void MD_Data::read_fm_4op(uint16_t id, const Tag& tag)
 		tag_data[i] = std::strtol(it->c_str(), NULL, 0);
 		it++;
 	}
+
+	// Transpose
+	if(it != tag.end())
+		fm_data[29] = std::strtol(it->c_str(), NULL, 0) + 24;
+	else
+		fm_data[29] = 24;
 
 	for(int i=0; i<4; i++)
 	{
@@ -68,18 +74,18 @@ void MD_Data::read_fm_4op(uint16_t id, const Tag& tag)
 			op += 20;
 		// DT,MUL
 		fm_data[0 + i] = (tag_data[op + 8] << 4) | (tag_data[op + 7] & 15);
-		// TL
-		fm_data[4 + i] = tag_data[op + 5];
 		// KS/AR
-		fm_data[8 + i] = (tag_data[op + 6] << 6) | (tag_data[op + 0] & 31);
+		fm_data[4 + i] = (tag_data[op + 6] << 6) | (tag_data[op + 0] & 31);
 		// AM/DR (AM sensitivity not supported yet)
-		fm_data[12 + i] = (tag_data[op + 1] & 31);
+		fm_data[8 + i] = (tag_data[op + 1] & 31);
 		// SR
-		fm_data[16 + i] = (tag_data[op + 2] & 31);
+		fm_data[12 + i] = (tag_data[op + 2] & 31);
 		// SL/RR
-		fm_data[20 + i] = (tag_data[op + 4] << 4) | (tag_data[op + 3] & 15);
+		fm_data[16 + i] = (tag_data[op + 4] << 4) | (tag_data[op + 3] & 15);
 		// SSG-EG
-		fm_data[24 + i] = tag_data[op + 9] & 15;
+		fm_data[20 + i] = tag_data[op + 9] & 15;
+		// TL
+		fm_data[24 + i] = tag_data[op + 5];
 	}
 	// FB/ALG
 	fm_data[28] = (tag_data[0] & 7) | (tag_data[1] << 3);
@@ -94,7 +100,7 @@ void MD_Data::read_fm_4op(uint16_t id, const Tag& tag)
  */
 void MD_Data::read_fm_2op(uint16_t id, const Tag& tag)
 {
-	std::vector<uint8_t> fm_data(29, 0);
+	std::vector<uint8_t> fm_data(30, 0);
 	std::vector<uint8_t> tag_data(6, 0);
 
 	auto it = tag.begin();
@@ -118,6 +124,7 @@ void MD_Data::read_fm_2op(uint16_t id, const Tag& tag)
 		}
 		fm_data[4 + 3] = fm_data[4 + 2]; //op4 tl should be same as op1
 		envelope_map[id] = add_unique_data(fm_data);
+		fm_data[29] = tag_data[5] + 24;
 		ins_transpose[id] = tag_data[5];
 		ins_type[id] = INS_FM;
 	}
@@ -643,15 +650,13 @@ void MD_Channel::update_pitch()
 //! Write a single FM operator
 uint8_t MD_Channel::write_fm_operator(int idx, int bank, int id, const std::vector<uint8_t>& idata)
 {
-	uint8_t retval;
 	driver->ym2612_w(bank, 0x30, id, idx, idata[idx]);
-	retval = idata[4+idx];
-	driver->ym2612_w(bank, 0x50, id, idx, idata[8+idx]);
-	driver->ym2612_w(bank, 0x60, id, idx, idata[12+idx]);
-	driver->ym2612_w(bank, 0x70, id, idx, idata[16+idx]);
-	driver->ym2612_w(bank, 0x80, id, idx, idata[20+idx]);
-	driver->ym2612_w(bank, 0x90, id, idx, idata[24+idx]);
-	return retval;
+	driver->ym2612_w(bank, 0x50, id, idx, idata[4+idx]);
+	driver->ym2612_w(bank, 0x60, id, idx, idata[8+idx]);
+	driver->ym2612_w(bank, 0x70, id, idx, idata[12+idx]);
+	driver->ym2612_w(bank, 0x80, id, idx, idata[16+idx]);
+	driver->ym2612_w(bank, 0x90, id, idx, idata[20+idx]);
+	return idata[24+idx];
 }
 
 //! Write a 4op FM instrument
