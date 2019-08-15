@@ -523,12 +523,12 @@ void MD_Channel::write_event()
 			driver->loop_trigger = true;
 			break;
 		case Event::NOTE:
-			note_pitch = (event.param + get_var(Event::TRANSPOSE) + ins_transpose)<<8;
+			note_pitch = (event.param + get_var(Event::TRANSPOSE))<<8;
 			note_pitch += get_var(Event::DETUNE);
+			key_on_flag = true;
 			if(!slur_flag)
 			{
 				key_off();
-				key_on_flag = true;
 			}
 			//continue
 		case Event::TIE:
@@ -597,13 +597,12 @@ void MD_Channel::update_pitch()
 		porta_value += (step*get_var(Event::PORTAMENTO)) >> 1;
 		if(((note_pitch - porta_value) ^ difference) < 0)
 			porta_value = note_pitch;
-		pitch = porta_value;
 	}
 	else
 	{
 		porta_value = note_pitch;
 	}
-	pitch = porta_value;
+	pitch = porta_value + (ins_transpose<<8);
 	if(get_var(Event::PITCH_ENVELOPE))
 	{
 		if(key_on_flag || !pitch_env_data || get_update_flag(Event::PITCH_ENVELOPE))
@@ -726,6 +725,15 @@ void MD_Channel::key_off()
 {
 	if(get_platform_var(EVENT_FM3))
 	{
+		//Allow changing instruments at keyoff for CH3 special mode
+		if(get_update_flag(Event::INS))
+		{
+			v_set_ins();
+			set_vol_fm3();
+			clear_update_flag(Event::INS);
+			clear_update_flag(Event::VOL_FINE);
+		}
+
 		driver->fm3_mask &= get_platform_var(EVENT_FM3);
 		driver->ym2612_w(0, 0x28, 2, 0, driver->fm3_mask);
 	}

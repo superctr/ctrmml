@@ -222,7 +222,7 @@ bool MML_Input::mml_envelope()
 	if(c == '@')
 		track->add_event(Event::INS, expect_parameter());
 	else if(c == 'k')
-		track->add_event(Event::TRANSPOSE, expect_signed());
+		event_relative(Event::TRANSPOSE, Event::TRANSPOSE_REL);
 	else if(c == 'K')
 		track->add_event(Event::DETUNE, expect_signed());
 	else if(c == 'v')
