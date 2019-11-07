@@ -65,7 +65,11 @@ const std::string& Song::get_tag_front(const std::string& key) const
 
 //! Appends a value to the tag with the specified key.
 /*!
- * If key is not found, a new tag is created
+ *  Appends the value as a new item to the tag.
+ *
+ *  \param key Tag key. If the key is not found, a new tag is created.
+ *  \param value String that is added to the tag.
+ *  \see set_tag() add_tag_list()
  */
 void Song::add_tag(const std::string& key, std::string value)
 {
@@ -76,9 +80,16 @@ void Song::add_tag(const std::string& key, std::string value)
 }
 
 //! Set the value to the tag with the specified key.
-//! This function is also used to set the song settings (title, platform, ppqn, etc)
 /*!
- * If key is not found, a new tag is created
+ *  This function is used to write song metadata, such as title,
+ *  platform, ppqn, etc.
+ *
+ *  Overwrites all previous values that have been written to a tag
+ *  and creates an item containing the whole string.
+ *
+ *  \param key Tag key. If the key is not found, a new tag is created.
+ *  \param value String that is written to the tag.
+ *  \see add_tag() add_tag_list()
  */
 void Song::set_tag(const std::string& key, std::string value)
 {
@@ -90,9 +101,10 @@ void Song::set_tag(const std::string& key, std::string value)
 	tag.push_back(value);
 }
 
-//! add double-quote-enclosed string
+//! Add double-quote-enclosed string
 /*!
- * If key is not found, a new tag is created
+ *  \param key Tag key. If the key is not found, a new tag is created.
+ *  \param s First character of the key, not including the first '"'.
  */
 static char* add_tag_enclosed(Tag *tag, char* s)
 {
@@ -119,11 +131,21 @@ static char* add_tag_enclosed(Tag *tag, char* s)
 	return head;
 }
 
-//! Append multiple values (separated by commas or spaces) to the tag with the specified key.
+//! Append multiple values to the tag with the specified key.
 /*!
- * The list can be separated by commas OR spaces, but comma always forces a value to be added.
+ *  \p value contains a string containing an array of values separated
+ *  by spaces or commas. Each value is added as an item in the tag.
  *
- * If key is not found, a new tag is created.
+ *  A value can be enclosed with quotes to support spaces.
+ *
+ *  A comma with no preceeding non-space character inserts a blank item.
+ *
+ *  \param key Tag key. If the key is not found, a new tag is created.
+ *  \param value List of values to add. The list can be separated by
+ *               commas OR spaces, but comma always forces a value to
+ *               be added.
+ *
+ *  \see add_tag() set_tag()
  */
 void Song::add_tag_list(const std::string& key, const std::string& value)
 {
@@ -176,8 +198,12 @@ void Song::add_tag_list(const std::string& key, const std::string& value)
 /*!
  * The command can later be retrieved with get_platform_command().
  *
- * \param param Set to -1 to use a sequential index.
- * \return The tag's param ID.
+ * \param param Command id. Set to -1 to use a sequential id.
+ * \param value Command arguments.
+ *              Parsed by Player::parse_platfrom_event()
+ * \return The tag's command id.
+ *
+ * \see Player::parse_platform_event()
  */
 int16_t Song::register_platform_command(int16_t param, const std::string& value)
 {
@@ -187,8 +213,10 @@ int16_t Song::register_platform_command(int16_t param, const std::string& value)
 	return param;
 }
 
-//! Gets the registered platform command with the specified key.
+//! Gets the registered platform command with the specified id.
 /*!
+ * \param param Command id.
+ * \return Reference to the tag with the specified id.
  * \exception std::out_of_range if not found
  */
 Tag& Song::get_platform_command(int16_t param)
@@ -196,7 +224,7 @@ Tag& Song::get_platform_command(int16_t param)
 	return tag_map.at(stringf("cmd_%d", param));
 }
 
-//! Get reference to the track map.
+//! Get a reference to the track map.
 Track_Map& Song::get_track_map()
 {
 	return track_map;
@@ -212,7 +240,9 @@ Track& Song::get_track(uint16_t id)
 }
 
 //! Get a reference to the track with the specified id.
-//! If the track is not found, a new one is created.
+/*!
+ *  If the track is not found, a new one is created.
+ */
 Track& Song::make_track(uint16_t id)
 {
 	if(!track_map.count(id))

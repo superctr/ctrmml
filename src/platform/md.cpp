@@ -5,445 +5,14 @@
 #include <stdexcept>
 #include <cctype>
 #include <climits>
-#include <cmath>
 #include <algorithm>
 
 #include "md.h"
+#include "mdsdrv.h"
 #include "../song.h"
 #include "../input.h"
 #include "../stringf.h"
 
-MD_Data::MD_Data()
-	: data_bank()
-	, wave_rom(0x200000)
-	, envelope_map()
-	, wave_map()
-	, ins_transpose()
-	, pitch_map()
-	, ins_type()
-{
-}
-
-int MD_Data::add_unique_data(const std::vector<uint8_t>& data)
-{
-	unsigned int i;
-	// look for previous matching data in the data bank
-	for(i=0; i<data_bank.size(); i++)
-	{
-		if(data != data_bank[i])
-			continue;
-		return i;
-	}
-	i = data_bank.size();
-	if(i >= data_count_max)
-	{
-		throw InputError(nullptr, "error: maximum amount of data table entries reached\n");
-	}
-	data_bank.push_back(data);
-	return i;
-}
-
-//! adds a 4op FM instrument. Data stored in operator order.
-void MD_Data::read_fm_4op(uint16_t id, const Tag& tag)
-{
-	std::vector<uint8_t> fm_data(30, 0);
-	std::vector<uint8_t> tag_data(42, 0);
-	auto it = tag.begin();
-	for(int i=0; i<42; i++)
-	{
-		if(it == tag.end())
-			throw InputError(nullptr, stringf("error: not enough parameters for fm instrument @%d", id).c_str());
-		tag_data[i] = std::strtol(it->c_str(), NULL, 0);
-		it++;
-	}
-
-	// Transpose
-	if(it != tag.end())
-		fm_data[29] = std::strtol(it->c_str(), NULL, 0) + 24;
-	else
-		fm_data[29] = 24;
-
-	for(int i=0; i<4; i++)
-	{
-		int op = 2;
-
-		// physical operator order is 1,3,2,4
-		if(i & 2)
-			op += 10;
-		if(i & 1)
-			op += 20;
-		// DT,MUL
-		fm_data[0 + i] = (tag_data[op + 8] << 4) | (tag_data[op + 7] & 15);
-		// KS/AR
-		fm_data[4 + i] = (tag_data[op + 6] << 6) | (tag_data[op + 0] & 31);
-		// AM/DR (AM sensitivity not supported yet)
-		fm_data[8 + i] = (tag_data[op + 1] & 31);
-		// SR
-		fm_data[12 + i] = (tag_data[op + 2] & 31);
-		// SL/RR
-		fm_data[16 + i] = (tag_data[op + 4] << 4) | (tag_data[op + 3] & 15);
-		// SSG-EG
-		fm_data[20 + i] = tag_data[op + 9] & 15;
-		// TL
-		fm_data[24 + i] = tag_data[op + 5];
-	}
-	// FB/ALG
-	fm_data[28] = (tag_data[0] & 7) | (tag_data[1] << 3);
-	envelope_map[id] = add_unique_data(fm_data);
-	ins_transpose[id] = 0;
-	ins_type[id] = INS_FM;
-}
-
-//! Read 2op instrument definition.
-/*!
- * Tag format: InsID,Mul1,Mul2,Mul3,Mul4,Transpose
- */
-void MD_Data::read_fm_2op(uint16_t id, const Tag& tag)
-{
-	std::vector<uint8_t> fm_data(30, 0);
-	std::vector<uint8_t> tag_data(6, 0);
-
-	auto it = tag.begin();
-	for(int i=0; i<6; i++)
-	{
-		if(it == tag.end())
-			throw InputError(nullptr, stringf("error: not enough parameters for 2op fm instrument @%d", id).c_str());
-		tag_data[i] = std::strtol(it->c_str(), NULL, 0);
-		it++;
-	}
-
-	int ins_id = tag_data[0];
-	try
-	{
-		fm_data = data_bank.at(envelope_map.at(ins_id));
-		for(int i=0; i<4; i++)
-		{
-			uint8_t mul = tag_data[1 + ((i&1)<<1) + ((i&2)>>1)];
-			uint8_t dt = fm_data[0+i] & 0xf0;
-			fm_data[0+i] = dt | (mul & 15);
-		}
-		fm_data[4 + 3] = fm_data[4 + 2]; //op4 tl should be same as op1
-		envelope_map[id] = add_unique_data(fm_data);
-		fm_data[29] = tag_data[5] + 24;
-		ins_transpose[id] = tag_data[5];
-		ins_type[id] = INS_FM;
-	}
-	catch(std::exception&)
-	{
-		throw InputError(nullptr, stringf("2op ins @%d is referencing instrument @%d which does not exist\n", id, ins_id).c_str());
-	}
-}
-
-//! Read PSG volume envelope.
-/*!
- * Envelope input format:
- *   Value
- *   Value:Length
- *   Value>Target - slide
- *   Value>Target:Length - slide
- *   | - set loop position
- *   / - wait until keyoff
- * Output format:
- *   00 - end
- *   01 - sustain
- *   02 pp - loop to <p>
- *   fv - value <v> for <f> frames.
- */
-void MD_Data::read_psg(uint16_t id, const Tag& tag)
-{
-	std::vector<uint8_t> env_data;
-	int loop_pos = -1, last_pos = 0, last = -1;
-	if(!tag.size())
-	{
-		std::cerr << stringf("warning: empty psg instrument @%d\n", id);
-		return;
-	}
-	for(auto it = tag.begin(); it != tag.end(); it++)
-	{
-		const char* s = it->c_str();
-		if(*s == '|')
-			loop_pos = env_data.size();
-		else if(*s == '/')
-		{
-			// insert sustain
-			if(last == -1)
-			{
-				// max volume
-				env_data.push_back(0x10);
-			}
-			env_data.push_back(0x01);
-			last = -1;
-		}
-		else if(std::isdigit(*s))
-		{
-			uint8_t initial = std::strtol(s, (char**)&s, 0);
-			uint8_t target = initial;
-			uint8_t length = 0;
-			double delta = 0, counter = 0;
-
-			if(*s == '>' && *++s)
-				target = strtol(s, (char**)&s, 0);
-			target = (target > 15) ? 15 : (target < 0) ? 0 : target; // bounds check
-			initial = (initial > 15) ? 15 : (initial < 0) ? 0 : initial;
-
-			if(target != initial)
-				length = std::abs(target-initial)+1;
-			if(*s == ':' && *++s)
-				length = strtol(s, (char**)&s, 0);
-			if(length == 0)
-				length++;
-			else if(length > 1) // calculate slide
-				delta = (double)(target-initial)/(length-1);
-			counter = initial + 0.5;
-			while(length--)
-			{
-				// last value is always the slide target
-				uint8_t val = (length) ? (int)counter : target;
-				// add to duration of previous value if it's the same
-				if((int)counter == last && env_data[last_pos] < 0xf0)
-					env_data[last_pos] += 0x10;
-				else
-				{
-					last_pos = env_data.size();
-					env_data.push_back(0x1f - val);
-				}
-				last = val;
-				counter += delta;
-			}
-		}
-		else
-		{
-			throw InputError(nullptr,stringf("undefined envelope value '%s'", s).c_str());
-		}
-	}
-	if(loop_pos == -1)
-	{
-		// end command
-		env_data.push_back(0x00);
-	}
-	else
-	{
-		// loop command
-		env_data.push_back(0x02);
-		env_data.push_back(loop_pos);
-	}
-	envelope_map[id] = add_unique_data(env_data);
-	ins_transpose[id] = 0;
-	ins_type[id] = INS_PSG;
-}
-
-//! Read pitch envelope
-/*!
- * Envelope input format:
- *   Value
- *   Value:Length
- *   Value>Target - slide
- *   Value>Target:Length - slide
- *   V<Base>:<Depth>:<Rate> - vibrato macro, automatically sets loop position
- *   | - set loop position
- * Output format:
- *   hh ll dd ss - set pitch to <hl>, change it with <d> for <s> frames.
- *                 If <s> is ff, this is the final value
- *   7F <pp> - loop to <p*4>
- */
-void MD_Data::read_pitch(uint16_t id, const Tag& tag)
-{
-	std::vector<uint8_t> env_data;
-	int loop_pos = -1;
-	if(!tag.size())
-	{
-		std::cerr << stringf("warning: empty pitch envelope @M%d\n", id);
-		return;
-	}
-	for(auto it = tag.begin(); it != tag.end(); it++)
-	{
-		const char* s = it->c_str();
-		if(*s == '|')
-			loop_pos = env_data.size() / 4;
-		else if(std::isdigit(*s) || *s == '-')
-			add_pitch_node(s, &env_data);
-		else if(*s == 'V')
-		{
-			loop_pos = env_data.size() / 4;
-			add_pitch_vibrato(s, &env_data);
-		}
-		else
-			throw InputError(nullptr,stringf("undefined envelope value '%s'", s).c_str());
-	}
-	// end command
-	if(loop_pos == -1)
-	{
-		env_data.back() = 0xff;
-	}
-	else
-	{
-		env_data.push_back(0x7f);
-		env_data.push_back(loop_pos);
-	}
-	pitch_map[id] = add_unique_data(env_data);
-}
-
-//! Adds a node to the pitch envelope.
-void MD_Data::add_pitch_node(const char* s, std::vector<uint8_t>* env_data)
-{
-	double initial = std::strtod(s, (char**)&s);
-	double target = initial;
-	int length = 0;
-	double counter = 0;
-
-	if(*s == '>' && *++s)
-		target = strtod(s, (char**)&s);
-
-	if(target != initial)
-		length = std::lround(std::fabs(target-initial)+1.5) >> 4;
-	if(*s == ':' && *++s)
-		length = strtol(s, (char**)&s, 0);
-	if(length < 1)
-		length += 1;
-
-	counter = initial;
-	//std::cout << stringf("initial:%.2f, target=%.2f, len=%d", initial, target, length) << "\n";
-	while(length > 0)
-	{
-		double delta = (target-counter)/length;
-		uint16_t env_len = (length > 255) ? 255 : length;
-		int16_t env_initial = counter * 256;
-		int16_t env_delta = std::trunc(delta * 256);
-		env_initial = (env_initial > 0x7eff) ? 0x7eff : env_initial;
-		env_delta = (env_delta > 127) ? 127 : (env_delta < -128) ? -128: env_delta;
-		//std::cout << stringf("len:%d, from:%04x, chg:%d", env_len, env_initial, env_delta) << "\n";
-		env_data->push_back(env_initial >> 8);
-		env_data->push_back(env_initial & 0xff);
-		env_data->push_back(env_delta);
-		env_data->push_back(env_len - 1);
-		// apply delta and decrease length counter
-		counter += (env_delta * env_len) / 256;
-		length -= env_len;
-	}
-}
-
-//! Adds a node to the pitch envelope.
-void MD_Data::add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_data)
-{
-	// Vibrato macro
-	double vibrato_base = 0;
-	double vibrato_depth = 0.5;
-	int vibrato_rate = 5;
-
-	s++;
-	if(std::isdigit(*s) || *s == '-')
-		vibrato_base = strtod(s, (char**)&s);
-	if(*s == ':' && *++s)
-		vibrato_depth = strtod(s, (char**)&s) / 2.0;
-	if(*s == ':' && *++s)
-		vibrato_rate = strtol(s, (char**)&s, 0);
-	else
-		printf("Invalid vibrato definition: '%s'\n", s);
-
-	vibrato_depth += vibrato_base;
-	add_pitch_node(stringf("%f>%f:%d", vibrato_base, vibrato_depth, vibrato_rate).c_str(), env_data);
-	add_pitch_node(stringf("%f>%f:%d", vibrato_depth, -vibrato_depth, vibrato_rate*2).c_str(), env_data);
-	add_pitch_node(stringf("%f>%f:%d", -vibrato_depth, vibrato_base, vibrato_rate).c_str(), env_data);
-}
-
-void MD_Data::read_wave(uint16_t id, const Tag& tag)
-{
-	std::vector<uint8_t> env_data;
-	int wave_header_id;
-	Wave_Rom::Sample sample;
-
-	wave_header_id = wave_map[id] = wave_rom.add_sample(tag);
-	sample = wave_rom.get_sample_headers().at(wave_header_id);
-	// TODO: rate. VGM playback reads directly from the wave_header.
-	env_data.push_back((sample.start_pos >> 16) & 0xff);
-	env_data.push_back((sample.start_pos >> 8) & 0xff);
-	env_data.push_back((sample.start_pos >> 0) & 0xff);
-	env_data.push_back((sample.size >> 16) & 0xff);
-	env_data.push_back((sample.size >> 8) & 0xff);
-	env_data.push_back((sample.size >> 0) & 0xff);
-	envelope_map[id] = add_unique_data(env_data);
-	ins_type[id] = INS_PCM;
-}
-
-
-std::string MD_Data::dump_data(uint16_t id, uint16_t mapped_id)
-{
-	std::string out = stringf("%d = %d [%d]{", id, mapped_id, data_bank[mapped_id].size());
-	for(auto it = data_bank[mapped_id].begin(); it != data_bank[mapped_id].end(); it++)
-	{
-		if(it != data_bank[mapped_id].begin())
-		{
-			out += ", ";
-		}
-		out += stringf("%02x", *it);
-	}
-	out += "}";
-	return out;
-}
-
-void MD_Data::read_envelope(uint16_t id, const Tag& tag)
-{
-	auto it = tag.begin();
-	std::string type = *it++;
-	if(iequal("psg", type))
-	{
-		read_psg(id, Tag(it, tag.end()));
-		std::cout << "read PSG envelope " << dump_data(id, envelope_map[id]) << "\n";
-		return;
-	}
-	else if(iequal("fm", type))
-	{
-		read_fm_4op(id, Tag(it, tag.end()));
-		std::cout << "read FM envelope " << dump_data(id, envelope_map[id]) << "\n";
-		return;
-	}
-	else if(iequal("2op", type))
-	{
-		read_fm_2op(id, Tag(it, tag.end()));
-		std::cout << "read 2op envelope " << dump_data(id, envelope_map[id]) << "\n";
-		return;
-	}
-	else if(iequal("pcm", type))
-	{
-		read_wave(id, Tag(it, tag.end()));
-		std::cout << "read wave sample " << dump_data(id, envelope_map[id]) << "\n";
-		return;
-	}
-	else
-	{
-		throw InputError(nullptr, stringf("unknown envelope type %s\n",type.c_str()).c_str());
-	}
-}
-
-void MD_Data::read_song(Song& song)
-{
-	// clear envelope and instrument maps
-	envelope_map.clear();
-	ins_transpose.clear();
-	pitch_map.clear();
-	wave_map.clear();
-	ins_type.clear();
-	wave_rom.set_include_paths(song.get_tag("include_path"));
-	// add a unique psg envelope to prevent possible errors
-	envelope_map[0] = add_unique_data({0x10, 0x01, 0x1f, 0x00});
-	ins_transpose[0] = 0;
-	ins_type[0] = MD_Data::INS_UNDEFINED;
-	Tag& tag_order = song.get_tag_order_list();
-	for(auto it = tag_order.begin(); it != tag_order.end(); it++)
-	{
-		uint16_t id;
-		Tag& tag = song.get_tag(*it);
-		if(std::sscanf(it->c_str(), "@%hu", &id) == 1)
-		{
-			read_envelope(id, tag);
-		}
-		else if(std::sscanf(it->c_str(), "@m%hu", &id) == 1)
-		{
-			read_pitch(id, tag);
-			std::cout << "read pitch envelope " << dump_data(id, pitch_map[id]) << "\n";
-		}
-	}
-}
 
 //! Constructs a MD_Channel.
 MD_Channel::MD_Channel(MD_Driver& driver, int id)
@@ -523,7 +92,7 @@ void MD_Channel::write_event()
 			driver->loop_trigger = true;
 			break;
 		case Event::NOTE:
-			note_pitch = (event.param + get_var(Event::TRANSPOSE))<<8;
+			note_pitch = ((int16_t) event.param + (int16_t) get_var(Event::TRANSPOSE))<<8;
 			note_pitch += get_var(Event::DETUNE);
 			key_on_flag = true;
 			if(!slur_flag)
@@ -662,7 +231,7 @@ uint8_t MD_Channel::write_fm_operator(int idx, int bank, int id, const std::vect
 void MD_Channel::write_fm_4op(int bank, int id)
 {
 	uint16_t ins_id = get_var(Event::INS);
-	if(driver->data.ins_type[ins_id] != MD_Data::INS_FM)
+	if(driver->data.ins_type[ins_id] != MDSDRV_Data::INS_FM)
 		return;
 
 	const std::vector<uint8_t>& idata = driver->data.data_bank.at(driver->data.envelope_map[ins_id]);
@@ -803,7 +372,7 @@ void MD_Channel::set_vol_fm3()
 void MD_Channel::key_on_pcm()
 {
 	int16_t ins_id = get_var(Event::INS);
-	if(driver->data.ins_type[ins_id] == MD_Data::INS_PCM)
+	if(driver->data.ins_type[ins_id] == MDSDRV_Data::INS_PCM)
 	{
 		int wave_header_id = driver->data.wave_map[ins_id];
 		Wave_Rom::Sample sample = driver->data.wave_rom.get_sample_headers().at(wave_header_id);
@@ -983,7 +552,7 @@ void MD_PSG::v_update_envelope()
 	if(!is_enabled())
 		return;
 	// reset envelope on keyon
-	if(key_on_flag && !get_platform_var(EVENT_FM3))
+	if(key_on_flag && !slur_flag && !get_platform_var(EVENT_FM3))
 	{
 		env_pos = 0;
 		env_delay = 0x1f;
@@ -1038,7 +607,7 @@ MD_PSGMelody::MD_PSGMelody(MD_Driver& driver, int track_id, int channel_id)
 void MD_PSGMelody::v_set_ins()
 {
 	int16_t ins_id = get_var(Event::INS);
-	if(driver->data.ins_type[ins_id] != MD_Data::INS_PSG)
+	if(driver->data.ins_type[ins_id] != MDSDRV_Data::INS_PSG)
 		return;
 	std::vector<uint8_t>* idata = &driver->data.data_bank.at(driver->data.envelope_map[ins_id]);
 	set_envelope(idata);
@@ -1073,7 +642,7 @@ MD_PSGNoise::MD_PSGNoise(MD_Driver& driver, int track_id, int channel_id)
 void MD_PSGNoise::v_set_ins()
 {
 	int16_t ins_id = get_var(Event::INS);
-	if(driver->data.ins_type[ins_id] != MD_Data::INS_PSG)
+	if(driver->data.ins_type[ins_id] != MDSDRV_Data::INS_PSG)
 		return;
 	std::vector<uint8_t>* idata = &driver->data.data_bank.at(driver->data.envelope_map[ins_id]);
 	set_envelope(idata);
@@ -1202,6 +771,7 @@ void MD_Driver::play_song(Song& song)
 	this->song = &song;
 	channels.clear();
 	data.read_song(song);
+	std::cout << data.message;
 	if(vgm_writer)
 	{
 		const std::vector<uint8_t>& dbdata = data.wave_rom.get_rom_data();

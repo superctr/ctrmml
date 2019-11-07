@@ -7,6 +7,11 @@
 #include "track.h"
 #include "stringf.h"
 
+//! Creates a Basic_Player.
+/*!
+ *  \param[in,out] song reference to a Song.
+ *  \param[in,out] track reference to a Track.
+ */
 Basic_Player::Basic_Player(Song& song, Track& track)
 	: song(&song),
 	track(&track),
@@ -14,10 +19,12 @@ Basic_Player::Basic_Player(Song& song, Track& track)
 	position(0),
 	loop_position(-1),
 	loop_reset_position(-1),
-	stack(),
 	loop_count(-1),
 	loop_reset_count(0),
+	stack(),
+	stack_depth(),
 	max_stack_depth(10),
+	loop_begin_depth(0),
 	play_time(0),
 	on_time(0),
 	off_time(0)
@@ -25,11 +32,26 @@ Basic_Player::Basic_Player(Song& song, Track& track)
 }
 
 //! Throws an InputError.
+/*!
+ *  \param message Error message.
+ *  \exception InputError Always.
+ */
 void Basic_Player::error(const char* message) const
 {
 	throw InputError(reference, message);
 }
 
+//! Indicate that track processing is finished.
+/*!
+ *  This is typically done at the end of the track, and can also be
+ *  used by player classes to stop track processing early.
+ */
+void Basic_Player::disable()
+{
+	enabled = false;
+}
+
+//! Throw an error with appropriate message for a stack underflow.
 void Basic_Player::stack_underflow(int type)
 {
 	if(type == Player_Stack::LOOP)
@@ -42,7 +64,12 @@ void Basic_Player::stack_underflow(int type)
 		error("unknown stack type (BUG, please report)");
 }
 
-//! Push to stack.
+//! Push a stack frame.
+/*!
+ *  \param frame Stack frame to be pushed. 
+ *  \exception InputError if the stack size has reached the maximum allowed
+ *                     stack depth.
+ */
 void Basic_Player::stack_push(const Player_Stack& frame)
 {
 	if(stack.size() >= max_stack_depth)
@@ -51,7 +78,12 @@ void Basic_Player::stack_push(const Player_Stack& frame)
 	stack.push(frame);
 }
 
-//! Get the stack top, with type checking.
+//! Get the top stack frame, with type checking.
+/*!
+ *  \param type Expected stack frame type.
+ *  \return Top stack frame.
+ *  \exception InputError if the top stack frame does not match \p type.
+ */
 Player_Stack& Basic_Player::stack_top(Player_Stack::Type type)
 {
 	if(!stack.size())
@@ -62,11 +94,17 @@ Player_Stack& Basic_Player::stack_top(Player_Stack::Type type)
 	return frame;
 }
 
-//! Pop the stack, with type checking.
+//! Pop a stack frame, with type checking.
+/*!
+ *  \param type Expected stack frame type.
+ *  \return The stack frame being popped.
+ *  \exception InputError if the top stack frame does not match \p type.
+ */
 Player_Stack Basic_Player::stack_pop(Player_Stack::Type type)
 {
 	Player_Stack frame = stack.top();
 	stack.pop();
+	stack_depth[type]--;
 	if(frame.type != type)
 		stack_underflow(frame.type);
 	return frame;
@@ -74,7 +112,8 @@ Player_Stack Basic_Player::stack_pop(Player_Stack::Type type)
 
 //! Get the type of the top stack frame.
 /*!
- * If the stack is empty, Player_Stack::MAX_STACK_TYPE is returned.
+ *  \return A stack type.
+ *  \retval Player_Stack::MAX_STACK_TYPE if the stack is empty.
  */
 Player_Stack::Type Basic_Player::get_stack_type()
 {
@@ -84,12 +123,20 @@ Player_Stack::Type Basic_Player::get_stack_type()
 }
 
 //! Get the stack depth for the specified type.
+/*!
+ *  \param[in] type A stack type.
+ *  \return         The stack depth.
+ */
 unsigned int Basic_Player::get_stack_depth(Player_Stack::Type type)
 {
 	return stack_depth[type];
 }
 
 //! Gets the timestamp of the last played event.
+/*!
+ *  This function can be used to get the track duration if called in a
+ *  Track_Validator.
+ */
 unsigned int Basic_Player::get_play_time() const
 {
 	return play_time;
@@ -97,7 +144,9 @@ unsigned int Basic_Player::get_play_time() const
 
 //! Gets the current loop count.
 /*!
- * If the track has not reached the loop point or if it's a non-looping track, returns -1.
+ *  \return Current loop count.
+ *  \retval -1 If the track has reached the loop point or if it's a
+ *             non-looping track.
  */
 int Basic_Player::get_loop_count() const
 {
@@ -116,6 +165,11 @@ void Basic_Player::reset_loop_count()
 }
 
 //! Gets the last parsed event.
+/*!
+ *  \note Includes events added automatically, for example an
+ *        Event::REST added for a note event with both \p on_time
+ *        and \p off_time parameters.
+ */
 const Event& Basic_Player::get_event() const
 {
 	return event;
@@ -123,8 +177,11 @@ const Event& Basic_Player::get_event() const
 
 //! Play one event.
 /*!
- * This function first reads an event from the track. Then calls the abstract virtual function event_hook().
- * After that, loops and jump events are handled to set the next event position.
+ *  This function first reads an event from the track. Then calls the
+ *  abstract virtual function event_hook().
+ *
+ *  After that, loops and jump events are handled to set the next
+ *  event position.
  */
 void Basic_Player::step_event()
 {
@@ -154,7 +211,9 @@ void Basic_Player::step_event()
 	switch(event.type)
 	{
 		case Event::LOOP_START:
+			loop_begin_depth++;
 			stack_push({Player_Stack::LOOP, track, position, 0, 0});
+			event_hook();
 			break;
 		case Event::LOOP_BREAK:
 			// verify
@@ -163,19 +222,30 @@ void Basic_Player::step_event()
 			track_event->param = stack.top().end_position;
 			// Break if at the final loop iteration
 			if(stack.top().loop_count == 1)
+			{
+				// make sure event_hook sees a LOOP_END on the final iteration
+				event = track->get_event(stack.top().end_position - 1);
 				position = stack_pop(Player_Stack::LOOP).end_position;
+			}
+			event_hook();
 			break;
 		case Event::LOOP_END:
 			stack_top(Player_Stack::LOOP);
 			stack.top().end_position = position;
 			// Set loop count if zero
 			if(stack.top().loop_count == 0)
+			{
 				stack.top().loop_count = event.param;
+				loop_begin_depth--;
+			}
+			if(stack.top().loop_count < 0)
+				error("Invalid loop count");
 			// Jump back
 			if(--stack.top().loop_count > 0)
 				position = stack.top().position;
 			else
 				stack_pop(Player_Stack::LOOP);
+			event_hook();
 			break;
 		case Event::SEGNO:
 			loop_count = 0;
@@ -188,6 +258,8 @@ void Basic_Player::step_event()
 			try
 			{
 				Track& new_track = song->get_track(event.param);
+				// Event hook should be sent before pushing the stack
+				event_hook();
 				// Push old position
 				stack_push({Player_Stack::JUMP, track, position, 0, 0});
 				// Set new position
@@ -233,9 +305,42 @@ bool Basic_Player::is_enabled() const
 	return enabled;
 }
 
-Player::Player(Song& song, Track& track, Player_Flag flag)
+//! Check if the playback position is inside a loop.
+/*!
+ *  The first iteration of each loop is not counted.
+ *
+ *  \todo More documentation based on unit tests.
+ *
+ *  \retval true Inside a loop.
+ *  \retval false Not inside a loop.
+ */
+bool Basic_Player::is_inside_loop() const
+{
+	return stack_depth[Player_Stack::LOOP] && (stack_depth[Player_Stack::LOOP] != loop_begin_depth);
+}
+
+//! Check if the playback position is inside a jump (subroutine).
+/*!
+ *  This also includes drum mode subroutines.
+ *
+ *  \todo More documentation based on unit tests.
+ *
+ *  \retval true Inside a jump.
+ *  \retval false Not inside a jump.
+ */
+bool Basic_Player::is_inside_jump() const
+{
+	return stack_depth[Player_Stack::JUMP];
+}
+
+//! Creates a Player.
+/*!
+ *  \param[in,out] song reference to a Song.
+ *  \param[in,out] track reference to a Track.
+ */
+Player::Player(Song& song, Track& track)
 	: Basic_Player(song, track),
-	flag(flag),
+	skip_flag(false),
 	note_count(0),
 	rest_count(0),
 	platform_state(),
@@ -284,6 +389,15 @@ void Player::handle_drum_mode()
 		track = stack_pop(Player_Stack::DRUM_MODE).track;
 	}
 }
+
+//! Handles an event inside the player.
+/*!
+ *  Updates the internal channel variables and update flags. If a
+ *  platform event is encountered, calls override functions to parse
+ *  and execute those events.
+ *
+ *  This function should be called inside the player's event_hook().
+ */
 void Player::handle_event()
 {
 	switch(event.type)
@@ -340,7 +454,13 @@ void Player::handle_event()
 	}
 }
 
-//! Get the update flag for \p type.
+//! Check if a channel variable has been updated.
+/*!
+ *  \param[in] type Specify the variable to check.
+ *
+ *  \retval true Variable was updated.
+ *  \retval false Variable was not updated.
+ */
 bool Player::get_update_flag(Event::Type type) const
 {
 	if(type < Event::CHANNEL_CMD || type >= Event::CMD_COUNT)
@@ -348,7 +468,10 @@ bool Player::get_update_flag(Event::Type type) const
 	return FLAG(type);
 }
 
-//! Clear the update flag for \p type.
+//! Clear the update flag for a channel variable
+/*!
+ *  \param[in] type Specify the variable to clear.
+ */
 void Player::clear_update_flag(Event::Type type)
 {
 	if(type < Event::CHANNEL_CMD || type >= Event::CMD_COUNT)
@@ -356,7 +479,13 @@ void Player::clear_update_flag(Event::Type type)
 	FLAG_CLR(type);
 }
 
-//! Get the update flag for the platform variable \p type.
+//! Check if a platform variable has been updated.
+/*!
+ *  \param[in] type Specify the variable to check.
+ *
+ *  \retval true Variable was updated.
+ *  \retval false Variable was not updated.
+ */
 bool Player::get_platform_flag(unsigned int type) const
 {
 	if(type > 31)
@@ -364,7 +493,10 @@ bool Player::get_platform_flag(unsigned int type) const
 	return (platform_update_mask >> type) & 1;
 }
 
-//! Clear the update flag for the platform variable \p type.
+//! Clear the update flag for a platform variable
+/*!
+ *  \param[in] type Specify the variable to clear.
+ */
 void Player::clear_platform_flag(unsigned int type)
 {
 	if(type > 31)
@@ -372,19 +504,48 @@ void Player::clear_platform_flag(unsigned int type)
 	platform_update_mask &= ~(1 << type);
 }
 
-//! Return true if coarse volume.
+//! Return the coarse volume flag.
+/*!
+ *  The coarse volume flag determines the scaling of the event variable
+ *  Event::VOL, coarse or fine. The definition of either is
+ *  platform-specific, but typically the coarse volume is logarithmic
+ *  in 15 steps of 2 dB while fine volume can have more steps and be
+ *  either linear or logarithmic.
+ *
+ *  In MML, the `v` command would emit a coarse volume setting while
+ *  `V` is a fine volume setting.
+ *
+ *  \return false if volume setting is fine.
+ *  \return true if volume setting is coarse
+ */
 bool Player::coarse_volume_flag() const
 {
 	return FLAG(VOL_BIT);
 }
 
-//! Return true if BPM set.
+//! Return the tempo BPM flag.
+/*!
+ *  The tempo BPM flag determines if the event variable Event::TEMPO
+ *  contains the direct tempo (platform-specific) or the BPM.
+ *
+ *  In MML, the `t` command would emit a BPM tempo setting while `T` is
+ *  a platform-specific setting (for example the periods of an FM chip's
+ *  timer)
+ *
+ *  \return false if tempo setting is platform-specific.
+ *  \return true if tempo setting is in BPM.
+ */
 bool Player::bpm_flag() const
 {
 	return FLAG(BPM_BIT);
 }
 
-//! Get platform-specific variable.
+//! Get event variable.
+/*!
+ *  \param[in] type The event type.
+ *
+ *  \return The event variable corresponding to that type.
+ */
 int16_t Player::get_platform_var(int type) const
 {
 	if(type > 31)
@@ -393,6 +554,11 @@ int16_t Player::get_platform_var(int type) const
 }
 
 //! Get event variable.
+/*!
+ *  \param[in] type The event type.
+ *
+ *  \return The event variable corresponding to that type.
+ */
 int16_t Player::get_var(Event::Type type) const
 {
 	if(type < Event::CHANNEL_CMD || type >= Event::CMD_COUNT)
@@ -403,7 +569,7 @@ int16_t Player::get_var(Event::Type type) const
 void Player::event_hook()
 {
 	handle_event();
-	if(~flag & PLAYER_SKIP)
+	if(!skip_flag)
 		write_event();
 }
 
@@ -420,15 +586,40 @@ void Player::end_hook()
 
 //! Custom platform event parser.
 /*!
- * Override functions should return a bitmask representing the event_state
- * variables that were modified by the functions.
+ *  The override function should modify the \p platform_state as appropriate
+ *  and then return a bitmask indicating the changed state.
+ *
+ *  \param[in] tag Reference to a Tag containing the platform command,
+ *                 as created by Song::register_platform_command().
+ *  \param[in,out] platform_state Pointer to the internal platform
+ *                 command state array.
+ *  \return Override functions should return a bitmask representing the
+ *          event state variables that were modified by the functions.
+ *          Each bit corresponds to the index in the array of the
+ *          variables being modified.
+ *
+ *  \see Song::register_platform_command()
  */
 uint32_t Player::parse_platform_event(const Tag& tag, int16_t* platform_state)
 {
 	return 0;
 }
 
-//! Default write_event handler. This simply increments a note and rest counter.
+//! Event handler.
+/*!
+ *  This is the Player equivalent to event_hook().
+ *
+ *  The default write_event handler simply increments a note and rest
+ *  counter.
+ *
+ *  \note skip_ticks() can be used to skip events. Because
+ *        events are not sent to write_event() during this time, the
+ *        derived write_event() should mainly check for Event::NOTE
+ *        and Event::REST types (other Event types in special cases)
+ *        and get the state of the channel variables using the
+ *        \c get_flag and \c get_var (and platform event equivalents)
+ *        respectively.
+ */
 void Player::write_event()
 {
 	// Handle NOTE and REST events here.
@@ -438,7 +629,11 @@ void Player::write_event()
 		rest_count++;
 }
 
-//! Skip to a timestamp
+//! Skip a number of ticks.
+/*!
+ *  \param ticks Number of ticks to skip, counting from the current
+ *               position.
+ */
 void Player::skip_ticks(unsigned int ticks)
 {
 	if(!is_enabled())
@@ -446,7 +641,7 @@ void Player::skip_ticks(unsigned int ticks)
 		play_time += ticks;
 		return;
 	}
-	flag |= PLAYER_SKIP;
+	skip_flag = true;
 	while(ticks && is_enabled())
 	{
 		if(on_time > ticks)
@@ -470,10 +665,19 @@ void Player::skip_ticks(unsigned int ticks)
 		step_event();
 	}
 	play_time += ticks;
-	flag &= ~PLAYER_SKIP;
+	skip_flag = false;
 }
 
-//! Play track
+//! Play a single tick.
+/*!
+ *  Reads and decrements the on_time and off_time of the previous Event.
+ *
+ *  When there is remaining on_time, only the on_time is decremented.
+ *  After it becomes 0 and if there is remaining off_time, an Event::REST
+ *  is automatically created and passed to write_event().
+ *
+ *  When both counters are 0, the next event is read using step_event().
+ */
 void Player::play_tick()
 {
 	if(on_time)
@@ -528,18 +732,23 @@ void Track_Validator::end_hook()
 		loop_time = get_play_time() - segno_time;
 }
 
-//! Gets the length of the loop section (i.e. from the position of the Event::SEGNO to the end of the track)
+//! Gets the length of the loop section
 /*!
- * If there is no loop, 0 is returned.
+ *  The loop section strats from the position of the Event::SEGNO to
+ *  the end of the track.
+ *
+ *  \return If there is no loop, 0 is returned. Otherwise, the loop
+ *          section as defined above.
  */
 unsigned int Track_Validator::get_loop_length() const
 {
 	return loop_time;
 }
 
-//! Validates all tracks in a song.
+//! Creates a Song_Validator.
 /*!
- * \exception InputError if any validation errors occur. These should be displayed to the user.
+ *  \exception InputError if any validation errors occur.
+ *             These should be displayed to the user.
  */
 Song_Validator::Song_Validator(Song& song)
 {
@@ -551,7 +760,9 @@ Song_Validator::Song_Validator(Song& song)
 
 //! Gets a reference to the Track_Validator map.
 /*!
- * The track validators contain the length and loop lengths of each track, which you can get with Player::get_play_time() and Track_Validator::get_loop_length() respectively.
+ *  The track validators contain the length and loop lengths of each
+ *  Track, which you can get with Player::get_play_time() and
+ *  Track_Validator::get_loop_length() respectively.
  */
 const std::map<uint16_t,Track_Validator>& Song_Validator::get_track_map() const
 {

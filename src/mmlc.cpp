@@ -4,9 +4,11 @@
 #include "player.h"
 #include "vgm.h"
 #include "platform/md.h"
+#include "platform/mdsdrv.h"
 #include "stringf.h"
 
 #include <iostream>
+#include <fstream>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,9 +16,9 @@
 
 void print_usage(const char* exename)
 {
-	std::cout << "mmlc (pre-alpha version)\n";
-	std::cout << "(C) 2019 ian karlsson\n";
-	std::cout << exename << " <input_file.mml>\n";
+	std::cout << "mmlc - ctr MML Compiler\n";
+	std::cout << "(C) 2019-2020 ian karlsson\n\n";
+	std::cout << "Usage: " << exename << " <input_file.mml>\n";
 }
 
 std::string output_filename(const char* input_filename, const char* extension)
@@ -109,9 +111,39 @@ void generate_vgm(Song& song, const std::string& filename, int max_seconds)
 	vgm.write_tag(get_tags(song));
 }
 
+void generate_mds(Song& song, const std::string& filename)
+{
+	MDSDRV_Converter converter(song, filename);
+	converter.write();
+}
+
 int main(int argc, char* argv[])
 {
-	if(argc < 2)
+	enum
+	{
+		ACTION_VGM,
+		ACTION_COMPILE,
+	} action = ACTION_VGM;
+	std::string in_filename = "";
+	std::string out_filename = "";
+	uint32_t max_seconds = 300;
+
+	for(int arg = 1, default_arguments=0; arg < argc; arg++)
+	{
+		if((!strcmp(argv[arg], "-o") || !strcmp(argv[arg], "--output")) && arg < argc)
+			out_filename = argv[++arg];
+		else if((!strcmp(argv[arg], "-s") || !strcmp(argv[arg], "--max-seconds")) && arg < argc)
+			max_seconds = strtoul(argv[++arg], NULL, 0);
+		else if(!strcmp(argv[arg], "-c") || !strcmp(argv[arg], "--compile"))
+			action = ACTION_COMPILE;
+		else if(default_arguments < 1)
+		{
+			default_arguments++;
+			in_filename = argv[arg];
+		}
+	}
+
+	if(!in_filename.size())
 	{
 		print_usage(argv[0]);
 		std::cerr << "no input specified\n";
@@ -120,8 +152,20 @@ int main(int argc, char* argv[])
 
 	try
 	{
-		Song song = convert_file(argv[1]);
-		generate_vgm(song, output_filename(argv[1], ".vgm"), 300);
+		Song song = convert_file(in_filename.c_str());
+		switch(action)
+		{
+			case ACTION_VGM:
+				if(!out_filename.size())
+					out_filename = output_filename(in_filename.c_str(), ".vgm");
+				generate_vgm(song, out_filename, max_seconds);
+				break;
+			case ACTION_COMPILE:
+				if(!out_filename.size())
+					out_filename = output_filename(in_filename.c_str(), ".mds");
+				generate_mds(song, out_filename);
+				break;
+		}
 	}
 	catch (InputError& error)
 	{

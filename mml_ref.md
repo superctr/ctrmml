@@ -1,4 +1,4 @@
-MML reference for ctrmml (2019-05-07)
+MML reference for ctrmml (2020-01-13)
 ========================
 
 ## Meta commands
@@ -16,7 +16,7 @@ comma-separated values. Strings can be enclosed in double quotes if needed.
 -	`%<num>` - Defines a platform-exclusive command. This is roughly
 	equivalent to MIDI sysex messages, and it is executed by the MML tracks
 	with the `%` command. Alternatively a command can be defined from within
-	MML tracks with `'...'`.
+	MML tracks with ``'...'``.
 
 ## Addressing tracks
 A span of characters at the beginning of a line selects tracks. There must be
@@ -63,7 +63,9 @@ the previously specified channels will be used.
 -	`^` - Tie. Extends duration of previous note.
 -	`&` - Slur. Used to connect two notes (legato).
 -	`r` - Rest. Optionally set duration after the rest.
--	`q<1..8>` - Quantize. Used to set articulation.
+-	`Q<1..8>` - Quantize. Used to set articulation. Note length is param/8.
+-	`q<1..8>` - Set early release. Used to set articulation. Early release
+	cannot exceed note length, in that case it will be note length - 1.
 -	`l<duration>` - Set default duration, used if not specified by notes,
 	rests, `R` or `~` commands.
 -	`R<duration>` - Reverse rest. This subtracts the value from the previous
@@ -93,10 +95,11 @@ These commands are defined for all platforms, however how they are handled
 depends on the platform. They may be ignored or the accepted range may differ.
 
 -	`@<0..65535>` - Set instrument.
--	`v<0-15>` - Set volume.
+-	`v<0..15>` - Set volume.
 -	`)`, `(` - Volume up and down, respectively. You may specify the increment
 	or decrement, if you want.
 -	`V<0..255>` - Set volume (fine).
+-	`V<-128..+127>` - Modify volume (fine).
 -	`p<-128..127>` - Set panning.
 -	`k<-128..127>` - Set transpose.
 -	`K<-128..127>` - Set detune.
@@ -116,7 +119,7 @@ depends on the platform. They may be ignored or the accepted range may differ.
 -	`%<0..32767>` - Platform-exclusive command. This command executes a
 	platform-exclusive meta-command (see previous section) with the specified
 	number.
--	`'<key> <value> ...'` - Inline definition of platform-specific commands.
+-	``'<key> <value> ...'`` - Inline definition of platform-specific commands.
 
 ### Comparison with other MML formats (incomplete)
 #### PMD
@@ -124,9 +127,10 @@ depends on the platform. They may be ignored or the accepted range may differ.
 -	`l-<duration>` (borrow), use the `R<duration>` command instead.
 -	`&` (tie), use the `^` command.
 -	`&&` (slur), use the `&` command.
+-	`%` (direct length) use `:` to specify note length in frames.
 
 ## Platforms
-### Megadrive
+### MDSDRV (Mega Drive)
 #### Channel mapping
 -	`ABCDEF` FM channels 1-6.
 -	`GHI` PSG tone channels 1-3.
@@ -140,7 +144,8 @@ depends on the platform. They may be ignored or the accepted range may differ.
 	this is active.
 -	`fm3 <mask>` - Enables FM3 special mode. Mask defines the operators that
 	are affected by this channel. Example: `fm3 0011` to use operators 1 and 2.
-	Set the mask to `1111` to disable the special mode.
+	Set the mask to `1111` to disable the special mode. You can use this on any
+	channel (for example `I`) to temporarily use this MML track for FM3.
 
 #### Limitations
 Pan envelopes not supported.
@@ -155,10 +160,11 @@ FM instruments are defined as below: (Commas between values are optional)
 	;	ALG  FB
 		  3   0
 	;	 AR  DR  SR  RR  SL  TL  KS  ML  DT SSG
-		 31   0  19   5   0  23   0   0   0   0
-		 31   6   0   4   3  19   0   0   0   0
-		 31  15   0   5   4  38   0   4   0   0
-		 31  27   0  11   1   0   0   1   0   0
+		 31   0  19   5   0  23   0   0   0   0 ; OP1 (M1)
+		 31   6   0   4   3  19   0   0   0   0 ; OP2 (C1)
+		 31  15   0   5   4  38   0   4   0   0 ; OP3 (M2)
+		 31  27   0  11   1   0   0   1   0   0 ; OP4 (C2)
+		  0 ; TRS (optional)
 
 ##### 2op chord macro
 Instrument type `2op` is used to duplicate FM instruments, modifying the
@@ -173,10 +179,10 @@ This feature is similar to the "Tone Doubler" in NRTDRV.
 	;	ALG  FB
 		  4   0
 	;	 AR  DR  SR  RR  SL  TL  KS  ML  DT SSG
-		 20   5   0   1   1   9   0   4   7   0
-		 31   8   4   7   2   0   0   4   0   0
-		 20   5   0   1   1   9   0   1   7   0
-		 31   8   4   7   2 127   0   1   0   0
+		 20   5   0   1   1   9   0   4   7   0 ; OP1
+		 31   8   4   7   2   0   0   4   0   0 ; OP2
+		 20   5   0   1   1   9   0   1   7   0 ; OP3
+		 31   8   4   7   2 127   0   1   0   0 ; OP4
 	;         @ ML1 ML2 ML3 ML4 TRS
 	@24 2op   2   5   5   4   4   0 ; n+4
 	@25 2op   2   4   4   3   3   5 ; n+5
@@ -191,7 +197,8 @@ volume and 0 is silence.
 	@10 psg
 		1 4 6 8 10 12 13 14 15
 
-Use `>` to specify sliding from one value to another (important: no space)
+Use `>` to specify sliding from one value to another (important: no space
+around the `>`)
 
 	@11 psg
 		15>10
@@ -238,8 +245,8 @@ envelopes, there must be no space between parameters in one envelope
 node.
 
 ##### Commands
-The initial and target parameters are defined in semitones. They CAN be
-fractional.
+The initial and target parameters are defined in semitones. You can use
+decimals, although they will be truncated to 8.8 bits fixed point.
 
 -	`value>target:length` - Inserts a node with initial value,
 	slide target and length.
@@ -268,6 +275,6 @@ Vibrato with 20 frame delay at the beginning
 
 	@M1 0:20 | 0>0.5:5 0.5>-0.5:10 -0.5>0:5
 
-Using the `V` macro to do the same thing
+Using the `V` macro to do the same thing as above
 
 	@M1 0:20 | V0:1:5

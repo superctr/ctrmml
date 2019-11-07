@@ -6,8 +6,8 @@
 
 //! Constructs a Track.
 /*!
- * \param ppqn Pulses per quarter note, used to set the default duration
- * and can also be used as a reference for input handlers.
+ *  \param ppqn Pulses per quarter note, used to set the default duration
+ *              and can also be used as a reference for input handlers.
  */
 Track::Track(uint16_t ppqn)
 	: flag(0),
@@ -17,17 +17,28 @@ Track::Track(uint16_t ppqn)
 	measure_len(ppqn * 4),
 	default_duration(measure_len / 4),
 	quantize(DEFAULT_QUANTIZE),
-	quantize_parts(DEFAULT_QUANTIZE_PARTS)
+	quantize_parts(DEFAULT_QUANTIZE_PARTS),
+	early_release(0)
 {
 }
 
 //! Enables the track.
+/*!
+ *  This sets bit 7 of the track flag. It is to be used as a convenience
+ *  by input routines (by using is_enabled()) to signify that a track is
+ *  to be included in the final output.
+ */
 void Track::enable()
 {
 	flag |= 0x80;
 }
 
 //! Return true if track is enabled.
+/*!
+ *  This returns bit 7 of the track flag. It is to be used as a
+ *  convenience by players to signify that a track has been marked as
+ *  used by the input routine.
+ */
 bool Track::is_enabled()
 {
 	return (flag & 0x80);
@@ -36,8 +47,16 @@ bool Track::is_enabled()
 //! Get Event::on_time after quantization.
 uint16_t Track::on_time(uint16_t duration)
 {
+	if(early_release)
+	{
+		if(early_release >= duration)
+			return 1;
+		else
+			return duration - early_release;
+	}
 	return (duration * quantize) / quantize_parts;
 }
+
 //! Get Event::off_time after quantization.
 uint16_t Track::off_time(uint16_t duration)
 {
@@ -46,8 +65,8 @@ uint16_t Track::off_time(uint16_t duration)
 
 //! Sets the reference to use for successive Events.
 /*!
- * This is used to associate source files with events so that
- * sensible error messages can be generated outside the parser.
+ *  This is used to associate source files with events so that
+ *  sensible error messages can be generated outside the parser.
  */
 void Track::set_reference(const std::shared_ptr<InputRef>& ref)
 {
@@ -55,12 +74,21 @@ void Track::set_reference(const std::shared_ptr<InputRef>& ref)
 }
 
 //! Appends an Event to the event list.
+/*!
+ *  \param new_event Reference to the Event to be appended.
+ */
 void Track::add_event(Event& new_event)
 {
 	events.push_back(new_event);
 }
 
 //! Appends a new Event to the event list.
+/*!
+ *  \param type     Event type.
+ *  \param param    Event parameter
+ *  \param on_time  On time (Event::NOTE, Event::REST, Event::TIE only)
+ *  \param off_time Off time (Event::NOTE, Event::TIE only)
+ */
 void Track::add_event(Event::Type type, int16_t param, uint16_t on_time, uint16_t off_time)
 {
 	Event a = {type, param, on_time, off_time, reference};
@@ -69,8 +97,10 @@ void Track::add_event(Event::Type type, int16_t param, uint16_t on_time, uint16_
 
 //! Add an Event::NOTE Event with specified parameter and duration.
 /*!
- * \param note Note number (0-11). Modified by the octave number set by set_octave().
- * \param duration Note duration. If 0, use the default duration set by set_duration().
+ *  \param note     Note number (0-11). Modified by the octave number
+ *                  set by set_octave().
+ *  \param duration Note duration. If 0, use the default duration set
+ *                  by set_duration().
  */
 void Track::add_note(int note, uint16_t duration)
 {
@@ -83,8 +113,14 @@ void Track::add_note(int note, uint16_t duration)
 
 //! Extends the previous note.
 /*!
- * If this is not possible, add an Event::TIE Event with specified parameter and duration.
- * \param duration Extend duration. If 0, use the default duration set by set_duration().
+ *  If preceded by a Event::NOTE or Event::REST, simply extend the
+ *  on_time or off_time of the previous event.
+ *
+ *  Otherwise, add a new Event::TIE Event with specified parameter
+ *  and duration.
+ *
+ *  \param duration Extend duration. If 0, use the default
+ *                  duration set by set_duration().
  */
 int Track::add_tie(uint16_t duration)
 {
@@ -130,7 +166,8 @@ int Track::add_tie(uint16_t duration)
 
 //! Add an Event::REST Event with specified duration.
 /*!
- * \param duration Rest duration. If 0, use the default duration set by set_duration().
+ *  \param[in] duration Rest duration. If 0, use the default duration
+ *                      set by set_duration().
  */
 void Track::add_rest(uint16_t duration)
 {
@@ -140,11 +177,11 @@ void Track::add_rest(uint16_t duration)
 
 //! Connect two notes.
 /*!
- * This is done by extending the previous note by setting it to legato,
- * then adding an Event::SLUR event.
+ *  This is done by extending the previous note by setting it to legato,
+ *  then adding an Event::SLUR event.
  *
- * \retval -1 if unable to backtrack.
- * \retval 0 on success.
+ *  \retval -1 if unable to backtrack.
+ *  \retval 0 on success.
  */
 int Track::add_slur()
 {
@@ -176,12 +213,15 @@ int Track::add_slur()
 
 //! Backtrack in order to shorten previous event.
 /*!
- * Maybe in the future, we might be able to remove or dummy out notes in
- * order to gain extra time.
- *
- * \exception std::length_error if requested duration is greater than the
- * length of the previous event.
- * \exception std::domain_error if unable.
+ *  \note Duration must not exceed the combined length of on_time and
+ *        off_time of the previous note, rest or tie. See todo below.
+ *  \todo Currently this command cannot remove notes that have already
+ *       been added. Maybe in the future...
+ *  \param[in] duration Number of ticks to subtract from the previous
+ *                      event.
+ *  \exception std::length_error if requested duration is greater than the
+ *                               length of the previous event.
+ *  \exception std::domain_error if unable.
  */
 void Track::reverse_rest(uint16_t duration)
 {
@@ -225,20 +265,19 @@ void Track::reverse_rest(uint16_t duration)
 	throw std::domain_error("there is no previous duration"); // -1
 }
 
-//! Finalize and validate the track.
-int Track::finalize(class Song& song, uint16_t track_id)
-{
-	printf("Not implemented yet.\n");
-	return -1;
-}
-
-//! Set the octave, which affects add_note().
+//! Set the octave, affecting subsequent calls to add_note().
+/*!
+ *  \param[in] param Octave number (typically 0-8)
+ */
 void Track::set_octave(int param)
 {
 	octave = param;
 }
 
-//! Adds the param value to the octave.
+//! Modify the octave, affecting subsequent calls to add_note().
+/*!
+ *  \param[in] param Octave number displacement.
+ */
 void Track::change_octave(int param)
 {
 	octave += param;
@@ -246,7 +285,11 @@ void Track::change_octave(int param)
 
 //! Set quantization time.
 /*!
- * Sets the Event::on_time of the next note events to param/parts.
+ *  Sets the Event::on_time of the next note events to \p param
+ *  divided by \p parts. Replaces the early release setting.
+ *
+ *  \param[in] param Quantization dividend.
+ *  \param[in] parts Quantization divider. Default value is 8.
  */
 int Track::set_quantize(uint16_t param, uint16_t parts)
 {
@@ -256,10 +299,27 @@ int Track::set_quantize(uint16_t param, uint16_t parts)
 		param = -1;
 	quantize = param;
 	quantize_parts = parts;
+	early_release = 0;
 	return 0;
 }
 
-//! Set the drum mode status. If param is 0, disables it.
+//! Set early release time.
+/*!
+ *  Sets the Event::on_time of the next note events to \p param.
+ *  Replaces the quantization setting.
+ *
+ *  \param[in] param Early release time in ticks.
+ */
+void Track::set_early_release(uint16_t param)
+{
+	early_release = param;
+}
+
+//! Set the drum mode parameters.
+/*!
+ *  \param[in] param Drum mode note offset.
+ *               If 0, drum mode is disabled.
+ */
 void Track::set_drum_mode(uint16_t param)
 {
 	if(!param)
@@ -270,18 +330,29 @@ void Track::set_drum_mode(uint16_t param)
 }
 
 //! Returns the drum mode status.
+/*!
+ *  \retval true  Drum mode is enabled.
+ *  \retval false Drum mode is disabled.
+ */
 bool Track::in_drum_mode()
 {
 	return (flag & 0x01);
 }
 
 //! Set the default duration used by add_note() et al.
+/*!
+ *  \param param Duration value in ticks.
+ */
 void Track::set_duration(uint16_t param)
 {
 	default_duration = param;
 }
 
-//! If the duration param is 0, get the default duration. Otherwise use the param value.
+//! Get the implied duration.
+/*!
+ *  \param[in] duration If 0, get the default duration as set by
+ *                  set_duration(). Otherwise use the param value.
+ */
 uint16_t Track::get_duration(uint16_t duration)
 {
 	if(!duration)
@@ -290,10 +361,10 @@ uint16_t Track::get_duration(uint16_t duration)
 		return duration;
 }
 
-//! Get the measure length. This is actually the length of the whole note.
+//! Get the length of a whole note.
 /*!
- * This is actually not used internally by the track methods, rather it is
- * provided as convenience to MIDI or MML parsers.
+ *  This is actually not used internally by the track methods, rather it is
+ *  provided as convenience to MIDI or MML parsers.
  */
 uint16_t Track::get_measure_len()
 {
@@ -306,8 +377,9 @@ std::vector<Event>& Track::get_events()
 	return events;
 }
 
-//! Get the specified event.
+//! Get the Event at the specified position.
 /*!
+ * \param position Position of event in the track.
  * \exception std::out_of_range if position exceeds event count.
  */
 Event& Track::get_event(unsigned long position)
@@ -315,7 +387,7 @@ Event& Track::get_event(unsigned long position)
 	return events.at(position);
 }
 
-//! Get event count.
+//! Get the total number of events in the track.
 unsigned long Track::get_event_count()
 {
 	return events.size();

@@ -1,4 +1,10 @@
-//! \file player.h
+/*! \file src/player.h
+ *  \brief Track player class
+ *
+ *  Includes base classes for the Track player.
+ *
+ *  \see Basic_Player
+ */
 #ifndef PLAYER_H
 #define PLAYER_H
 #include "core.h"
@@ -6,39 +12,48 @@
 #include <stack>
 #include <memory>
 
-//! Track player flags.
-//! This controls when Player calls Player::write_event().
-enum Player_Flag
-{
-	PLAYER_NO_FLAG = 0,
-	PLAYER_UNROLL_LOOPS = 1<<1, //!< Do not send events inside a loop.
-	PLAYER_UNROLL_JUMPS = 1<<2, //!< Do not send events inside a jump.
-	PLAYER_SEND_REST = 1<<3, //!< Send Event::REST after an Event::NOTE or Event::TIE event with an off_time defined.
-	PLAYER_OPTIMIZE = 1<<4, //!< Filter redundant events.
-	PLAYER_SKIP = 1<<5, //!< Skip sending events
-};
-
-//! Player stack structure.
+//! Player stack frame.
 struct Player_Stack
 {
+	//! Defines the type of stack frame.
 	enum Type {
 		LOOP = 0,
 		JUMP = 1,
 		DRUM_MODE = 2,
 		MAX_STACK_TYPE = 3
 	} type;
+	//! Referenced track.
 	Track* track;
+	//! Event position
 	int position;
+	//! If \ref LOOP, points to the end position of the loop.
+	//! May not be filled in until the loop has iterated once.
 	int end_position;
+	//! If \ref LOOP, remaining loop count.
 	int loop_count;
 };
 
-//! Basic track player.
-/*! This class implements the basic Event commands only.
+//! Abstract basic track player.
+/*!
+ *  The player class is used to iterate Track events, handling basic
+ *  track events such as looping and jumping to subroutines.
+ *
+ *  All events are forwarded to the derived classes with the
+ *  event_hook(), loop_hook() and end_hook() virtual functions.
+ *
+ *  At the end of the track, when an Event::END is encountered,
+ *  loop_hook() is called. Depending on the return value, the track
+ *  is stopped and end_hook() is called.
+ *
+ *  Typical usage of Basic_Player is to call step_event() until
+ *  is_enabled() returns False.
+ *
+ *  \see Player
  */
 class Basic_Player
 {
 	friend Player; // needed to access position
+	friend class Player_Test;
 	private:
 		Song* song;
 		Track* track;
@@ -46,11 +61,14 @@ class Basic_Player
 		int position;
 		int loop_position;
 		int loop_reset_position; // Position to increment the loop count
-		std::stack<Player_Stack> stack;
 		int loop_count;
 		int loop_reset_count;
+		std::stack<Player_Stack> stack;
 		unsigned int stack_depth[Player_Stack::MAX_STACK_TYPE];
 		unsigned int max_stack_depth;
+		// # of loops in the stack where the loop count is 0.
+		unsigned int loop_begin_depth;
+
 		void stack_underflow(int type);
 
 	protected:
@@ -73,6 +91,7 @@ class Basic_Player
 		//! Called at the end position.
 		virtual void end_hook() = 0;
 		void error(const char* message) const;
+		void disable();
 		void stack_push(const Player_Stack& stack_obj);
 		Player_Stack& stack_top(Player_Stack::Type type);
 		Player_Stack stack_pop(Player_Stack::Type type);
@@ -82,6 +101,8 @@ class Basic_Player
 	public:
 		Basic_Player(Song& song, Track& track);
 		bool is_enabled() const;
+		bool is_inside_loop() const;
+		bool is_inside_jump() const;
 		unsigned int get_play_time() const;
 		int get_loop_count() const;
 		const Event& get_event() const;
@@ -90,14 +111,33 @@ class Basic_Player
 };
 
 //! Generic track player.
-/*! This handles the channel-mode commands using the track_state array.
- * Depending on the flags set (see PlayerFlag), the event is then passed to write_event.
+/*!
+ *  This handles the channel events using an internal track state
+ *  array. Drum mode events are also handled here.
+ *
+ *  The event is then passed to write_event().
+ *
+ *  This player also keeps track of note and rest durations (in ticks)
+ *  and so if play_tick() is called at a regular interval, playback
+ *  of multiple tracks can be synchronized.
+ *
+ *  skip_ticks() can be used to skip events. Because
+ *  events are not sent to write_event() during this time, the derived
+ *  write_event() should mainly check for Event::NOTE and Event::REST types
+ *  (other Event types in special cases) and get the state of the channel
+ *  variables using the \c get_flag and \c get_var (and platform event
+ *  equivalents) respectively.
+ *
+ *  The Player class is intended for actual playback. For conversion,
+ *  directly inheriting Basic_Player might be a better idea.
+ *
+ *  \see Basic_Player
  */
 class Player : public Basic_Player
 {
 	friend class Player_Test;
 	private:
-		uint32_t flag;
+		bool skip_flag;
 		int note_count;
 		int rest_count;
 		int16_t platform_state[Event::CHANNEL_CMD_COUNT];
@@ -106,9 +146,9 @@ class Player : public Basic_Player
 		uint32_t track_update_mask;
 		void handle_drum_mode();
 		void handle_event();
-		void event_hook() override;
-		bool loop_hook() override;
-		void end_hook() override;
+		virtual void event_hook() override;
+		virtual bool loop_hook() override;
+		virtual void end_hook() override;
 	protected:
 		bool get_platform_flag(unsigned int type) const;
 		void clear_platform_flag(unsigned int type);
@@ -117,7 +157,7 @@ class Player : public Basic_Player
 		virtual uint32_t parse_platform_event(const Tag& tag, int16_t* platform_state);
 		virtual void write_event();
 	public:
-		Player(Song& song, Track& track, Player_Flag flag = PLAYER_NO_FLAG);
+		Player(Song& song, Track& track);
 		bool coarse_volume_flag() const;
 		bool bpm_flag() const;
 		int16_t get_var(Event::Type type) const;
@@ -126,9 +166,11 @@ class Player : public Basic_Player
 		void skip_ticks(unsigned int ticks);
 };
 
-//! Track validator and length calculator
+//! Track validator
 /*!
- * Used to detect basic playback errors and to get the track lengths
+ *  The track validator is used to perform a "sanity check" of a Track,
+ *  detecting playback errors while also calculating the play and loop
+ *  duration.
  */
 class Track_Validator : public Basic_Player
 {
@@ -143,7 +185,10 @@ class Track_Validator : public Basic_Player
 		unsigned int get_loop_length() const;
 };
 
-//! This validates and calculates length for each track.
+//! Song validator
+/*!
+ *  Validates all tracks in a song using Track_Validator.
+ */
 class Song_Validator
 {
 	private:

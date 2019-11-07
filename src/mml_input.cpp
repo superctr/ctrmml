@@ -178,8 +178,10 @@ bool MML_Input::mml_basic()
 		track->change_octave(1);
 	else if(c == 'l')
 		track->set_duration(read_duration());
-	else if(c == 'q')
+	else if(c == 'Q')
 		track->set_quantize(expect_parameter());
+	else if(c == 'q')
+		track->set_early_release(expect_parameter());
 	else if(c == 'R')
 		mml_reverse_rest(read_duration());
 	else if(c == '~')
@@ -222,6 +224,8 @@ bool MML_Input::mml_envelope()
 	if(c == '@')
 		track->add_event(Event::INS, expect_parameter());
 	else if(c == 'k')
+		track->add_event(Event::TRANSPOSE, expect_signed());
+	else if(c == 'm') // TODO: finalize the command for relative transpose!
 		event_relative(Event::TRANSPOSE, Event::TRANSPOSE_REL);
 	else if(c == 'K')
 		track->add_event(Event::DETUNE, expect_signed());

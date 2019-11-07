@@ -6,6 +6,11 @@
 #include <iostream>
 #include <stdexcept>
 
+//! Creates an InputError exception.
+/*!
+ *  \param ref a reference pointing at the error. If this is nullptr, a generic
+ *         error message is generated.
+ */
 InputError::InputError(std::shared_ptr<InputRef> ref, const char* message)
 	: reference(ref)
 {
@@ -31,33 +36,31 @@ InputRef::InputRef(const std::string &fn, const std::string &ln, int lno, int co
 {
 }
 
+//! Return the file name 
 const std::string& InputRef::get_filename() const
 {
 	return filename;
 }
 
+//! Return the line number
 const unsigned int& InputRef::get_line() const
 {
 	return line;
 }
 
+//! Return the column number
 const unsigned int& InputRef::get_column() const
 {
 	return column;
 }
 
+//! Return the contents of the line.
 const std::string& InputRef::get_line_contents() const
 {
 	return line_contents;
 }
 
-std::string InputRef::get_column_arrow() const
-{
-	std::string s;
-	return s;
-}
-
-//! Formatted print
+//! Print a formatted InputRef.
 std::ostream& operator<<(std::ostream& os, const class InputRef& ref)
 {
 	os << ref.get_filename() << ":" << ref.get_line() << ":" << ref.get_column();
@@ -74,7 +77,7 @@ Input::~Input()
 {
 }
 
-//! Get the current associated Song object, where all tags and track should be added.
+//! Get the target Song object
 Song& Input::get_song()
 {
 	return *song;
@@ -87,8 +90,9 @@ const std::string &Input::get_filename()
 }
 
 //! Get an InputRef.
-/*! This can be overridden by derived classes to support column/file
- * numbers where this is relevant.
+/*!
+ *  This can be overridden by derived classes to support column/file
+ *  numbers where this is relevant.
  */
 std::shared_ptr<InputRef> Input::get_reference()
 {
@@ -103,7 +107,8 @@ void Input::parse_error(const char* msg)
 }
 
 //! Raise a parse warning.
-/*! In the future this will be added to a warning buffer...
+/*!
+ *  \todo this should be added to a warning buffer...
  */
 void Input::parse_warning(const char* msg)
 {
@@ -112,10 +117,11 @@ void Input::parse_warning(const char* msg)
 }
 
 //! Open a file and parse it.
-/*! This adds the filepath to the include_path tag,
- * sets the filename and calls parse_file().
+/*!
+ *  This adds the filepath to the include_path tag,
+ *  sets the filename and calls parse_file().
  *
- * \exception InputError in case of a read or parse error.
+ *  \exception InputError in case of a read or parse error.
  */
 void Input::open_file(const std::string& fn)
 {
@@ -173,12 +179,16 @@ std::shared_ptr<InputRef> Line_Input::get_reference()
 	return std::make_shared<InputRef>(r);
 }
 
-//! Get the next character from the buffer and increase the column number
-/*! If at the end of the current buffer, 0 is returned and column number is still incremented.
+//! Get the next character from the buffer
+/*!
+ *  Also increments the buffer position.
+ *
+ *  \retval 0 if at the end of the current buffer. The column number
+ *          will still be incremented. 
  */
 int Line_Input::get()
 {
-	if(column == buffer.size())
+	if(column >= buffer.size())
 	{
 		column++;
 		return 0;
@@ -187,7 +197,9 @@ int Line_Input::get()
 }
 
 //! Get the next non-blank character from the buffer.
-/*! Blank characters are skipped until the next non-blank character is found.
+/*!
+ *  Blank characters are skipped until the next non-blank character is
+ *  found.
  */
 int Line_Input::get_token()
 {
@@ -198,9 +210,11 @@ int Line_Input::get_token()
 }
 
 //! Get a number from the buffer.
-/*! Blank characters are skipped until the next number is found.
- * '$' or 'x' prefix indicates hexadecimal number.
- * \exception std::invalid_argument if no number could be read.
+/*!
+ *  Blank characters are skipped until the next number is found.
+ *  A `$` or `x` prefix indicates hexadecimal number.
+ *
+ *  \exception std::invalid_argument if no number could be read.
  */
 int Line_Input::get_num()
 {
@@ -221,14 +235,21 @@ int Line_Input::get_num()
 	return ret;
 }
 
-//! Return a substring of the current line, starting from the column position.
+//! Return a substring starting from the current position.
 std::string Line_Input::get_line()
 {
 	return std::string(buffer, column);
 }
 
 //! Put back the character to the buffer, decrementing the buffer position.
-/*! \param c character to put back. If 0 this is ignored and the buffer contents are unchanged.
+/*!
+ *  The buffer position is decremented by this call.
+ *
+ *  \param c character to put back. If this is 0, no character will be put
+ *           back and the buffer contents are unchanged. Effectively doing
+ *           the same as a seek(tell-1);
+ *
+ *  \exception std::out_of_range If the buffer position is already at 0.
  */
 void Line_Input::unget(int c)
 {
@@ -248,13 +269,13 @@ unsigned long Line_Input::tell()
 	return column;
 }
 
-//! Set buffer position.
+//! Set the buffer position.
 void Line_Input::seek(unsigned long pos)
 {
 	column = pos;
 }
 
-//! Read input line and parse it.
+//! Read a single input line and parse it.
 void Line_Input::read_line(const std::string& input_line)
 {
 	column = 0;

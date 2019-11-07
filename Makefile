@@ -26,7 +26,10 @@ CORE_OBJS = \
 	$(OBJ)/vgm.o \
 	$(OBJ)/driver.o \
 	$(OBJ)/wave.o \
-	$(OBJ)/platform/md.o
+	$(OBJ)/riff.o \
+	$(OBJ)/conf.o \
+	$(OBJ)/platform/md.o \
+	$(OBJ)/platform/mdsdrv.o
 
 MMLC_OBJS = \
 	$(CORE_OBJS) \
@@ -40,6 +43,9 @@ UNITTEST_OBJS = \
 	$(OBJ)/unittest/test_mml_input.o \
 	$(OBJ)/unittest/test_player.o \
 	$(OBJ)/unittest/test_vgm.o \
+	$(OBJ)/unittest/test_riff.o \
+	$(OBJ)/unittest/test_conf.o \
+	$(OBJ)/unittest/test_mdsdrv.o \
 	$(OBJ)/unittest/main.o
 
 $(OBJ)/%.o: $(SRC)/%.cpp

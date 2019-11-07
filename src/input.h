@@ -1,4 +1,8 @@
-//! \file input.h
+/*! \file src/input.h
+ *  \brief Input file formats base
+ *
+ *  Includes base classes for input file formats.
+ */
 #ifndef INPUT_H
 #define INPUT_H
 #include <ostream>
@@ -6,7 +10,16 @@
 #include <string>
 #include "core.h"
 
-//! Parser error exception.
+//! Exception class for input file errors
+/*!
+ *  This exception is thrown whenever an error occurs while reading
+ *  or parsing an Input file.
+ *
+ *  It should not be thrown directly, but rather by using the
+ *  Input::parse_error() function.
+ *
+ *  \see Input::parse_error()
+ */
 class InputError : public std::exception
 {
 	private:
@@ -19,6 +32,13 @@ class InputError : public std::exception
 };
 
 //! Reference to input data
+/*!
+ *  The reference includes the filename, and if applicable, line and
+ *  column numbers as well as the contents of the line.
+ *
+ *  \todo this class could also be abstracted or extended to
+ *        better support tracker file formats.
+ */
 class InputRef
 {
 	private:
@@ -34,12 +54,19 @@ class InputRef
 		const unsigned int& get_line() const;
 		const unsigned int& get_column() const;
 		const std::string& get_line_contents() const;
-		std::string get_column_arrow() const;
 };
 
 std::ostream& operator<<(std::ostream& os, const class InputRef& ref);
 
-//! Abstract class for the song data parser.
+//! Abstract input file format class.
+/*!
+ *  The general purpose of this class (and derived) is to convert
+ *  files to Song objects.
+ *
+ *  A binary file format might inherit directly from the Input class.
+ *  Text-based formats such as MML can use Line_Input that provides
+ *  helper functions for reading text lines.
+ */
 class Input
 {
 	private:
@@ -67,6 +94,17 @@ class Input
 };
 
 //! Abstract class for text line-based input formats (such as MML)
+/*!
+ *  Reads the input files, one line at a time, parsing them using
+ *  the virtual function parse_line().
+ *
+ *  To help with parsing, a C stdio-style interface to lines of texts
+ *  is provided.
+ *
+ *  Because data is stored in an internal buffer and the position
+ *  is kept track of, a call to get_reference() (and thus parse_error())
+ *  will create an InputRef with the correct line number and column.
+ */
 class Line_Input: public Input
 {
 	friend class Line_Input_Test; // needs access to internal variables.

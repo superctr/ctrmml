@@ -1,60 +1,16 @@
-// \filInstrumentType
+//! \file platform/md.h
 #ifndef PLATFORM_MD_H
 #define PLATFORM_MD_H
 #include "../core.h"
 #include "../player.h"
 #include "../driver.h"
 #include "../vgm.h"
-#include "../wave.h"
-#include <map>
+#include "mdsdrv.h"
 #include <memory>
 #include <vector>
 
 class MD_Channel;
 class MD_Driver;
-
-//! Megadrive driver data bank
-class MD_Data
-{
-	private:
-		static const int data_count_max = 256;
-		int add_unique_data(const std::vector<uint8_t>& data);
-		std::string dump_data(uint16_t id, uint16_t mapped_id); // debug function
-		void read_fm_4op(uint16_t id, const Tag& tag);
-		void read_fm_2op(uint16_t id, const Tag& tag);
-		void read_psg(uint16_t id, const Tag& tag);
-		void read_pitch(uint16_t id, const Tag& tag);
-		void add_pitch_node(const char* s, std::vector<uint8_t>* env_data);
-		void add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_data);
-		void read_wave(uint16_t id, const Tag& tag);
-		void read_envelope(uint16_t id, const Tag& tag);
-
-	public:
-		enum InstrumentType
-		{
-			INS_UNDEFINED = 0,
-			INS_PSG = 1,
-			INS_FM = 2,
-			INS_PCM = 3
-		};
-		//! Data bank, holds all instrument and envelope data
-		std::vector<std::vector<uint8_t>> data_bank;
-		//! Waverom bank, holds PCM samples.
-		Wave_Rom wave_rom;
-		//! Maps the current song instruments to data_bank entries.
-		std::map<uint16_t, int> envelope_map;
-		//! Maps the PCM instruments to a wave_rom header.
-		std::map<uint16_t, int> wave_map;
-		//! Maps the current song instrument to transpose settings (for FM 2op only)
-		std::map<uint16_t, int> ins_transpose;
-		//! Maps the current song pitch envelopes to data_bank entries.
-		std::map<uint16_t, int> pitch_map;
-		//! Specify the instrument types of the defined song instruments.
-		std::map<uint16_t, InstrumentType> ins_type;
-
-		MD_Data();
-		void read_song(Song& song);
-};
 
 //! Megadrive abstract channel
 class MD_Channel : public Player
@@ -218,10 +174,6 @@ class MD_Dummy : public MD_Channel
 };
 
 //! Megadrive sound driver
-/*!
- * In the future, this driver will produce files that are compatible
- * with a Megadrive sound driver written by me.
- */
 class MD_Driver : public Driver
 {
 	friend MD_Channel;
@@ -230,7 +182,7 @@ class MD_Driver : public Driver
 	friend MD_PSGMelody;
 	friend MD_PSGNoise;
 	private:
-		MD_Data data;
+		MDSDRV_Data data;
 		Song* song;
 		VGM_Writer* vgm_writer;
 

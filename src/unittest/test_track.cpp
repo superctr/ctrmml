@@ -8,6 +8,7 @@ class Track_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST(test_add_notes);
 	CPPUNIT_TEST(test_illegal_quantize);
 	CPPUNIT_TEST(test_add_note_quantize);
+	CPPUNIT_TEST(test_add_note_early_release);
 	CPPUNIT_TEST(test_add_note_default_duration);
 	CPPUNIT_TEST(test_add_note_octave_change);
 	CPPUNIT_TEST(test_tie_extend_duration);
@@ -79,6 +80,30 @@ public:
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0, track->get_event(2).off_time);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)12, track->get_event(3).on_time);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)12, track->get_event(3).off_time);
+	}
+	// Set early release and add notes and verify that durations are correct.
+	void test_add_note_early_release()
+	{
+		track->set_early_release(6);
+		track->add_note(1, 24);
+		track->set_early_release(2);
+		track->add_note(1, 24);
+		track->set_early_release(8);
+		track->add_note(1, 24);
+		track->set_early_release(4);
+		track->add_note(1, 24);
+		track->set_early_release(35);
+		track->add_note(1, 24);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)18, track->get_event(0).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)6, track->get_event(0).off_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)22, track->get_event(1).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)2, track->get_event(1).off_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)16, track->get_event(2).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)8, track->get_event(2).off_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)20, track->get_event(3).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)4, track->get_event(3).off_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)1, track->get_event(4).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)23, track->get_event(4).off_time);
 	}
 	// Set default duration, add notes and verify that durations are correct
 	void test_add_note_default_duration()

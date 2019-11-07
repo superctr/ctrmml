@@ -1,4 +1,9 @@
-//! \file core.h
+/*! \file src/core.h
+ * \brief ctrmml core include file.
+ *
+ * Includes forward declarations of the core classes and
+ * container data structures used by ctrmml.
+ */
 #ifndef CORE_H
 #define CORE_H
 

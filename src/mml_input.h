@@ -1,4 +1,9 @@
-//! \file mml_input.h
+/*! \file src/mml_input.h
+ *  \brief MML (Music Macro Language) parser
+ *
+ *  For more info about the MML dialect used here, see
+ *  the [MML reference](mml_ref.md).
+ */
 #ifndef MML_INPUT_H
 #define MML_INPUT_H
 #include <fstream>
@@ -7,7 +12,14 @@
 #include "input.h"
 #include "track.h"
 
-//! MML (Music Macro Language) parser
+//! MML (Music Macro Language) parser class
+/*!
+ *  For more info about the MML dialect used here, see
+ *  the [MML reference](mml_ref.md).
+ *
+ *  \todo it should be possible to derive this in order to
+ *        better support different MML dialects.
+ */
 class MML_Input: public Line_Input
 {
 	private:

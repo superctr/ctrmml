@@ -106,7 +106,9 @@ public:
 	}
 	void test_get_num_sign()
 	{
-		buffer = "-123 +123";
+		buffer = "-123 +123 -123 +123";
+		CPPUNIT_ASSERT_EQUAL((int)-123, get_num());
+		CPPUNIT_ASSERT_EQUAL((int)123, get_num());
 		CPPUNIT_ASSERT_EQUAL((int)-123, get_num());
 		CPPUNIT_ASSERT_EQUAL((int)123, get_num());
 	}
