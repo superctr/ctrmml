@@ -58,10 +58,10 @@ uint32_t MD_Channel::parse_platform_event(const Tag& tag, int16_t* platform_stat
 		platform_state[EVENT_LFO_DELAY] = std::strtol(tag[1].c_str(), 0, 0);
 		return (1 << EVENT_LFO_DELAY);
 	}
-	else if(iequal(tag[0], "lfoconfig"))
+	else if(iequal(tag[0], "lforate"))
 	{
 		if(tag.size() < 2)
-			error("not enough parameters for 'lfoconfig' command");
+			error("not enough parameters for 'lforate' command");
 		platform_state[EVENT_LFO_CONFIG] = std::strtol(tag[1].c_str(), 0, 0);
 		return (1 << EVENT_LFO_CONFIG);
 	}

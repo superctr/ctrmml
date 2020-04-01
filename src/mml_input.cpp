@@ -147,7 +147,7 @@ void MML_Input::event_relative(Event::Type type, Event::Type subtype)
 	int c = get_token();
 	if(c == '+' || c == '-')
 		type = subtype;
-	else
+	if(c != '+')
 		unget();
 	if(type == Event::INVALID)
 		parse_error("parameter must be relative (+ or - prefix)");
