@@ -683,6 +683,12 @@ bool MDSDRV_Track_Writer::loop_hook()
 
 void MDSDRV_Track_Writer::end_hook()
 {
+	if(rest_time)
+	{
+		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::REST, rest_time));
+		rest_time = 0;
+	}
+
 	if(in_loop)
 		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LPF,0));
 	else

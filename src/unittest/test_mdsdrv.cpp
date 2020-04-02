@@ -246,7 +246,7 @@ public:
 	//! Test note/rest length optimization
 	void test_sequence_optimization()
 	{
-		mml_input->read_line("A l4 o4c r8 c c r:228 c r8 c r8 c r r:5 c:228");
+		mml_input->read_line("A l4 o4c r8 c c r:228 c r8 c r8 c r r:5 c:228 r8");
 		auto converter = MDSDRV_Converter(*song, "");
 
 		// check that we have a track
@@ -254,7 +254,7 @@ public:
 
 		auto trk = converter.convert_track(converter.track_list[0]);
 
-		CPPUNIT_ASSERT_EQUAL((int)21, (int)trk.size());
+		CPPUNIT_ASSERT_EQUAL((int)22, (int)trk.size());
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0xa6, (uint16_t)trk.at(0)); // c4
 		CPPUNIT_ASSERT_EQUAL((uint16_t)23, (uint16_t)trk.at(1)); //
 		CPPUNIT_ASSERT_EQUAL((uint16_t)11, (uint16_t)trk.at(2)); //   r8
@@ -275,7 +275,8 @@ public:
 		CPPUNIT_ASSERT_EQUAL((uint16_t)127, (uint16_t)trk.at(17)); //
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0x81, (uint16_t)trk.at(18)); //
 		CPPUNIT_ASSERT_EQUAL((uint16_t)99, (uint16_t)trk.at(19)); //
-		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::FINISH, (uint16_t)trk.at(20)); //
+		CPPUNIT_ASSERT_EQUAL((uint16_t)11, (uint16_t)trk.at(20)); //   r8
+		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::FINISH, (uint16_t)trk.at(21)); //
 	}
 	//! Test that sequence data looks sound.
 	void test_data_output()
