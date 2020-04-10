@@ -659,7 +659,7 @@ void MD_PSGNoise::v_set_vol()
 
 void MD_PSGNoise::v_set_pitch()
 {
-	if(type == 1)
+	if(type == 1 || type == 2)
 	{
 		uint16_t val = get_psg_pitch(pitch);
 		driver->sn76489_w(0, 2, val);
@@ -680,6 +680,10 @@ void MD_PSGNoise::v_set_type()
 		if(type == 1)
 		{
 			driver->sn76489_w(0, 3, 7);
+		}
+		else if(type == 2)
+		{
+			driver->sn76489_w(0, 3, 3);
 		}
 		last_pitch = 0xffff;
 	}

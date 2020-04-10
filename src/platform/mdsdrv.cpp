@@ -58,9 +58,9 @@ void MDSDRV_Data::read_fm_4op(uint16_t id, const Tag& tag)
 
 	// Transpose
 	if(it != tag.end())
-		fm_data[29] = std::strtol(it->c_str(), NULL, 0) + 24;
+		fm_data[29] = (std::strtol(it->c_str(), NULL, 0) + 24) << 1;
 	else
-		fm_data[29] = 24;
+		fm_data[29] = 24 << 1;
 
 	for(int i=0; i<4; i++)
 	{
@@ -89,7 +89,7 @@ void MDSDRV_Data::read_fm_4op(uint16_t id, const Tag& tag)
 	// FB/ALG
 	fm_data[28] = (tag_data[0] & 7) | (tag_data[1] << 3);
 	envelope_map[id] = add_unique_data(fm_data);
-	ins_transpose[id] = 0;
+	ins_transpose[id] = (fm_data[29] >> 1) - 24;
 	ins_type[id] = INS_FM;
 }
 
@@ -123,7 +123,7 @@ void MDSDRV_Data::read_fm_2op(uint16_t id, const Tag& tag)
 		}
 		fm_data[24 + 3] = fm_data[24 + 2]; //op4 tl should be same as op1
 		envelope_map[id] = add_unique_data(fm_data);
-		fm_data[29] = tag_data[5] + 24;
+		fm_data[29] = (tag_data[5] + 24) << 1;
 		ins_transpose[id] = tag_data[5];
 		ins_type[id] = INS_FM;
 	}
@@ -473,11 +473,13 @@ void MDSDRV_Track_Writer::parse_platform_event(const Tag& tag)
 		if(tag.size() < 2)
 			error("not enough parameters for 'mode' command");
 		uint16_t param = std::strtol(tag[1].c_str(), 0, 0);
-		if(param)
-			param = 3+8;
+		if(param == 1)
+			param = 0xe7;
+		else if(param == 2)
+			param = 0xe3;
 		else
-			param = 3;
-		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FLG, param));
+			param = 0x00;
+		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LFO, param));
 	}
 	else if(iequal(tag[0], "lfo")) // LFO depth
 	{
