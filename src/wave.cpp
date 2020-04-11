@@ -15,7 +15,13 @@
 #include "util.h"
 
 Wave_File::Wave_File(uint16_t channels, uint32_t rate, uint16_t bits)
-	: channels(channels), sbits(bits), srate(rate)
+	: channels(channels)
+	, sbits(bits)
+	, srate(rate)
+	, use_smpl_chunk(0)
+	, transpose(0)
+	, lstart(0)
+	, lend(0)
 {
 	stype = 1;
 	step = channels*(bits/8);

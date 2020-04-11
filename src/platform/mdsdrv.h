@@ -8,6 +8,7 @@
 #include "../riff.h"
 #include <map>
 #include <vector>
+#include <utility>
 
 class MDSDRV_Data;
 struct MDSDRV_Event;
@@ -62,23 +63,6 @@ class MDSDRV_Data
 //! MDSDRV sequence event
 struct MDSDRV_Event
 {
-/*
-loop_start
-	push stack frame
-	set loop_position=nnnn
-	set loop_count=FF
-loop_break
-	is loop_count=00 ?
-		set track position to cur_pos+val
-loop_end
-	is loop_count=FF ?
-		read loop_count
-	decrement loop_count
-	is loop_count != 00
-		set track position to loop_position
-loop_count=00 <- infinite loop
-loop_count=01 <- break immediately
- */
 	enum Type {
 		REST = 0x80,
 		TIE,
@@ -170,6 +154,28 @@ class MDSDRV_Converter
 	public:
 		MDSDRV_Converter(Song& song);
 		RIFF get_mds();
+};
+
+//! MDSDRV data linker
+class MDSDRV_Linker
+{
+	private:
+		struct Seq_Data {
+			std::vector<uint8_t> data;
+			std::vector<std::pair<uint16_t,uint16_t>> patch_table;
+		};
+		std::vector<std::vector<uint8_t>> data_bank;
+		int data_counter;
+		std::vector<int> data_offset;
+		std::vector<Seq_Data> seq_bank;
+		Wave_Rom wave_rom;
+		int add_unique_data(const std::vector<uint8_t>& data);
+	public:
+		MDSDRV_Linker();
+		void add_song(RIFF& mds);
+		std::string get_seq_data_asm();
+		std::vector<uint8_t> get_seq_data();
+		std::vector<uint8_t> get_pcm_data();
 };
 
 #endif

@@ -24,6 +24,15 @@ static inline void write_be32(std::vector<uint8_t>& data, uint32_t pos, uint32_t
 	data[pos] = new_data>>24;
 }
 
+//! Write 16-bit big endian integer to a vector.
+static inline void write_be16(std::vector<uint8_t>& data, uint32_t pos, uint32_t new_data)
+{
+	if(data.size() < pos+2)
+		data.resize(pos+2);
+	data[pos+1] = new_data;
+	data[pos+0] = new_data>>8;
+}
+
 //! Read 32-bit little endian integer to a vector.
 static inline uint32_t read_le32(const std::vector<uint8_t>& data, uint32_t pos)
 {

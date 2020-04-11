@@ -35,6 +35,10 @@ MMLC_OBJS = \
 	$(CORE_OBJS) \
 	$(OBJ)/mmlc.o
 
+MDSLINK_OBJS = \
+	$(CORE_OBJS) \
+	$(OBJ)/platform/mdslink.o
+
 UNITTEST_OBJS = \
 	$(CORE_OBJS) \
 	$(OBJ)/unittest/test_track.o \
@@ -52,10 +56,13 @@ $(OBJ)/%.o: $(SRC)/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) -c $< -o $@
 
-all: mmlc test
+all: mmlc mdslink test
 
 mmlc: $(MMLC_OBJS)
 	$(CXX) $(MMLC_OBJS) $(LDFLAGS) -o $@
+
+mdslink: $(MDSLINK_OBJS)
+	$(CXX) $(MDSLINK_OBJS) $(LDFLAGS) -o $@
 
 unittest: $(UNITTEST_OBJS)
 	$(CXX) $(UNITTEST_OBJS) $(LDFLAGS) $(LDFLAGS_TEST) -o $@

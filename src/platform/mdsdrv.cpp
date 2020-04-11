@@ -10,6 +10,8 @@
 #include "../song.h"
 #include "../input.h"
 #include "../stringf.h"
+#include "../riff.h"
+#include "../util.h"
 
 MDSDRV_Data::MDSDRV_Data()
 	: data_bank()
@@ -1010,5 +1012,148 @@ RIFF MDSDRV_Converter::get_mds()
 			data.wave_rom.get_rom_data().end() - data.wave_rom.get_free_bytes());
 	riff.add_chunk(RIFF(FOURCC("pcmd"), d));
 	return riff;
+}
+
+MDSDRV_Linker::MDSDRV_Linker()
+	: data_bank()
+	, data_counter(0)
+	, data_offset()
+	, seq_bank()
+	, wave_rom(0x3f8000)
+{
+}
+
+int MDSDRV_Linker::add_unique_data(const std::vector<uint8_t>& data)
+{
+	unsigned int i;
+	// look for previous matching data in the data bank
+	for(i=0; i<data_bank.size(); i++)
+	{
+		if(data != data_bank[i])
+			continue;
+		return data_offset[i];
+	}
+	uint32_t offset = data_counter;
+	data_offset.push_back(offset);
+	data_bank.push_back(data);
+	data_counter += data.size();
+	return offset;
+}
+
+void MDSDRV_Linker::add_song(RIFF& mds)
+{
+	std::vector<uint8_t> pcmd = {};
+	std::vector<uint8_t> seq = {};
+	std::vector<std::pair<uint16_t,uint16_t>> patch_table;
+	RIFF dblk = RIFF(0);
+	mds.rewind();
+	if(mds.get_type() != RIFF::TYPE_RIFF || mds.get_id() != FOURCC("MDS0"))
+		throw InputError(nullptr, "This is not a valid .MDS version 0 file");
+
+	while(!mds.at_end())
+	{
+		auto chunk = RIFF(mds.get_chunk());
+		if(chunk.get_type() == FOURCC("seq "))
+			seq = chunk.get_data();
+		else if(chunk.get_type() == FOURCC("pcmd"))
+			pcmd = chunk.get_data();
+		else if(chunk.get_type() == RIFF::TYPE_LIST && chunk.get_id() == FOURCC("dblk"))
+			dblk = chunk;
+	}
+
+	if(!seq.size() || dblk.get_type() != RIFF::TYPE_LIST)
+		throw InputError(nullptr, ".MDS data is malformed");
+
+	uint16_t seq_sdata = (seq[0] << 8) | seq[1];
+	dblk.rewind();
+	while(!dblk.at_end())
+	{
+		auto chunk = RIFF(dblk.get_chunk());
+		if(chunk.get_type() == FOURCC("glob"))
+		{
+			// Envelope data
+			auto data = chunk.get_data();
+			uint32_t addr = seq_sdata + read_le32(data, 0)*2;
+			uint16_t offset = add_unique_data(std::vector<uint8_t>(data.begin()+4, data.end()));
+			printf("replace seq+%04x with %04x\n", addr, offset);
+			patch_table.push_back({addr, offset});
+		}
+		else if(chunk.get_type() == FOURCC("pcmh"))
+		{
+			// PCM header
+			auto data = chunk.get_data();
+			uint32_t addr = seq_sdata + read_le32(data, 0)*2;
+			Wave_Rom::Sample header;
+			header.from_bytes(std::vector<uint8_t>(data.begin()+4, data.end()));
+			auto begin = pcmd.begin() + header.position;
+			auto end = pcmd.begin() + header.position + header.size;
+			header.position = 0;
+			uint16_t offset = wave_rom.add_sample(header, std::vector<uint8_t>(begin, end));
+			printf("replace seq+%04x with %04x\n", addr, offset);
+			patch_table.push_back({addr, offset});
+		}
+	}
+	seq_bank.push_back({seq, patch_table});
+}
+
+std::vector<uint8_t> MDSDRV_Linker::get_seq_data()
+{
+	int header_size = 6 + seq_bank.size() * 4;
+	auto data = std::vector<uint8_t>(header_size);
+
+	// sdtop - 0
+	int data_offset = header_size - 6;
+	int total_offset = data_offset;
+
+	for(auto&& i : data_bank)
+	{
+		data.insert(data.end(), i.begin(), i.end());
+		total_offset += i.size();
+		if(total_offset & 1)
+		{
+			data.push_back(0);
+			total_offset++;
+		}
+	}
+
+	int seq_id = 0;
+	for(auto&& i : seq_bank)
+	{
+		printf("put seq %02x at %04x\n", seq_id, total_offset);
+		for(auto&& j : i.patch_table)
+			write_be16(i.data, j.first, j.second + data_offset);
+		data.insert(data.end(), i.data.begin(), i.data.end());
+		write_be32(data, 6 + (seq_id * 4), total_offset);
+		total_offset += i.data.size();
+		if(total_offset & 1)
+		{
+			data.push_back(0);
+			total_offset++;
+		}
+		seq_id++;
+	}
+
+	// write header
+	write_be32(data, 0, total_offset);
+	write_be16(data, 4, seq_id);
+
+	// write wave table
+	data_offset = data.size();
+	write_be16(data, data_offset, wave_rom.get_sample_headers().size());
+	data_offset += 2;
+	for(auto&& i : wave_rom.get_sample_headers())
+	{
+		write_be32(data, data_offset, i.position + i.start);
+		write_be16(data, data_offset+4, i.size);
+		data_offset += 6;
+	}
+
+	return data;
+}
+
+std::vector<uint8_t> MDSDRV_Linker::get_pcm_data()
+{
+	auto wave = wave_rom.get_rom_data();
+	return std::vector<uint8_t>(wave.begin(), wave.end() - wave_rom.get_free_bytes());
 }
 
