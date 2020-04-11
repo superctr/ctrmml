@@ -43,14 +43,21 @@ class Wave_File
 class Wave_Rom
 {
 	public:
+		//! Aggregate sample header class.
 		struct Sample
 		{
-			unsigned long start_pos;
-			unsigned long size;
-			unsigned long loop_start;
-			unsigned long loop_end;
-			unsigned long rate;
-			int transpose;
+			uint32_t position;
+			uint32_t start;
+			uint32_t size;
+			uint32_t loop_start;
+			uint32_t loop_end;
+			uint32_t rate;
+			int32_t transpose;
+			uint32_t flags;
+
+			// aggregate type - no constructor
+			void from_bytes(std::vector<uint8_t> input);
+			std::vector<uint8_t> to_bytes() const;
 		};
 	protected:
 		struct Gap
@@ -69,7 +76,8 @@ class Wave_Rom
 		std::string error_message;
 
 		virtual std::vector<uint8_t> encode_sample(const std::string& encoding_type, const std::vector<int16_t>& input);
-		virtual uint32_t fit_sample(unsigned long loop_start, unsigned long sample_size);
+		virtual uint32_t fit_sample(Sample header);
+		virtual int find_duplicate(Sample header, const std::vector<uint8_t>& sample);
 
 	public:
 		Wave_Rom(unsigned long max_size);
@@ -77,6 +85,7 @@ class Wave_Rom
 
 		void set_include_paths(const Tag& tag);
 		unsigned int add_sample(const Tag& tag);
+		unsigned int add_sample(Sample header, const std::vector<uint8_t>& sample);
 		unsigned int get_free_bytes();
 		const std::vector<Sample>& get_sample_headers();
 		const std::vector<uint8_t>& get_rom_data();

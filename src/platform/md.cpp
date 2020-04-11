@@ -380,7 +380,7 @@ void MD_Channel::key_on_pcm()
 		driver->ym2612_w(0, 0x2b, 0, 0, 0x80); // DAC enable
 		if(driver->vgm_writer)
 		{
-			driver->vgm_writer->dac_start(0x00, sample.start_pos, sample.size, sample.rate);
+			driver->vgm_writer->dac_start(0x00, sample.position + sample.start, sample.size, sample.rate);
 		}
 	}
 }

@@ -1,5 +1,6 @@
 /*
 	This code is a bit ugly and should be refactored when I have the time...
+	2020-04-11: This code has now been slightly refactored. It is however still a little bit ugly.
 */
 #include <iostream>
 #include <fstream>
@@ -11,6 +12,7 @@
 #include "input.h"
 #include "vgm.h"
 #include "stringf.h"
+#include "util.h"
 
 Wave_File::Wave_File(uint16_t channels, uint32_t rate, uint16_t bits)
 	: channels(channels), sbits(bits), srate(rate)
@@ -194,17 +196,47 @@ std::vector<uint8_t> Wave_Rom::encode_sample(const std::string& encoding_type, c
 }
 
 //! This function simply returns the next possible start address for the rom.
-uint32_t Wave_Rom::fit_sample(unsigned long loop_start, unsigned long sample_size)
+uint32_t Wave_Rom::fit_sample(Wave_Rom::Sample header)
 {
 	return current_size;
 }
 
+//! This function looks for duplicates in the sample ROM.
+/*!
+ *  If a duplicate is found, return the index to the duplicate wave entry.
+ *  Otherwise, return -1.
+ */
+int Wave_Rom::find_duplicate(Wave_Rom::Sample header, const std::vector<uint8_t>& sample)
+{
+	int id = 0;
+	for(auto&& i : samples)
+	{
+		// The reason for the loop start check is that some sound chips (like C352)
+		// require that the looping part of the sample fit in the same bank.
+		if(   i.position + sample.size() <= rom_data.size()
+		   && i.loop_start <= header.loop_start
+		   && !memcmp(&sample[0], &rom_data[i.position], sample.size()))
+			return id;
+		id++;
+	}
+	return -1;
+}
+
+//! Set a list of include paths to check when reading samples from a Tag.
 void Wave_Rom::set_include_paths(const Tag& tag)
 {
 	include_paths = tag;
 }
 
-//! Add sample to the waverom.
+//! Quick and dirty comparison operator (used below)
+static bool operator==(const Wave_Rom::Sample& s1, const Wave_Rom::Sample& s2)
+{
+	// Can't directly compare structs properly, so we convert to bytes instead
+	// and then compare the arrays.
+	return s1.to_bytes() == s2.to_bytes();
+}
+
+//! Convert and add sample to the waverom.
 unsigned int Wave_Rom::add_sample(const Tag& tag)
 {
 	int status = -1;
@@ -217,8 +249,8 @@ unsigned int Wave_Rom::add_sample(const Tag& tag)
 	Wave_File wf;
 	for(auto&& i : include_paths)
 	{
-		std::string fn = i + "/" + filename;
-		//std::cout << "attempt to load " << fn << "\n";
+		std::string fn = i + filename;
+		std::cout << "attempt to load " << fn << "\n";
 		status = wf.read(fn);
 		if(status == 0)
 			break;
@@ -231,26 +263,57 @@ unsigned int Wave_Rom::add_sample(const Tag& tag)
 
 	// convert sample
 	std::vector<uint8_t> sample = encode_sample("", wf.data[0]);
-	unsigned long start_pos = fit_sample(wf.lstart, sample.size());
-
-	// TODO: we should call fit_sample here instead
-	if((start_pos + sample.size()) > max_size)
-	{
-		error_message = "Sample does not fit in remaining ROM size";
-		throw InputError(nullptr, error_message.c_str());
-	}
-	current_size = start_pos + sample.size();
-
-	std::copy_n(sample.begin(),wf.slength, rom_data.begin() + start_pos);
-	samples.push_back({
-		start_pos,
+	Wave_Rom::Sample header = {
+		0,
+		0,
 		wf.slength,
 		wf.lstart,
 		wf.lend,
 		wf.srate,
-		wf.transpose});
+		wf.transpose,
+		0};
 
-	return samples.size() - 1;
+	return add_sample(header, sample);
+};
+
+//! Add sample to the waverom in raw format.
+unsigned int Wave_Rom::add_sample(Wave_Rom::Sample header, const std::vector<uint8_t>& sample)
+{
+	// Find duplicates of sample data and selected header parameters if needed
+	int duplicate = find_duplicate(header, sample);
+
+	if(duplicate != -1)
+	{
+		header.position = samples[duplicate].position;
+		auto result = std::find(samples.begin(), samples.end(), header);
+		if(result != samples.end())
+		{
+			// Header is similar to an existing one, we reuse it
+			return result - samples.begin();
+		}
+		else
+		{
+			// Create a new header, while using the same sample data
+			samples.push_back(header);
+			return samples.size() - 1;
+		}
+	}
+	else
+	{
+		// Create a new entry.
+		uint32_t start_pos = fit_sample(header);
+		if((start_pos + sample.size()) > max_size)
+		{
+			error_message = stringf("Sample does not fit in remaining ROM space (%d bytes remaining, sample size is %d)", max_size - start_pos, sample.size());
+			throw InputError(nullptr, error_message.c_str());
+		}
+		current_size = start_pos + sample.size();
+
+		std::copy_n(sample.begin(), header.size, rom_data.begin() + start_pos);
+		header.position = start_pos;
+		samples.push_back(header);
+		return samples.size() - 1;
+	}
 }
 
 unsigned int Wave_Rom::get_free_bytes()
@@ -271,4 +334,40 @@ const std::vector<uint8_t>& Wave_Rom::get_rom_data()
 const std::string& Wave_Rom::get_error()
 {
 	return error_message;
+}
+
+/*! Fill a sample header with values from a byte vector.
+ *
+ *  The format matches the data created by to_bytes().
+ *
+ *  \exception std::out_of_range Input too small
+ */
+void Wave_Rom::Sample::from_bytes(std::vector<uint8_t> input)
+{
+	position = read_le32(input, 0);
+	start = read_le32(input, 4);
+	size = read_le32(input, 8);
+	loop_start = read_le32(input, 12);
+	loop_end = read_le32(input, 16);
+	rate = read_le32(input, 20);
+	transpose = read_le32(input, 24);
+	flags = read_le32(input, 28);
+}
+
+/*! Return a sample header as a byte vector.
+ *
+ *  Output can be made as a header again using to_bytes().
+ */
+std::vector<uint8_t> Wave_Rom::Sample::to_bytes() const
+{
+	auto output = std::vector<uint8_t>();
+	write_le32(output, 0, position);
+	write_le32(output, 4, start);
+	write_le32(output, 8, size);
+	write_le32(output, 12, loop_start);
+	write_le32(output, 16, loop_end);
+	write_le32(output, 20, rate);
+	write_le32(output, 24, transpose);
+	write_le32(output, 28, flags); // Reserved.
+	return output;
 }

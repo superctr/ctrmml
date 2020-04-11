@@ -354,9 +354,9 @@ void MDSDRV_Data::read_wave(uint16_t id, const Tag& tag)
 	wave_header_id = wave_map[id] = wave_rom.add_sample(tag);
 	sample = wave_rom.get_sample_headers().at(wave_header_id);
 	// TODO: rate. VGM playback reads directly from the wave_header.
-	env_data.push_back((sample.start_pos >> 16) & 0xff);
-	env_data.push_back((sample.start_pos >> 8) & 0xff);
-	env_data.push_back((sample.start_pos >> 0) & 0xff);
+	env_data.push_back((sample.position >> 16) & 0xff);
+	env_data.push_back((sample.position >> 8) & 0xff);
+	env_data.push_back((sample.position >> 0) & 0xff);
 	env_data.push_back((sample.size >> 16) & 0xff);
 	env_data.push_back((sample.size >> 8) & 0xff);
 	env_data.push_back((sample.size >> 0) & 0xff);
