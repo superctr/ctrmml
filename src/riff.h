@@ -4,6 +4,12 @@
 #include "core.h"
 #include <vector>
 
+//! Macro to convert a string "ABCD" to literal 'DCBA'
+#define FOURCC(code) (((*(uint32_t*)code & 0xff000000)>>24)\
+					 |((*(uint32_t*)code & 0x00ff0000)>>8)\
+					 |((*(uint32_t*)code & 0x0000ff00)<<8)\
+					 |((*(uint32_t*)code & 0x000000ff)<<24))
+
 //! RIFF (Resource Interchange File Format) I/O class
 class RIFF
 {

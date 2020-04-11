@@ -250,7 +250,7 @@ unsigned int Wave_Rom::add_sample(const Tag& tag)
 	for(auto&& i : include_paths)
 	{
 		std::string fn = i + filename;
-		std::cout << "attempt to load " << fn << "\n";
+		//std::cout << "attempt to load " << fn << "\n";
 		status = wf.read(fn);
 		if(status == 0)
 			break;

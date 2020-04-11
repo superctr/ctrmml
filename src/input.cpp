@@ -36,7 +36,7 @@ InputRef::InputRef(const std::string &fn, const std::string &ln, int lno, int co
 {
 }
 
-//! Return the file name 
+//! Return the file name
 const std::string& InputRef::get_filename() const
 {
 	return filename;
@@ -125,7 +125,9 @@ void Input::parse_warning(const char* msg)
  */
 void Input::open_file(const std::string& fn)
 {
-	song->add_tag("include_path", fn.substr(0, fn.find_last_of("/\\")));
+	int path_break = fn.find_last_of("/\\");
+	if(path_break != -1)
+		song->add_tag("include_path", fn.substr(0, path_break + 1));
 	filename = fn;
 	parse_file();
 }
@@ -184,7 +186,7 @@ std::shared_ptr<InputRef> Line_Input::get_reference()
  *  Also increments the buffer position.
  *
  *  \retval 0 if at the end of the current buffer. The column number
- *          will still be incremented. 
+ *          will still be incremented.
  */
 int Line_Input::get()
 {

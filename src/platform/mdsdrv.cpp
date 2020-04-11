@@ -349,17 +349,11 @@ void MDSDRV_Data::read_wave(uint16_t id, const Tag& tag)
 {
 	std::vector<uint8_t> env_data;
 	int wave_header_id;
-	Wave_Rom::Sample sample;
 
+	// Insert a generic 32-byte generic Wave_Rom::Sample header.
 	wave_header_id = wave_map[id] = wave_rom.add_sample(tag);
-	sample = wave_rom.get_sample_headers().at(wave_header_id);
-	// TODO: rate. VGM playback reads directly from the wave_header.
-	env_data.push_back((sample.position >> 16) & 0xff);
-	env_data.push_back((sample.position >> 8) & 0xff);
-	env_data.push_back((sample.position >> 0) & 0xff);
-	env_data.push_back((sample.size >> 16) & 0xff);
-	env_data.push_back((sample.size >> 8) & 0xff);
-	env_data.push_back((sample.size >> 0) & 0xff);
+	env_data = wave_rom.get_sample_headers().at(wave_header_id).to_bytes();
+
 	envelope_map[id] = add_unique_data(env_data);
 	ins_type[id] = INS_PCM;
 }
@@ -641,8 +635,12 @@ void MDSDRV_Track_Writer::event_hook()
 			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::TEMPO,tempo_convert(param)));
 			break;
 		case Event::INS:
-			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::INS,
-						mdsdrv.get_envelope(mdsdrv.data.envelope_map.at(param))));
+			if(mdsdrv.data.ins_type.at(param) != MDSDRV_Data::INS_PCM)
+				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::INS,
+							mdsdrv.get_envelope(mdsdrv.data.envelope_map.at(param))));
+			else
+				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PCM,
+							mdsdrv.get_envelope(0x10000 + mdsdrv.data.envelope_map.at(param))));
 			break;
 		case Event::TRANSPOSE:
 			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::TRS,param));
@@ -915,8 +913,8 @@ std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Ev
 					track_data.push_back(arg);
 					break;
 				case MDSDRV_Event::INS: // 8-bit arg with offset
-				case MDSDRV_Event::PEG:
 				case MDSDRV_Event::PCM:
+				case MDSDRV_Event::PEG:
 					track_data.push_back(type);
 					track_data.push_back(get_data_id(arg));
 					break;
@@ -992,17 +990,25 @@ std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Ev
 //! Output a MDSDRV RIFF container
 RIFF MDSDRV_Converter::get_mds()
 {
-	RIFF riff(RIFF::TYPE_RIFF, *(uint32_t*)"0SDM"); //MDS0
-	riff.add_chunk(RIFF(*(uint32_t*)" qes", sequence_data)); // seq
-	RIFF dblk(RIFF::TYPE_LIST, *(uint32_t*)"klbd"); //dblk
+	RIFF riff(RIFF::TYPE_RIFF, FOURCC("MDS0"));
+	riff.add_chunk(RIFF(FOURCC("seq "), sequence_data)); // seq
+	RIFF dblk(RIFF::TYPE_LIST, FOURCC("dblk"));
 	for(auto it = used_data_map.begin(); it != used_data_map.end(); it++)
 	{
 		std::vector<uint8_t> d(4);
 		*(uint32_t*)d.data() = get_data_id(it->second);
-		d.insert(d.end(), data.data_bank[it->first].begin(), data.data_bank[it->first].end());
-		dblk.add_chunk(RIFF(*(uint32_t*)"bolg", d)); //glob
+		d.insert(d.end(),
+				data.data_bank[it->first & 0x7fff].begin(),
+				data.data_bank[it->first & 0x7fff].end());
+		if(it->first < 0x10000)
+			dblk.add_chunk(RIFF(FOURCC("glob"), d));
+		else
+			dblk.add_chunk(RIFF(FOURCC("pcmh"), d));
 	}
 	riff.add_chunk(dblk);
+	std::vector<uint8_t> d(data.wave_rom.get_rom_data().begin(),
+			data.wave_rom.get_rom_data().end() - data.wave_rom.get_free_bytes());
+	riff.add_chunk(RIFF(FOURCC("pcmd"), d));
 	return riff;
 }
 

@@ -281,12 +281,29 @@ public:
 	//! Test that sequence data looks sound.
 	void test_data_output()
 	{
-		mml_input->read_line("@1 fm 4 0");
+/*
+// read FM envelope 1 = 1 [30]{00, 04, 00, 01, 1f, 1f, 1f, 1f, 00, 0f, 06, 1b, 13, 00, 00, 00, 05, 45, 34, 1b, 00, 00, 00, 00, 17, 26, 13, 00, 04, 18}
+// read PSG envelope 2 = 2 [17]{10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 1a, 1b, 1c, 1d, 1e, 1f, 00}
+		std::vector<uint8_t> fm_ins = {
+			0x00, 0x04, 0x00, 0x01,
+			0x1f, 0x1f, 0x1f, 0x1f,
+			0x00, 0x0f, 0x06, 0x1b,
+			0x13, 0x00, 0x00, 0x00,
+			0x05, 0x45, 0x34, 0x1b,
+			0x00, 0x00, 0x00, 0x00,
+			0x17, 0x26, 0x13, 0x00,
+			0x04, 0x30};
+		std::vector<uint8_t> psg_ins = {
+			0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+			0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x00};
+*/
+
+		mml_input->read_line("@1 psg 15>0");
+		mml_input->read_line("@2 fm 4 0");
 		mml_input->read_line("  31 0 19 5 0 23 0 0 0 0");
 		mml_input->read_line("  31 6 0 4 3 19 0 0 0 0");
 		mml_input->read_line("  31 15 0 5 4 38 0 4 0 0");
 		mml_input->read_line("  31 27 0 11 1 0 0 1 0 0");
-		mml_input->read_line("@2 psg 15>0");
 		mml_input->read_line("*20 o4l4 cdefgab>c");
 		mml_input->read_line("A @1v15 o4l4 p2 *20 p1 *20");
 		mml_input->read_line("G @2v15 o4l1 [r]8 *20");
@@ -315,6 +332,7 @@ public:
 			0xa6,23,0xa8,0xaa,0xab,0xad,0xaf,0xb1,0xb2,MDSDRV_Event::FINISH // 2a
 		};
 
+		CPPUNIT_ASSERT_EQUAL(expected_data.size(), converter.sequence_data.size());
 		for(uint32_t i=0; i<std::min(expected_data.size(), converter.sequence_data.size()); i++)
 		{
 			uint16_t a, b;
@@ -322,11 +340,9 @@ public:
 			b = converter.sequence_data[i];
 			CPPUNIT_ASSERT_MESSAGE(stringf("mismatch at %02X, expected %02X != %02X found", i, a, b), a == b);
 		}
-// TODO : add asserts for instrument data:
-// read FM envelope 1 = 1 [30]{00, 04, 00, 01, 1f, 1f, 1f, 1f, 00, 0f, 06, 1b, 13, 00, 00, 00, 05, 45, 34, 1b, 00, 00, 00, 00, 17, 26, 13, 00, 04, 18}
-// read PSG envelope 2 = 2 [17]{10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 1a, 1b, 1c, 1d, 1e, 1f, 00}
 
-		CPPUNIT_ASSERT_EQUAL(expected_data.size(), converter.sequence_data.size());
+		CPPUNIT_ASSERT_EQUAL(0, converter.used_data_map.at(1)); // PSG instrument @1 (envelope_id=0)
+		CPPUNIT_ASSERT_EQUAL(1, converter.used_data_map.at(2)); // FM instrument @2 (envelope_id=1)
 	}
 };
 

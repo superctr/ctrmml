@@ -152,8 +152,8 @@ class MDSDRV_Converter
 		Song* song;
 		MDSDRV_Data data;
 		//! Map of used data from the data bank.
-		std::map<int, int> used_data_map;
-		std::map<int, int> subroutine_map;
+		std::map<int, int> used_data_map;  // Maps event parameter to envelope_id
+		std::map<int, int> subroutine_map; // Maps event parameter to track_id
 		std::vector<std::vector<MDSDRV_Event>> subroutine_list;
 		std::map<int, std::vector<MDSDRV_Event>> track_list;
 		std::vector<uint8_t> sequence_data;
