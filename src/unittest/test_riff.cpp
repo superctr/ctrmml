@@ -136,6 +136,7 @@ public:
 		auto added_data4 = str_to_vector("second element of a list");
 		auto added_data5 = str_to_vector("one final element");
 		auto riff = RIFF(RIFF::TYPE_RIFF);
+		riff.set_id(0x41424343);
 		riff.add_chunk(RIFF(0x41424344,added_data));
 		riff.add_chunk(RIFF(0x41424345,added_data2));
 		auto list = RIFF(RIFF::TYPE_LIST);
@@ -144,6 +145,11 @@ public:
 		list.add_chunk(RIFF(0x41424348,added_data4));
 		riff.add_chunk(list);
 		riff.add_chunk(RIFF(0x41424349,added_data5));
+		// create a new RIFF object
+		auto vec = riff.to_bytes();
+		riff = RIFF(vec);
+		CPPUNIT_ASSERT_EQUAL((uint32_t)RIFF::TYPE_RIFF, riff.get_type());
+		CPPUNIT_ASSERT_EQUAL((uint32_t)0x41424343, riff.get_id());
 		// check first chunk
 		CPPUNIT_ASSERT_EQUAL(false, riff.at_end());
 		auto chunk = RIFF(riff.get_chunk());

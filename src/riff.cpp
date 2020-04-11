@@ -87,9 +87,14 @@ RIFF::RIFF(const std::vector<uint8_t>& initial_data)
 	: type()
 	, data()
 {
+	if(initial_data.size() < 8)
+		throw std::out_of_range("RIFF::RIFF");
 	type = read_be32(initial_data,0);
-	if(initial_data.size() > 4)
-		data.insert(data.end(),initial_data.begin()+4,initial_data.end());
+	uint32_t size = read_le32(initial_data,4);
+	uint32_t actual_size = initial_data.size() - 8;
+	if(size > actual_size) // Handle incorrect data size
+		size = actual_size;
+	data.insert(data.end(),initial_data.begin()+8,initial_data.begin()+8+size);
 	rewind();
 }
 
@@ -212,7 +217,10 @@ std::vector<uint8_t> RIFF::get_chunk()
 	write_le32(chunk_data,0,read_le32(data,position)); // could be optimized
 	position += 4;
 	uint32_t size = read_le32(data,position);
+	write_be32(chunk_data,4,size);
 	position += 4;
+	if(position+size > data.size()) // Handle incorrect data size
+		size = data.size() - position;
 	chunk_data.insert(chunk_data.end(),data.begin()+position,data.begin()+position+size);
 	position += size;
 
