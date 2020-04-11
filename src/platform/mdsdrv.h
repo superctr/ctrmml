@@ -150,7 +150,6 @@ class MDSDRV_Converter
 	friend class MDSDRV_Converter_Test;
 	private:
 		Song* song;
-		std::string filename;
 		MDSDRV_Data data;
 		//! Map of used data from the data bank.
 		std::map<int, int> used_data_map;
@@ -169,9 +168,8 @@ class MDSDRV_Converter
 		std::vector<uint8_t> convert_track(const std::vector<MDSDRV_Event>& event_list);
 	protected:
 	public:
-		MDSDRV_Converter(Song& song, const std::string& filename);
+		MDSDRV_Converter(Song& song);
 		RIFF get_mds();
-		void write();
 };
 
 #endif

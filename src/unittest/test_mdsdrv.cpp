@@ -37,7 +37,7 @@ public:
 	{
 		mml_input->read_line("A l4o4v5cdef");
 		mml_input->read_line("B l8o4V5 L ga");
-		auto converter = MDSDRV_Converter(*song, "");
+		auto converter = MDSDRV_Converter(*song);
 
 		// check that we have two tracks
 		CPPUNIT_ASSERT_EQUAL((int)2, (int)converter.track_list.size());
@@ -74,7 +74,7 @@ public:
 	{
 		mml_input->read_line("A l4o4v5cdef");
 		mml_input->read_line("B l8o4V5 L ga");
-		auto converter = MDSDRV_Converter(*song, "");
+		auto converter = MDSDRV_Converter(*song);
 
 		// check that we have two tracks
 		CPPUNIT_ASSERT_EQUAL((int)2, (int)converter.track_list.size());
@@ -110,7 +110,7 @@ public:
 		mml_input->read_line("*20 v5 *22");
 		mml_input->read_line("*21 k5 o4l4g"); //unused subroutine
 		mml_input->read_line("*22 k1");
-		auto converter = MDSDRV_Converter(*song, "");
+		auto converter = MDSDRV_Converter(*song);
 
 		// check that we have one track
 		CPPUNIT_ASSERT_EQUAL((int)1, (int)converter.track_list.size());
@@ -153,7 +153,7 @@ public:
 		mml_input->read_line("A D20 l8ab D0 l8o4e");
 		mml_input->read_line("*20 o4c");
 		mml_input->read_line("*21 o5c");
-		auto converter = MDSDRV_Converter(*song, "");
+		auto converter = MDSDRV_Converter(*song);
 
 		// check that we have one track
 		CPPUNIT_ASSERT_EQUAL((int)1, (int)converter.track_list.size());
@@ -194,7 +194,7 @@ public:
 	void test_loop_handling()
 	{
 		mml_input->read_line("A [l4o4cde/f]4");
-		auto converter = MDSDRV_Converter(*song, "");
+		auto converter = MDSDRV_Converter(*song);
 
 		// check that we have a track
 		CPPUNIT_ASSERT_EQUAL((int)1, (int)converter.track_list.size());
@@ -220,7 +220,7 @@ public:
 	void test_loop_handling_sequence_output()
 	{
 		mml_input->read_line("A l4o4c[cde/f]4");
-		auto converter = MDSDRV_Converter(*song, "");
+		auto converter = MDSDRV_Converter(*song);
 
 		// check that we have a track
 		CPPUNIT_ASSERT_EQUAL((int)1, (int)converter.track_list.size());
@@ -247,7 +247,7 @@ public:
 	void test_sequence_optimization()
 	{
 		mml_input->read_line("A l4 o4c r8 c c r:228 c r8 c r8 c r r:5 c:228 r8");
-		auto converter = MDSDRV_Converter(*song, "");
+		auto converter = MDSDRV_Converter(*song);
 
 		// check that we have a track
 		CPPUNIT_ASSERT_EQUAL((int)1, (int)converter.track_list.size());
@@ -291,7 +291,7 @@ public:
 		mml_input->read_line("A @1v15 o4l4 p2 *20 p1 *20");
 		mml_input->read_line("G @2v15 o4l1 [r]8 *20");
 
-		auto converter = MDSDRV_Converter(*song, "");
+		auto converter = MDSDRV_Converter(*song);
 
 		// check that we have two tracks (+1 sub)
 		CPPUNIT_ASSERT_EQUAL((int)2, (int)converter.track_list.size());

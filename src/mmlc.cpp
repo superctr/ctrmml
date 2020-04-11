@@ -113,8 +113,12 @@ void generate_vgm(Song& song, const std::string& filename, int max_seconds)
 
 void generate_mds(Song& song, const std::string& filename)
 {
-	MDSDRV_Converter converter(song, filename);
-	converter.write();
+	MDSDRV_Converter converter(song);
+
+	auto bytes = converter.get_mds().to_bytes();
+
+	std::ofstream out(filename, std::ios::binary);
+	out.write((char*)bytes.data(), bytes.size());
 }
 
 int main(int argc, char* argv[])

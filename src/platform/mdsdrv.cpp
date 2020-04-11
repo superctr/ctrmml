@@ -698,9 +698,8 @@ void MDSDRV_Track_Writer::end_hook()
 }
 
 //! Converts a Song into MDSDRV data, including data and sequences.
-MDSDRV_Converter::MDSDRV_Converter(Song& song, const std::string& filename)
+MDSDRV_Converter::MDSDRV_Converter(Song& song)
 	: song(&song)
-	, filename(filename)
 	, data()
 	, used_data_map()
 	, subroutine_map()
@@ -1005,14 +1004,5 @@ RIFF MDSDRV_Converter::get_mds()
 	}
 	riff.add_chunk(dblk);
 	return riff;
-}
-
-//! Write to the file.
-void MDSDRV_Converter::write()
-{
-	auto bytes = get_mds().to_bytes();
-
-	std::ofstream out(filename, std::ios::binary);
-	out.write((char*)bytes.data(), bytes.size());
 }
 
