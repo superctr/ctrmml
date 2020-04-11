@@ -11,7 +11,6 @@ CFLAGS += -O2
 LDFLAGS += -s
 endif
 
-
 LDFLAGS_TEST = -lcppunit
 ifeq ($(OS),Windows_NT)
 	LDFLAGS += -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic
@@ -53,6 +52,8 @@ $(OBJ)/%.o: $(SRC)/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) -c $< -o $@
 
+all: mmlc test
+
 mmlc: $(MMLC_OBJS)
 	$(CXX) $(MMLC_OBJS) $(LDFLAGS) -o $@
 
@@ -71,5 +72,7 @@ cleandoc:
 test: unittest
 	./unittest
 
-.PHONY: test clean doc cleandoc
+check: test
+
+.PHONY: all test check clean doc cleandoc
 
