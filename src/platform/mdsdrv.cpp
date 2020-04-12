@@ -658,7 +658,7 @@ void MDSDRV_Track_Writer::event_hook()
 			break;
 		case Event::PITCH_ENVELOPE:
 			if(param)
-				param = mdsdrv.get_envelope(mdsdrv.data.pitch_map.at(param));
+				param = mdsdrv.get_envelope(mdsdrv.data.pitch_map.at(param)) + 1;
 			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PEG,param));
 			break;
 		case Event::PORTAMENTO:
@@ -916,9 +916,15 @@ std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Ev
 					break;
 				case MDSDRV_Event::INS: // 8-bit arg with offset
 				case MDSDRV_Event::PCM:
-				case MDSDRV_Event::PEG:
 					track_data.push_back(type);
 					track_data.push_back(get_data_id(arg));
+					break;
+				case MDSDRV_Event::PEG:	// 8-bit arg with offset and toggle
+					track_data.push_back(type);
+					if(arg)
+						track_data.push_back(get_data_id(arg));
+					else
+						track_data.push_back(0);
 					break;
 				case MDSDRV_Event::FMREG: //16-bit arg
 				case MDSDRV_Event::FMCREG:
