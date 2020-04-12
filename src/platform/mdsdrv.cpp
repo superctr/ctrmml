@@ -568,16 +568,16 @@ void MDSDRV_Track_Writer::event_hook()
 				param = 0;
 			if(in_drum_mode)
 			{
-				if(param > 255)
+				if(param < 0 || param > 255)
 					error(stringf("MDSDRV: note out of range (%d > %d)", param, 255).c_str());
-				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::DMFINISH, event.param));
+				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::DMFINISH, param));
 				disable();
 			}
 			else
 			{
-				if(param >= (MDSDRV_Event::SLR - MDSDRV_Event::NOTE))
+				if(param < 0 || param >= (MDSDRV_Event::SLR - MDSDRV_Event::NOTE))
 					error(stringf("MDSDRV: note out of range (%d > %d)", param, (MDSDRV_Event::SLR - MDSDRV_Event::NOTE)).c_str());
-				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::NOTE + event.param, on_time));
+				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::NOTE + param, on_time));
 			}
 			break;
 		case Event::LOOP_START:
@@ -667,9 +667,9 @@ void MDSDRV_Track_Writer::event_hook()
 		case Event::DRUM_MODE:
 			drum_mode_offset = param;
 			if(param)
-				param = 2+8;
+				param = 0+8;
 			else
-				param = 2;
+				param = 0;
 			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FLG, param));
 			break;
 		case Event::TEMPO:
@@ -1016,7 +1016,6 @@ RIFF MDSDRV_Converter::get_mds()
 
 MDSDRV_Linker::MDSDRV_Linker()
 	: data_bank()
-	, data_counter(0)
 	, data_offset()
 	, seq_bank()
 	, wave_rom(0x3f8000)
@@ -1031,13 +1030,10 @@ int MDSDRV_Linker::add_unique_data(const std::vector<uint8_t>& data)
 	{
 		if(data != data_bank[i])
 			continue;
-		return data_offset[i];
+		return i;
 	}
-	uint32_t offset = data_counter;
-	data_offset.push_back(offset);
 	data_bank.push_back(data);
-	data_counter += data.size();
-	return offset;
+	return data_bank.size()-1;
 }
 
 void MDSDRV_Linker::add_song(RIFF& mds)
@@ -1102,50 +1098,51 @@ std::vector<uint8_t> MDSDRV_Linker::get_seq_data()
 	auto data = std::vector<uint8_t>(header_size);
 
 	// sdtop - 0
-	int data_offset = header_size - 6;
-	int total_offset = data_offset;
-
+	int offset = header_size - 6;
+	int id = 0;
 	for(auto&& i : data_bank)
 	{
 		data.insert(data.end(), i.begin(), i.end());
-		total_offset += i.size();
-		if(total_offset & 1)
+		data_offset.push_back(offset);
+		offset += i.size();
+		if(offset & 1)
 		{
 			data.push_back(0);
-			total_offset++;
+			offset++;
 		}
+		id++;
 	}
 
-	int seq_id = 0;
+	id = 0;
 	for(auto&& i : seq_bank)
 	{
-		printf("put seq %02x at %04x\n", seq_id, total_offset);
+		printf("put seq %02x at %04x\n", id, offset);
 		for(auto&& j : i.patch_table)
-			write_be16(i.data, j.first, j.second + data_offset);
+			write_be16(i.data, j.first, data_offset[j.second]);
 		data.insert(data.end(), i.data.begin(), i.data.end());
-		write_be32(data, 6 + (seq_id * 4), total_offset);
-		total_offset += i.data.size();
-		if(total_offset & 1)
+		write_be32(data, 6 + (id * 4), offset);
+		offset += i.data.size();
+		if(offset & 1)
 		{
 			data.push_back(0);
-			total_offset++;
+			offset++;
 		}
-		seq_id++;
+		id++;
 	}
 
 	// write header
-	write_be32(data, 0, total_offset);
-	write_be16(data, 4, seq_id);
+	write_be32(data, 0, offset);
+	write_be16(data, 4, id);
 
 	// write wave table
-	data_offset = data.size();
-	write_be16(data, data_offset, wave_rom.get_sample_headers().size());
-	data_offset += 2;
+	offset = data.size();
+	write_be16(data, offset, wave_rom.get_sample_headers().size());
+	offset += 2;
 	for(auto&& i : wave_rom.get_sample_headers())
 	{
-		write_be32(data, data_offset, i.position + i.start);
-		write_be16(data, data_offset+4, i.size);
-		data_offset += 6;
+		write_be32(data, offset, i.position + i.start);
+		write_be16(data, offset + 4, i.size);
+		offset += 6;
 	}
 
 	return data;

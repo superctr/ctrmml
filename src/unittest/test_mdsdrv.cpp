@@ -160,11 +160,11 @@ public:
 		CPPUNIT_ASSERT_EQUAL((int)6, (int)converter.track_list[0].size());
 		// a bit lazy but we just check the type except the first
 		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::FLG, (uint16_t)converter.track_list[0][0].type);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)10, (uint16_t)converter.track_list[0][0].arg);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)8, (uint16_t)converter.track_list[0][0].arg);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0x82, (uint16_t)converter.track_list[0][1].type);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0x83, (uint16_t)converter.track_list[0][2].type);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::FLG, (uint16_t)converter.track_list[0][3].type);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)2, (uint16_t)converter.track_list[0][3].arg);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)0, (uint16_t)converter.track_list[0][3].arg);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0xaa, (uint16_t)converter.track_list[0][4].type);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::FINISH, (uint16_t)converter.track_list[0][5].type);
 

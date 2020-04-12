@@ -165,7 +165,6 @@ class MDSDRV_Linker
 			std::vector<std::pair<uint16_t,uint16_t>> patch_table;
 		};
 		std::vector<std::vector<uint8_t>> data_bank;
-		int data_counter;
 		std::vector<int> data_offset;
 		std::vector<Seq_Data> seq_bank;
 		Wave_Rom wave_rom;
