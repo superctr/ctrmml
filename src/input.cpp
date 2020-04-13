@@ -132,53 +132,25 @@ void Input::open_file(const std::string& fn)
 	parse_file();
 }
 
-//! Creates a Line_Input.
-Line_Input::Line_Input(Song* song)
-	: Input(song), line(0), column(0)
+//! Creates a Line_Buffer
+Line_Buffer::Line_Buffer(std::string line, unsigned int column)
+	: column(column)
+{
+	buffer = std::make_shared<std::string>(line);
+}
+
+Line_Buffer::Line_Buffer(const class Line_Buffer& original)
+	: buffer(original.buffer)
+	, column(original.column)
 {
 }
 
-Line_Input::~Line_Input()
+//! Set the contents of the Line_Buffer and clear column.
+void Line_Buffer::set_buffer(std::string line, unsigned int new_column)
 {
-}
-
-//! Open file and parse lines.
-void Line_Input::parse_file()
-{
-	std::ifstream inputfile = std::ifstream(get_filename());
-	buffer = "";
-	if(!inputfile)
-		parse_error("failed to open file");
-	line = 0;
-	for(std::string str; std::getline(inputfile, str);)
-	{
-		read_line(str);
-		line++;
-	}
-}
-
-#if 0 // not used. use parse_error or parse_warning instead
-void Line_Input::error(char* error_msg, bool show_column, bool fatal)
-{
-}
-#endif
-
-#if 0 // So far not used. Maybe it's not needed, as I currently read one line at a time.
-// Return 1 if eol. Should handle windows newlines as well
-bool Line_Input::iseol(int c)
-{
-	if(c == '\r')
-		c = get();
-	if(c == '\n' || c == 0)
-		return 1;
-	return 0;
-}
-#endif
-
-std::shared_ptr<InputRef> Line_Input::get_reference()
-{
-	InputRef r = InputRef(get_filename(), buffer, line, column);
-	return std::make_shared<InputRef>(r);
+	buffer = std::make_shared<std::string>(line);
+	if(new_column >= 0)
+		column = new_column;
 }
 
 //! Get the next character from the buffer
@@ -188,14 +160,14 @@ std::shared_ptr<InputRef> Line_Input::get_reference()
  *  \retval 0 if at the end of the current buffer. The column number
  *          will still be incremented.
  */
-int Line_Input::get()
+int Line_Buffer::get()
 {
-	if(column >= buffer.size())
+	if(column >= buffer->size())
 	{
 		column++;
 		return 0;
 	}
-	return buffer[column++];
+	return (*buffer)[column++];
 }
 
 //! Get the next non-blank character from the buffer.
@@ -203,7 +175,7 @@ int Line_Input::get()
  *  Blank characters are skipped until the next non-blank character is
  *  found.
  */
-int Line_Input::get_token()
+int Line_Buffer::get_token()
 {
 	int c;
 	do c = get();
@@ -218,7 +190,7 @@ int Line_Input::get_token()
  *
  *  \exception std::invalid_argument if no number could be read.
  */
-int Line_Input::get_num()
+int Line_Buffer::get_num()
 {
 	int base = 10;
 	int c = get_token();
@@ -226,9 +198,9 @@ int Line_Input::get_num()
 		base = 16;
 	else
 		unget(c);
-	if(column == buffer.size())
+	if(column == buffer->size())
 		throw std::invalid_argument("expected number");
-	const char* ptr = buffer.c_str() + column;
+	const char* ptr = buffer->c_str() + column;
 	const char* endptr = ptr;
 	int ret = strtol(ptr, (char**)&endptr, base);
 	if(ptr == endptr)
@@ -238,9 +210,9 @@ int Line_Input::get_num()
 }
 
 //! Return a substring starting from the current position.
-std::string Line_Input::get_line()
+std::string Line_Buffer::get_line()
 {
-	return std::string(buffer, column);
+	return std::string(*buffer, column);
 }
 
 //! Put back the character to the buffer, decrementing the buffer position.
@@ -253,7 +225,7 @@ std::string Line_Input::get_line()
  *
  *  \exception std::out_of_range If the buffer position is already at 0.
  */
-void Line_Input::unget(int c)
+void Line_Buffer::unget(int c)
 {
 	if(column == 0)
 		throw std::out_of_range("unget too many");
@@ -262,26 +234,57 @@ void Line_Input::unget(int c)
 		column--;
 		return;
 	}
-	buffer[--column] = c;
+	(*buffer)[--column] = c;
 }
 
 //! Get current buffer position.
-unsigned long Line_Input::tell()
+unsigned long Line_Buffer::tell()
 {
 	return column;
 }
 
 //! Set the buffer position.
-void Line_Input::seek(unsigned long pos)
+void Line_Buffer::seek(unsigned long pos)
 {
 	column = pos;
+}
+
+//! Creates a Line_Input.
+Line_Input::Line_Input(Song* song)
+	: Input(song), Line_Buffer("", 0), line(0)
+{
+}
+
+Line_Input::~Line_Input()
+{
+}
+
+//! Open file and parse lines.
+void Line_Input::parse_file()
+{
+	std::ifstream inputfile = std::ifstream(get_filename());
+	buffer = std::make_shared<std::string>("");
+	if(!inputfile)
+		parse_error("failed to open file");
+	line = 0;
+	for(std::string str; std::getline(inputfile, str);)
+	{
+		read_line(str);
+		line++;
+	}
+}
+
+std::shared_ptr<InputRef> Line_Input::get_reference()
+{
+	InputRef r = InputRef(get_filename(), *buffer, line, column);
+	return std::make_shared<InputRef>(r);
 }
 
 //! Read a single input line and parse it.
 void Line_Input::read_line(const std::string& input_line)
 {
 	column = 0;
-	buffer = input_line;
+	buffer = std::make_shared<std::string>(input_line);
 	parse_line();
 }
 

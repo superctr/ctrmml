@@ -93,34 +93,20 @@ class Input
 		static Input& get_input(const std::string& filename); // Get appropriate input type based on the filename
 };
 
-//! Abstract class for text line-based input formats (such as MML)
+//! Line buffer interface
 /*!
- *  Reads the input files, one line at a time, parsing them using
- *  the virtual function parse_line().
- *
- *  To help with parsing, a C stdio-style interface to lines of texts
- *  is provided.
- *
- *  Because data is stored in an internal buffer and the position
- *  is kept track of, a call to get_reference() (and thus parse_error())
- *  will create an InputRef with the correct line number and column.
+ *  This provides a stdio-style interface to a buffer as if it was a file.
  */
-class Line_Input: public Input
+class Line_Buffer
 {
 	friend class Line_Input_Test; // needs access to internal variables.
-	private:
-		std::string buffer; // current line used by get/unget functions, etc.
-		unsigned int line;
-		unsigned int column;
-
-		void parse_file();
-
 	protected:
-		//! Used by derived classes to read the input lines.
-		virtual void parse_line() = 0;
-
-		std::shared_ptr<InputRef> get_reference();
-
+		std::shared_ptr<std::string> buffer; // current line used by get/unget functions, etc.
+		void set_buffer(std::string line, unsigned int new_column = 0);
+		unsigned int column;
+	public:
+		Line_Buffer(std::string line, unsigned int column = -1);
+		Line_Buffer(const class Line_Buffer& original);
 		int get();
 		int get_token();
 		int get_num();
@@ -128,6 +114,31 @@ class Line_Input: public Input
 		void unget(int c = 0);
 		unsigned long tell();
 		void seek(unsigned long pos);
+};
+
+//! Abstract class for text line-based input formats (such as MML)
+/*!
+ *  Reads the input files, one line at a time, parsing them using
+ *  the virtual function parse_line().
+ *
+ *  To help with parsing, a C stdio-style interface to lines of texts
+ *  is provided. (see Line_Buffer)
+ *
+ *  Because data is stored in an internal buffer and the position
+ *  is kept track of, a call to get_reference() (and thus parse_error())
+ *  will create an InputRef with the correct line number and column.
+ */
+class Line_Input: public Input, protected Line_Buffer
+{
+	friend class Line_Input_Test; // needs access to internal variables.
+	private:
+		unsigned int line;
+		void parse_file();
+
+	protected:
+		//! Used by derived classes to read the input lines.
+		virtual void parse_line() = 0;
+		std::shared_ptr<InputRef> get_reference();
 
 	public:
 		Line_Input(Song* song);

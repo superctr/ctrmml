@@ -26,7 +26,7 @@ public:
 	Line_Input_Test() : Line_Input(0) {}
 	void setUp()
 	{
-		buffer = "";
+		set_buffer("");
 		line = 0;
 		column = 0;
 	}
@@ -35,7 +35,7 @@ public:
 	}
 	void test_get()
 	{
-		buffer = "hello";
+		set_buffer("hello");
 		CPPUNIT_ASSERT_EQUAL((int)'h', get());
 		CPPUNIT_ASSERT_EQUAL((int)'e', get());
 		CPPUNIT_ASSERT_EQUAL((int)'l', get());
@@ -44,7 +44,7 @@ public:
 	}
 	void test_get_zero_at_eol()
 	{
-		buffer = "hi";
+		set_buffer("hi");
 		CPPUNIT_ASSERT_EQUAL((int)'h', get());
 		CPPUNIT_ASSERT_EQUAL((int)'i', get());
 		CPPUNIT_ASSERT_EQUAL((int)0, get());
@@ -53,7 +53,7 @@ public:
 	}
 	void test_get_token()
 	{
-		buffer = "\t   hello";
+		set_buffer("\t   hello");
 		CPPUNIT_ASSERT_EQUAL((int)'h', get_token());
 		CPPUNIT_ASSERT_EQUAL((int)'e', get_token());
 		CPPUNIT_ASSERT_EQUAL((int)'l', get_token());
@@ -62,42 +62,42 @@ public:
 	}
 	void test_unget()
 	{
-		buffer = "hello";
+		set_buffer("hello");
 		int c = get();
 		unget(c);
 		test_get();
 	}
 	void test_unget_at_eol()
 	{
-		buffer = "hi";
+		set_buffer("hi");
 		get();
 		get();
 		CPPUNIT_ASSERT_EQUAL((int)0, get()); // = 0
 		unget(); // should not cause extra write
-		CPPUNIT_ASSERT_EQUAL(std::string("hi"), buffer);
+		CPPUNIT_ASSERT_EQUAL(std::string("hi"), *buffer);
 		CPPUNIT_ASSERT_EQUAL((unsigned int)2, column);
 	}
 	void test_unget_too_many()
 	{
-		buffer = "hi";
+		set_buffer("hi");
 		get();
 		unget();
 		unget(); // should throw std::out_of_range
 	}
 	void test_get_num()
 	{
-		buffer = "123";
+		set_buffer("123");
 		CPPUNIT_ASSERT_EQUAL((int)123, get_num());
 	}
 	void test_get_num_increment()
 	{
-		buffer = "123 456";
+		set_buffer("123 456");
 		get_num();
 		CPPUNIT_ASSERT_EQUAL((unsigned int)3, column);
 	}
 	void test_get_num_multiple()
 	{
-		buffer = "123 456 789 1012345 678";
+		set_buffer("123 456 789 1012345 678");
 		CPPUNIT_ASSERT_EQUAL((int)123, get_num());
 		CPPUNIT_ASSERT_EQUAL((int)456, get_num());
 		CPPUNIT_ASSERT_EQUAL((int)789, get_num());
@@ -106,7 +106,7 @@ public:
 	}
 	void test_get_num_sign()
 	{
-		buffer = "-123 +123 -123 +123";
+		set_buffer("-123 +123 -123 +123");
 		CPPUNIT_ASSERT_EQUAL((int)-123, get_num());
 		CPPUNIT_ASSERT_EQUAL((int)123, get_num());
 		CPPUNIT_ASSERT_EQUAL((int)-123, get_num());
@@ -114,25 +114,25 @@ public:
 	}
 	void test_get_num_hex()
 	{
-		buffer = "$12 x2345";
+		set_buffer("$12 x2345");
 		CPPUNIT_ASSERT_EQUAL((int)0x12, get_num());
 		CPPUNIT_ASSERT_EQUAL((int)0x2345, get_num());
 	}
 	void test_get_num_eol()
 	{
-		buffer = "123";
+		set_buffer("123");
 		get_num();
 		get_num(); // should throw std::invalid_argument
 	}
 	void test_get_num_nan()
 	{
-		buffer = "Skitrumpa";
+		set_buffer("Skitrumpa");
 		get_num(); // should throw std::invalid_argument
 	}
 	// check that column is unchanged if exception is thrown
 	void test_get_num_nan_increment()
 	{
-		buffer = "Skitrumpa";
+		set_buffer("Skitrumpa");
 		try {get_num();} // should throw std::invalid_argument
 		catch(std::invalid_argument&)
 		{
@@ -141,7 +141,7 @@ public:
 	}
 	void test_get_line()
 	{
-		buffer = "0123456789";
+		set_buffer("0123456789");
 		CPPUNIT_ASSERT_EQUAL(std::string("0123456789"), get_line());
 		seek(3);
 		CPPUNIT_ASSERT_EQUAL(std::string("3456789"), get_line());
@@ -152,7 +152,7 @@ public:
 	}
 	void test_inputref()
 	{
-		buffer = "Skitrumpa";
+		set_buffer("Skitrumpa");
 		std::shared_ptr<InputRef> ptr = get_reference();
 		get();
 		get(); // increment column a few times
