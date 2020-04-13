@@ -30,6 +30,7 @@ class MML_Input: public Line_Input
 		uint16_t track_offset;
 		std::vector<uint16_t> track_list;
 		void (MML_Input::*last_cmd)();
+		bool conditional_block;
 
 		// MML read helpers
 		unsigned int read_duration();
@@ -45,6 +46,8 @@ class MML_Input: public Line_Input
 		void mml_reverse_rest(int duration);
 		void mml_grace();
 		void event_relative(Event::Type type, Event::Type subtype);
+		void conditional_block_begin();
+		void conditional_block_end(int c);
 
 		// MML command parsers. Returns 0 and increments position if parsing succeeds.
 		// the idea is that these can be swapped out for different MML dialects or platforms.
@@ -53,7 +56,7 @@ class MML_Input: public Line_Input
 		bool mml_envelope(); // Instrument, volume, envelope etc.
 
 		// Parsers for various parts of the MML file
-		void parse_mml_track(int conditional_block);
+		void parse_mml_track();
 		void parse_mml();
 		void parse_tag();
 

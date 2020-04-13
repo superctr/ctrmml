@@ -261,22 +261,34 @@ bool MML_Input::mml_envelope()
 	return false;
 }
 
-void MML_Input::parse_mml_track(int conditional_block)
+void MML_Input::conditional_block_begin()
 {
 	int c;
-	if(conditional_block)
+	int offset = track_offset;
+	conditional_block = 1;
+	while(offset)
 	{
-		int offset = track_offset;
-		while(offset)
-		{
-			do c = get_token();
-			while(c != 0 && c != '/' && c != ';');
-			if(c != '/')
-				parse_error("unterminated conditonal block");
-			c = 0;
-			offset--;
-		}
+		do c = get_token();
+		while(c != 0 && c != '/' && c != ';');
+		if(c != '/')
+			parse_error("unterminated conditonal block");
+		c = 0;
+		offset--;
 	}
+}
+
+void MML_Input::conditional_block_end(int c)
+{
+	while(c != 0 && c != '}' && c != ';')
+		c = get_token();
+	if(c != '}')
+		parse_error("unterminated conditional block");
+	conditional_block = 0;
+}
+
+void MML_Input::parse_mml_track()
+{
+	int c;
 	while(1)
 	{
 		// could this be rewritten using a command map?
@@ -288,9 +300,9 @@ void MML_Input::parse_mml_track(int conditional_block)
 		else if(c == ';') // Comment
 			break;
 		else if((c == '/' || c == '}') && conditional_block)
-			break;
+			conditional_block_end(c);
 		else if(c == '{' && !conditional_block)
-			parse_mml_track(1);
+			conditional_block_begin();
 		else if(c == '%')
 			track->add_event(Event::PLATFORM, expect_parameter());
 		else if(c == 0)
@@ -311,13 +323,6 @@ void MML_Input::parse_mml_track(int conditional_block)
 			parse_error("unknown MML command");
 		}
 	}
-	if(conditional_block)
-	{
-		while(c != 0 && c != '}' && c != ';')
-			c = get_token();
-		if(c != '}')
-			parse_error("unexpected conditional block");
-	}
 }
 
 void MML_Input::parse_mml()
@@ -329,7 +334,10 @@ void MML_Input::parse_mml()
 		track_id = track_list[i];
 		track_offset = i;
 		track = &get_song().make_track(track_id);
-		parse_mml_track(0);
+		conditional_block = false;
+		parse_mml_track();
+		if(conditional_block)
+			parse_error("unterminated conditional block");
 	}
 }
 
@@ -368,7 +376,8 @@ MML_Input::MML_Input(Song* song)
 	track_id(0),
 	track_offset(0),
 	track_list(0),
-	last_cmd(nullptr)
+	last_cmd(nullptr),
+	conditional_block(0)
 {
 	// Perhaps the initial state of mml_input should be track A.
 	// Or maybe it can be initialized by a previous MML_Input during
