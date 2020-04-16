@@ -60,14 +60,16 @@ class Wave_Rom
 			std::vector<uint8_t> to_bytes() const;
 		};
 	protected:
+		static const uint32_t NO_FIT = (uint32_t)-1;
 		struct Gap
 		{
-			unsigned long start_pos;
-			unsigned long size;
+			unsigned long start;
+			unsigned long end;
 		};
 
 		unsigned long max_size;
 		unsigned long current_size;
+		unsigned long bank_size;
 
 		Tag include_paths;
 		std::vector<uint8_t> rom_data;
@@ -76,17 +78,20 @@ class Wave_Rom
 		std::string error_message;
 
 		virtual std::vector<uint8_t> encode_sample(const std::string& encoding_type, const std::vector<int16_t>& input);
-		virtual uint32_t fit_sample(Sample header);
-		virtual int find_duplicate(Sample header, const std::vector<uint8_t>& sample);
+		virtual uint32_t fit_sample(const Sample& header, uint32_t start, uint32_t end) const;
+		virtual int find_duplicate(const Sample& header, const std::vector<uint8_t>& sample) const;
 
 	public:
-		Wave_Rom(unsigned long max_size);
+		Wave_Rom(unsigned long max_size, unsigned long bank_size = 0);
 		virtual ~Wave_Rom();
 
 		void set_include_paths(const Tag& tag);
+		unsigned int find_gap(const Sample& header, uint32_t& gap_start) const;
 		unsigned int add_sample(const Tag& tag);
 		unsigned int add_sample(Sample header, const std::vector<uint8_t>& sample);
 		unsigned int get_free_bytes();
+		unsigned int get_total_gap();
+		unsigned int get_largest_gap();
 		const std::vector<Sample>& get_sample_headers();
 		const std::vector<uint8_t>& get_rom_data();
 		const std::string& get_error();

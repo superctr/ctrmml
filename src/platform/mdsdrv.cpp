@@ -124,8 +124,8 @@ void MDSDRV_Data::read_fm_2op(uint16_t id, const Tag& tag)
 			fm_data[0+i] = dt | (mul & 15);
 		}
 		fm_data[24 + 3] = fm_data[24 + 2]; //op4 tl should be same as op1
-		envelope_map[id] = add_unique_data(fm_data);
 		fm_data[29] = (tag_data[5] + 24) << 1;
+		envelope_map[id] = add_unique_data(fm_data);
 		ins_transpose[id] = tag_data[5];
 		ins_type[id] = INS_FM;
 	}
@@ -1024,7 +1024,7 @@ MDSDRV_Linker::MDSDRV_Linker()
 	: data_bank()
 	, data_offset()
 	, seq_bank()
-	, wave_rom(0x3f8000)
+	, wave_rom(0x3f8000, 0x8000)
 {
 }
 
@@ -1160,3 +1160,13 @@ std::vector<uint8_t> MDSDRV_Linker::get_pcm_data()
 	return std::vector<uint8_t>(wave.begin(), wave.end() - wave_rom.get_free_bytes());
 }
 
+std::string MDSDRV_Linker::get_statistics()
+{
+	auto str = std::string();
+	str += stringf("PCM data size: %d bytes (max %d)\n",
+		wave_rom.get_rom_data().size() - wave_rom.get_free_bytes(),
+		wave_rom.get_rom_data().size());
+	str += stringf("Gaps: %d bytes, largest %d\n",
+		wave_rom.get_total_gap(), wave_rom.get_largest_gap());
+	return str;
+}

@@ -175,6 +175,7 @@ class MDSDRV_Linker
 		std::string get_seq_data_asm();
 		std::vector<uint8_t> get_seq_data();
 		std::vector<uint8_t> get_pcm_data();
+		std::string get_statistics();
 };
 
 #endif

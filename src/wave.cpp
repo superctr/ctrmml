@@ -174,14 +174,17 @@ int Wave_File::read(const std::string& filename)
 	return 0;
 }
 
-Wave_Rom::Wave_Rom(unsigned long max_size)
+Wave_Rom::Wave_Rom(unsigned long max_size, unsigned long bank_size)
 	: max_size(max_size)
 	, current_size(0)
+	, bank_size(bank_size)
 	, include_paths{""}
 	, rom_data()
 	, gaps()
 {
 	rom_data.resize(max_size, 0);
+	if(!bank_size)
+		this->bank_size = max_size;
 }
 
 Wave_Rom::~Wave_Rom()
@@ -201,18 +204,32 @@ std::vector<uint8_t> Wave_Rom::encode_sample(const std::string& encoding_type, c
 	return output;
 }
 
-//! This function simply returns the next possible start address for the rom.
-uint32_t Wave_Rom::fit_sample(Wave_Rom::Sample header)
+//! Returns the next possible aligned start address for the rom.
+/*!
+ *  Given a sample header, a proposed start address and end address,
+ *  return the appropriate end address of the sample. If the sample
+ *  cannot fit within the boundaries. return NO_FIT.
+ */
+uint32_t Wave_Rom::fit_sample(const Wave_Rom::Sample& header, uint32_t start, uint32_t end) const
 {
-	return current_size;
+	uint32_t sample_end = start + header.size;
+	uint32_t start_bank = start / bank_size;
+	uint32_t end_bank = sample_end / bank_size;
+	// Sample must fit in the same bank
+	if (start_bank != end_bank)
+		start = end_bank * bank_size;
+	// Crossed end boundary?
+	if ((start + header.size) > end)
+		return NO_FIT;
+	return start;
 }
 
-//! This function looks for duplicates in the sample ROM.
+//! Look for duplicates in the sample ROM.
 /*!
  *  If a duplicate is found, return the index to the duplicate wave entry.
  *  Otherwise, return -1.
  */
-int Wave_Rom::find_duplicate(Wave_Rom::Sample header, const std::vector<uint8_t>& sample)
+int Wave_Rom::find_duplicate(const Wave_Rom::Sample& header, const std::vector<uint8_t>& sample) const
 {
 	int id = 0;
 	for(auto&& i : samples)
@@ -234,6 +251,35 @@ void Wave_Rom::set_include_paths(const Tag& tag)
 	include_paths = tag;
 }
 
+//! Check if the sample fits in an existing alignment gap
+/*!
+ *  If the sample cannot fit in any gap, return NO_FIT. Otherwise, return
+ *  the index of the smallest gap that fits the sample.
+ *
+ *  \p gap_start will be set with the aligned start position of the gap.
+ */
+unsigned int Wave_Rom::find_gap(const Wave_Rom::Sample& header, uint32_t& gap_start) const
+{
+	unsigned int best_gap = NO_FIT;
+	if(gaps.size())
+	{
+		// Look for the smallest gap that fits our sample
+		int best_gap_size = max_size;
+		uint32_t start_pos;
+		for(unsigned int i = 0; i < gaps.size(); i++)
+		{
+			int gap_size = gaps[i].end - gaps[i].start;
+			start_pos = fit_sample(header, gaps[i].start, gaps[i].end);
+			if(start_pos != NO_FIT && gap_size < best_gap_size)
+			{
+				best_gap = i;
+				best_gap_size = gap_size;
+				gap_start = start_pos;
+			}
+		}
+	}
+	return best_gap;
+}
 //! Quick and dirty comparison operator (used below)
 static bool operator==(const Wave_Rom::Sample& s1, const Wave_Rom::Sample& s2)
 {
@@ -307,14 +353,38 @@ unsigned int Wave_Rom::add_sample(Wave_Rom::Sample header, const std::vector<uin
 	else
 	{
 		// Create a new entry.
-		uint32_t start_pos = fit_sample(header);
-		if((start_pos + sample.size()) > max_size)
+		uint32_t start_pos = -1; // Aligned start position
+		uint32_t start = current_size; // Proposed start position
+		// Check if the sample fits in a gap.
+		unsigned int gap_id = find_gap(header, start_pos);
+		if(gap_id != NO_FIT)
+		{
+			start = gaps[gap_id].start;
+			gaps[gap_id].start = start_pos + header.size;
+		}
+		else
+		{
+			// Append sample to the end
+			start_pos = fit_sample(header, start, max_size);
+		}
+		// Check if sample fits in ROM
+		if(start_pos == NO_FIT)
 		{
 			error_message = stringf("Sample does not fit in remaining ROM space (%d bytes remaining, sample size is %d)", max_size - start_pos, sample.size());
 			throw InputError(nullptr, error_message.c_str());
 		}
-		current_size = start_pos + sample.size();
+		// Add a new gap if needed
+		if(start_pos > start)
+		{
+			gaps.push_back({start, start_pos});
+		}
+		// Move the end position if needed
+		if(start_pos >= current_size)
+		{
+			current_size = start_pos + header.size;
+		}
 
+		printf("Append sample %d to ROM at %08x (size %08x)\n", samples.size(), start_pos, header.size);
 		std::copy_n(sample.begin(), header.size, rom_data.begin() + start_pos);
 		header.position = start_pos;
 		samples.push_back(header);
@@ -322,9 +392,37 @@ unsigned int Wave_Rom::add_sample(Wave_Rom::Sample header, const std::vector<uin
 	}
 }
 
+//! Get the number of unused allocated bytes in the Wave_Rom.
 unsigned int Wave_Rom::get_free_bytes()
 {
 	return max_size - current_size;
+}
+
+//! Get the total size of alignment gaps.
+unsigned int Wave_Rom::get_total_gap()
+{
+	unsigned int gap_size = 0;
+	for(auto&& gap : gaps)
+	{
+		gap_size += gap.end - gap.start;
+	}
+	return gap_size;
+}
+
+//! Get the size of the largest gap.
+/*!
+ *  If there are no gaps, return 0.
+ */
+unsigned int Wave_Rom::get_largest_gap()
+{
+	unsigned int largest_gap = 0;
+	for(auto&& gap : gaps)
+	{
+		unsigned int gap_size = gap.end - gap.start;
+		if(gap_size > largest_gap)
+			largest_gap = gap_size;
+	}
+	return largest_gap;
 }
 
 const std::vector<Wave_Rom::Sample>& Wave_Rom::get_sample_headers()
@@ -342,8 +440,8 @@ const std::string& Wave_Rom::get_error()
 	return error_message;
 }
 
-/*! Fill a sample header with values from a byte vector.
- *
+//! Fill a sample header with values from a byte vector.
+/*!
  *  The format matches the data created by to_bytes().
  *
  *  \exception std::out_of_range Input too small
@@ -360,8 +458,8 @@ void Wave_Rom::Sample::from_bytes(std::vector<uint8_t> input)
 	flags = read_le32(input, 28);
 }
 
-/*! Return a sample header as a byte vector.
- *
+//! Return a sample header as a byte vector.
+/*!
  *  Output can be made as a header again using to_bytes().
  */
 std::vector<uint8_t> Wave_Rom::Sample::to_bytes() const

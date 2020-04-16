@@ -125,6 +125,7 @@ int main(int argc, char* argv[])
 			auto bytes = linker.get_pcm_data();
 			std::ofstream out(pcm_filename, std::ios::binary);
 			out.write((char*)bytes.data(), bytes.size());
+			std::cout << linker.get_statistics();
 		}
 	}
 	catch (InputError& error)
@@ -133,5 +134,3 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 }
-
-
