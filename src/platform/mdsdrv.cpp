@@ -1090,7 +1090,7 @@ void MDSDRV_Linker::add_song(RIFF& mds)
 			auto begin = pcmd.begin() + header.position;
 			auto end = pcmd.begin() + header.position + header.size;
 			header.position = 0;
-			uint16_t offset = wave_rom.add_sample(header, std::vector<uint8_t>(begin, end));
+			uint16_t offset = wave_rom.add_sample(header, std::vector<uint8_t>(begin, end)) | 0x8000;
 			printf("replace seq+%04x with %04x\n", addr, offset);
 			patch_table.push_back({addr, offset});
 		}
@@ -1116,6 +1116,10 @@ std::vector<uint8_t> MDSDRV_Linker::get_seq_data()
 			data.push_back(0);
 			offset++;
 		}
+		if(offset >= 0x8000)
+		{
+			throw InputError(nullptr, "instrument data bank is too big (>32768 bytes)");
+		}
 		id++;
 	}
 
@@ -1124,7 +1128,12 @@ std::vector<uint8_t> MDSDRV_Linker::get_seq_data()
 	{
 		printf("put seq %02x at %04x\n", id, offset);
 		for(auto&& j : i.patch_table)
-			write_be16(i.data, j.first, data_offset[j.second]);
+		{
+			if(j.second & 0x8000)
+				write_be16(i.data, j.first, j.second & 0x7fff);
+			else
+				write_be16(i.data, j.first, data_offset[j.second]);
+		}
 		data.insert(data.end(), i.data.begin(), i.data.end());
 		write_be32(data, 6 + (id * 4), offset);
 		offset += i.data.size();
