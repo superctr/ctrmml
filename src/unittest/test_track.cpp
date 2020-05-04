@@ -14,6 +14,8 @@ class Track_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST(test_tie_extend_duration);
 	CPPUNIT_TEST(test_tie_extend_add_tie);
 	CPPUNIT_TEST(test_tie_extend_add_rest);
+	CPPUNIT_TEST(test_tie_only_add_tie);
+	CPPUNIT_TEST(test_tie_only_add_tie2);
 	CPPUNIT_TEST(test_slur);
 	CPPUNIT_TEST(test_slur_impossible);
 	CPPUNIT_TEST(test_reverse_rest_shorten_on_time);
@@ -167,6 +169,23 @@ public:
 		CPPUNIT_ASSERT_EQUAL((uint16_t)12, track->get_event(0).on_time);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)12, track->get_event(0).off_time);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_event(2).off_time);
+	}
+	// Add an unrelated event, then a tie and verify that a new tie is added.
+	void test_tie_only_add_tie2()
+	{
+		track->set_quantize(8);
+		track->add_event(Event::VOL, 10); // type doesn't matter
+		track->add_tie(24);
+		CPPUNIT_ASSERT_EQUAL((Event::Type)Event::TIE, track->get_event(1).type);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_event(1).on_time);
+	}
+	// Add just a tie and verify that a new tie is added.
+	void test_tie_only_add_tie()
+	{
+		track->set_quantize(8);
+		track->add_tie(24);
+		CPPUNIT_ASSERT_EQUAL((Event::Type)Event::TIE, track->get_event(0).type);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)24, track->get_event(0).on_time);
 	}
 	// Add slur and verify that the articulation of the previous note is legato.
 	void test_slur()

@@ -125,42 +125,47 @@ void Track::add_note(int note, uint16_t duration)
 int Track::add_tie(uint16_t duration)
 {
 	duration = get_duration(duration);
-	Event& last_note = get_event(last_note_pos);
-	uint16_t old_duration = last_note.on_time + last_note.off_time;
-	uint16_t new_duration = old_duration + duration;
+	if(last_note_pos >= 0)
+	{
+		Event& last_note = get_event(last_note_pos);
+		uint16_t old_duration = last_note.on_time + last_note.off_time;
+		uint16_t new_duration = old_duration + duration;
+		int last_event_pos = events.size() - 1;
 
-	if(last_note_pos == events.size() - 1)
-	{
-		// last note event is the last event, we can just extend it.
-		last_note.on_time = on_time(new_duration);
-		last_note.off_time = off_time(new_duration);
-		return 0;
-	}
-	else if(last_note_pos >= 0)
-	{
-		// if another event has been inserted, it's important to keep
-		// the timing of that event, so we change the on/off time of the
-		// last note, then insert a new event for the extended duration.
-		// whether it's a tie or rest depends on the quantization.
-		if(on_time(new_duration) > old_duration)
+		if(last_note_pos == last_event_pos)
 		{
-			last_note_pos = events.size();
-			last_note.on_time = old_duration;
-			last_note.off_time = 0;
-			add_event(Event::TIE, 0, on_time(new_duration)-old_duration, off_time(new_duration));
+			// last note event is the last event, we can just extend it.
+			last_note.on_time = on_time(new_duration);
+			last_note.off_time = off_time(new_duration);
+			return 0;
 		}
 		else
 		{
-			last_note_pos = -1; // only works once...
-			last_note.on_time = on_time(new_duration);
-			last_note.off_time = old_duration - on_time(new_duration);
-			add_event(Event::REST, 0, 0, duration);
+			// if another event has been inserted, it's important to keep
+			// the timing of that event, so we change the on/off time of the
+			// last note, then insert a new event for the extended duration.
+			// whether it's a tie or rest depends on the quantization.
+			if(on_time(new_duration) > old_duration)
+			{
+				last_note_pos = events.size();
+				last_note.on_time = old_duration;
+				last_note.off_time = 0;
+				add_event(Event::TIE, 0, on_time(new_duration)-old_duration, off_time(new_duration));
+			}
+			else
+			{
+				last_note_pos = -1; // only works once...
+				last_note.on_time = on_time(new_duration);
+				last_note.off_time = old_duration - on_time(new_duration);
+				add_event(Event::REST, 0, 0, duration);
+			}
+			return 0;
 		}
-		return 0;
 	}
 	else
 	{
-		return -1;
+		add_event(Event::TIE, 0, on_time(duration), off_time(duration));
+		return 0;
 	}
 }
 

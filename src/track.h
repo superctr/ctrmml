@@ -106,7 +106,7 @@ class Track
 		uint8_t flag;
 		uint8_t ch;
 		std::vector<Event> events;
-		uint16_t last_note_pos; // last event id that was a note
+		int last_note_pos; // last event id that was a note
 		int octave;
 		uint16_t measure_len;
 		uint16_t default_duration; // default duration

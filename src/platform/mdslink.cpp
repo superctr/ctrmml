@@ -127,6 +127,7 @@ int main(int argc, char* argv[])
 			out.write((char*)bytes.data(), bytes.size());
 			std::cout << linker.get_statistics();
 		}
+		return 0;
 	}
 	catch (InputError& error)
 	{
