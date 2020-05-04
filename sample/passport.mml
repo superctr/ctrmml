@@ -1,0 +1,208 @@
+#title PASSPORT.MML
+#composer ???
+#author ctr
+#platform megadrive
+#comment from Windows 95
+
+;-----------------------------------------------------
+; FM voice data (from MUCOM88)
+@2 fm
+   0    7
+   31  18   0   6   2  36   0  10   3   0
+   31  14   4   6   2  45   0   0   3   0
+   31  10   4   6   2  18   1   0   3   0
+   31  10   3   6   2   0   1   0   3   0
+@8 fm
+   3    7
+   31   8   2   2  14  40   3   6   0   0
+   19   6   0   2  15  51   1   6   3   0
+   15  10   0   2   2  38   3   3   6   0
+   14   3   0   3   0   0   2   3   3   0   -7
+@28 fm
+   2    7
+   28   4   3   7   1  33   2   1   6   0
+   27   9   1   2   0  71   3  12   3   0
+   28   4   3   6   0  49   2   4   1   0
+   26   3   0   5  10   0   3   1   3   0
+@109 fm
+   4    7
+   31   0   0   0   0  33   0   8   7   0
+   18  15   1   7   3  16   0   8   7   0
+   31   0   0   0   0  24   0   4   3   0
+   31  15   1   7   3   7   0   4   3   0
+@112 fm
+   2    7
+   31  15   7   8   2  33   0   0   6   0
+   20  16   6   7   4  18   2   7   6   0
+   31   5   6   7   1  52   0   0   6   0
+   31   8   7   7   5   0   0   1   6   0
+@59 fm
+   3    7
+   31  21  19   6   2   0   0  15   2   0
+   31  21  12   6   2  35   0   8   2   0
+   31  21  13   6   3  32   0   7   3   0
+   31  19  16   9   2   0   0   2   3   0
+@51 fm
+   4    0
+   22   5   6   4   6  35   1   3   0   0
+   25  12   6   5   1  10   2   3   3   0
+   20   7   6   4   6  28   1   8   6   0
+   25  12   6   5   6   0   2   3   6   0
+;----------------------------------------------------------
+; PSG voice data
+@10 psg 15>12:4 / 11>7:6 6>0:36
+@11 psg 15>13:5 / 10>0:15
+;----------------------------------------------------------
+; PCM voice data
+@20 pcm "pcm/bd_16k.wav"
+@21 pcm "pcm/sd_16k.wav"
+@22 pcm "pcm/bd_crash2_16k.wav"
+@23 pcm "pcm/tom2l_16k.wav"
+@24 pcm "pcm/tom2m_16k.wav"
+@25 pcm "pcm/tom2h_16k.wav"
+*20 @20c ;D20a
+*21 @21c ;D20b
+*22 @22c ;D20c
+*23 @23c ;D20d
+*24 @24c ;D20e
+*25 @25c ;D20f
+;----------------------------------------------------------
+; PSG noise data
+@40 psg 12>0:4
+@41 psg 8>0:4
+@42 psg 12>10:3 9>6:6 5>0:20
+*40 @40o9b ;D40a
+*41 @41o9b ;D40b
+*42 @42o9b ;D40c
+;----------------------------------------------------------
+
+A t175
+
+A   @2v12
+B   @8v7
+CDE @109v12
+F   D20
+GH  @10 v14
+H   K20
+J   D40 'mode 1' v13
+
+; bar0
+A    l16 o4[c4.cr8.<grb-2^8b-8f8.rb-8r8 >c4.c8r4.<g4/gra8r8b-8r4gr]2 >(4gr<)4ar >(4gr<)4b-r >(4gr8.<gr)4
+B    l1 [r]8
+CDE  l1 [r]16
+GH   l1 [r]22 r2.r8*105 ^4
+F    l4 [a.a8ba2.ba a.a8b./a8^2b2]2 a^8aba
+J    l8 [[ab]14 ac [ab]11 ac [ab]5]7
+
+; bar8
+*101 l8 q4 o6 [p2b- p1g p2>c p1<g p2>d p1<g p2g p1f p2f p1f p2b- p1f p2>c p1<g p2g p1g]2
+A    l16 o4[c4.cr8.<grb-2^8b-8f8.rb-8r8 >c4.c8r4.<g4/>(4gr<)4a8r8b-8r4gr]2 >(4gr<)4ar >(4gr<)4b-r >(4gr8.<gr)4
+B    [*101]4
+F    l4 [a.a8ba2.ba a.a8b./a8^2b2]2 a^8ab8e16d16b
+
+; bar16
+*100 l16 o4c4.cr8.<grb-2^8b-8f8.rb-8r8 >c4.c2<g4>(4gr<)4ar>(4gr<)4b-r>(4gr<)4br>(4gr)4 c4.cr8.<grf2^8f8b-8.rb8r8 >c4.c2<g4 >(4gr<)4ar >(4gr<)4b-r >(4gr8.)4<gr
+*102 l4 o2b-.g.a-^1 g. e-2f8^1  b-.g.a-^2f a- g. g2 >c8^1
+*103 l4 o3f. d.e-^1 d.<b-2g8^1 >f. d.e-^2c e- d.<b-2>f8^1
+*104 l4 o3a. f.g ^1 f. d2 c8^1  a. f.g ^2e-g  f. d2  g8^1
+*105 v10@11o3d8^2.
+A    [*100]3
+C    [*102]3
+D    [*103]3
+E    [*104]3
+F    l4 c.[a8ba2.ba a.a8b./a8^2b2a.]2 ae8ab2
+
+; bar24
+@M1  0:20 V0:1:3
+@M2 -2>0:20 0
+@M3  2>0:25 0
+@M4 -2>0:7 0
+@M5  1>0:35 0
+*106 l16 @10o4M2g4.>&M1crr4<f4^4.^16rcr8.e-r8. d8&M3c4 <M4g4.^16r M1b-4.&g-r8.f8e-8
+*107 l16 o3                                                                        c8e-8 &M5d4r2.r1r2. M0
+B    l1 [r]4 *101
+G    l16 v15    *106*107 r8 *105    @10v15o4cr(2cr)2
+H    l16 v12 r8 *106*107    *105 r8 @10v12o4cr(2cr)2
+F    l4 [a.a8ba2.ba a.a8 b./a8^2b2]2 ae8ab8a4a8
+
+; bar32
+*108 l16 @10o4M2g4.>&M1crr4<f4^4.^16rcrdre-rcr d8&M3c4 <M4g4.^16r M1b-4.&g-r8.f8e-8
+B    l1 [r]4 *101
+G    l16 v15 *108*107 r8 *105 ^4
+H    l16 v12 *108*107    *105 ^4
+F    l4 [a.a8ba2.ba a.a8/b.a8^2b2]2 b8dad8ab8f16e16d8a8
+
+; bar40
+@M6  0:30 V0:0.6:3
+A    l16 @112v13 o3f2^8r4 a-4.r8 b-4.r8 f^1 r8. >cre-8 r8 e-8fr8.c8 <f2.^8 a-8^4r8 b-4r8 >cr<f8^1 r8gra-rb-r>crdre-rfr
+B    l16 M6v10p3 r32e-32f8.^2.^2.r8 g-32g16.^8 fr8. e-8.r fr8. c8.^2r e-r8. e-32f16. ^1^2.r8 g32b-16.^8 gr8. f4e- r8. c8.^4re-r8. g8e-rf8&
+C    l2 r2r8 p1@28v12o4g g r4. [r1]2 p2r2   >b-^2 r2 [r1]2
+D    l2 r2r4   @28v10o4a-a-r4  [r1]2   r2r4 >g ^4 r2 [r1]2
+E    l2 r2r4.p2@28v12o5e-d r8  [r1]2 p1r2r4. c ^8 r2 [r1]2
+G    l8 M1@10v10q7 o4 ccc l16 v14q0 e-r8. grf4^1 v10q7 l8 [ccccc<b->cc e-c f c g-f e-c /ccccc l16 v14q0 cre-r8.frr4fr l8 v10q7 ce-cc]2
+H    l8 M1@10v10q7 o3 ggg l16 v14q0 a-r8.>crc4^1 v10q7<l8 [ggggg f  gg b-g>c<g>d-c<b-g /ggggg l16 v14q0 cre-r8.frr4fr l8 v10q7 gb-gg]2
+F    l4  [a.a8barabaa.a8b.a.ab8aa8]4
+
+; bar48
+A    l16 o3f2.^16r16 a-4.r8 b-4.r8 f1 r4 >cre-rgrfre-rcr<f8^2.^16r16 a-8^4r8 b-8^4r8 f8^1 r8>f8<f8g-rg8>g8<g8.r
+B    l16 f1^2.r8 e-32f16.^8 gr8. e-4fr8. c8^2 <b-r>cre-r f8^1^2.r8 b-32>c16.^8 <gr8. f4e-r8. c8r8 <b-rgrg-rfre-rcr<b-r
+C    l2 r2r8 p1o5g g r4. [r1]2 r2 p2>b-4e-8<a-^8 r2 [r1]2
+D    l2 r2r4   o5a-a-r4  [r1]2 r2   >g 4g8 <g ^8 r2 [r1]2
+E    l2 r2r4.p2o6e-d r8  [r1]2 r2 p1 r4.    c ^8 r2 [r1]2
+G    l8 v10q7 o4 ccc l16 v14q0  e-r8.f r8. g8^1 v10q7 l8 ccccc<b->cc e-c f c g-f e-c cccc l16 v14q0 cr8.e-r8.[f8g8e-r/r8]2 f8r8 e-rfrgrb-rgrb-r>cr <b-rgrb-r>cre-rcr<b-rgr
+H    l8 v10q7 o3 ggg l16 v14q0  a-r8.b-r8.>c8^1 v10q7<l8 ggggg f  gg b-g>c<g>d-c<b-g gggg l16 v14q0 cr8.e-r8.[f8g8e-r/r8]2 f8r8 e-rfrgrb-rgrb-r>cr <b-rgrb-r>cre-rcr<b-rgr
+
+; bar56
+*109 l16 v14o5e-rcr r2. <b-rr4 b-rr4 b-8>crr2.r8<g-rfr8. e-rcr<b-r
+A    @2v12 [*100]2
+B    l4 >c(3c(3c(2c M0 l1[r]3 v7 *101
+C    @109v12p3 [*102]2
+D    @109v12   [*103]2
+E    @109v12p3 [*104]2
+G    l16 v15    *106 o3c8e-8 &M5d4M0 *109         v15 o4  (2cr)2
+H    l16 v12 r8 *106 o3c8e-8 &M5d8M0 k-12 *109 k0 v12 o4cr(2cr)2
+F    l4 c[b8a.b/ aba8a8b a]4 a8b8b8e8a8b8b
+J    l8 [[ab]10 ac [ab]15 ac [ab]5]2
+
+; bar64
+*110 l16 v14o4g8^8.r b-r8. >cr8. e-8c8^8.r <b-r8. gr8. g-8f8^8.r e-8cr e-4cr <b-r >c4 <b-r gr g-fe-r cr8. M0
+B    l1 [r]4 *101
+G    l16 v15 *108 o3c8 *110
+H    l16 v12 *108 k-12 *110 k0
+F    l4 [[ab8/a.b aba8a8b]2 / a.b a4b8a8a8b8b ]2 a e8b8d8 a8b8b8a8e16d16b8b8b8
+
+; bar72
+@M7 -1>0:20 0
+A    l16 o4[crc8r8 cr<g8r8 b-4 r1r1/ g4.b-4.>e-4 o4crc8r8 cr<g8r8 g-4 r1r1 r4g4.b-4.]2 r2.grar
+B    l2 @59 o5v12p3 [g]10g4. @51o8v6p2 [(2g8)2/g4.]6
+C    l16 v12o2crc8r8 cr<g8r8 b-4r4 (@28   o6f rr4f rr4 M7f4 M0r8f rr4f r8.r1 )@109 o2crc8r8 cr<g8r8 g-4 [r1]3
+D    l16    r1r4v9                  @28p1 o6g-rr4g-rr4 M7g-4M0r8g-rr4g-r8.r1 r1r4 q2v5 l12r32 o7c<g- ) [o7c<g-]15 r:5
+E    l16    r1r4v9                  @28p3 o7c rr4c rr4 M7c4 M0r8c rr4c r8.r1 r1r4 q2v3 l12r32 o6gd- ) [o6gd-]15 r:5
+G    l1 [r]8
+H    l1 [r]8
+F    l4 [a8a8bab ab8/aa8b]6 l8fedbd
+J    l8 [arbb]16
+
+; bar80
+@M8 -2>0:40 0
+@M9  3>0:15 0
+@M10 0>-0.4:25 -0.4>0:25 0:10 0>0.5:40
+B    l2 @59 o5v12p3 [g4.g8]7 g4 @8v6l8gb-
+C    l16 v12o2crc8r8 cr<g8r8 b-4r4 r1r1r2 v11o4grb-r
+D    l16 q0 p1v8o4crc8r8 cr<g8r8 b-4r4 v11 o6 M8g2 M0b-rg-8 &M9e-8 M0e-rcr8. M10 e-2 M0 r2. p1o4v7grb-r
+E    l16 q0 p2v7o5crc8r8 cr<g8r8 b-4r4 v9K7 o6 M8g2 M0b-rg-8 &M9e-8 M0e-rcr8. M10 e-2 M0 r2. p1o4v6grb-r
+G    l1 [r]3 r2. o4 l16 v14 grb-r
+H    l1 [r]3 r2. o3 l16 v14 grb-r
+J    l8 [ar/b4]8 ac
+
+; bar84
+*111 l16 o4crcr8. cr<g8r8 b-4r8 b-8r8 b-rf8r8 g-4^16r g-8r8 g-rb-8r8 b-8>e-8r8 e-8a-8r8 a-8>d-8r8 d-r
+A    k0 *111 o5c4r1
+B    k36*111 o5c16r8.r1
+C    k24*111 o5c4r1
+D    k24*111 o5c4r1
+E    k12*111 o5c4r1
+G    k12*111 o5c4r1
+H    k0 *111 o5c4r1
+F    l4 a8a8b ab ab8a4a8b a8a8bab. a8 f16e16d8 b8 f16e16d8 b8 c4r1
+J    l8 [a4]12 a8c4. a8c4. a4r1
