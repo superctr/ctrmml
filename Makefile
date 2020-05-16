@@ -1,5 +1,6 @@
 SRC = src
 OBJ = obj
+LIBCTRMML = lib/libctrmml.a
 
 CFLAGS = -Wall
 LDFLAGS =
@@ -58,6 +59,12 @@ $(OBJ)/%.o: $(SRC)/%.cpp
 
 all: mmlc mdslink test
 
+lib: $(LIBCTRMML)
+
+$(LIBCTRMML): $(CORE_OBJS)
+	@mkdir -p $(@D)
+	$(AR) -q $@ $(CORE_OBJS)
+
 mmlc: $(MMLC_OBJS)
 	$(CXX) $(MMLC_OBJS) $(LDFLAGS) -o $@
 
@@ -81,5 +88,5 @@ test: unittest
 
 check: test
 
-.PHONY: all test check clean doc cleandoc
+.PHONY: all lib test check clean doc cleandoc
 
