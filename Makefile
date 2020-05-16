@@ -55,7 +55,7 @@ UNITTEST_OBJS = \
 
 $(OBJ)/%.o: $(SRC)/%.cpp
 	@mkdir -p $(@D)
-	$(CXX) $(CFLAGS) -c $< -o $@
+	$(CXX) $(CFLAGS) -MMD -c $< -o $@
 
 all: mmlc mdslink test
 
@@ -90,3 +90,4 @@ check: test
 
 .PHONY: all lib test check clean doc cleandoc
 
+-include $(OBJ)/*.d $(OBJ)/unittest/*.d
