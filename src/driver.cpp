@@ -6,8 +6,8 @@
 //#define DEBUG_FM(fmt,...) { printf(fmt, __VA_ARGS__); }
 //#define DEBUG_PSG(fmt,...) { printf(fmt, __VA_ARGS__); }
 
-Driver::Driver(unsigned int rate, VGM_Writer* vgm)
-	: vgm_writer(vgm)
+Driver::Driver(unsigned int rate, VGM_Interface* vgm)
+	: vgm(vgm)
 	, delta(0)
 	, rate(rate)
 	, finished(0)
@@ -16,16 +16,14 @@ Driver::Driver(unsigned int rate, VGM_Writer* vgm)
 
 void Driver::write(uint8_t command, uint16_t port, uint16_t reg, uint16_t data)
 {
-	if(vgm_writer)
-		vgm_writer->write(command, port, reg, data);
+	if(vgm)
+		vgm->write(command, port, reg, data);
 }
 
 void Driver::set_loop()
 {
-	if(vgm_writer)
-	{
-		vgm_writer->set_loop();
-	}
+	if(vgm)
+		vgm->set_loop();
 }
 
 void Driver::ym2612_w(uint8_t port, uint8_t reg, uint8_t ch, uint8_t op, uint16_t data)

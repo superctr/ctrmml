@@ -184,7 +184,7 @@ class MD_Driver : public Driver
 	private:
 		MDSDRV_Data data;
 		Song* song;
-		VGM_Writer* vgm_writer;
+		VGM_Interface* vgm;
 
 		std::vector<std::unique_ptr<MD_Channel>> channels;
 		double seq_rate;
@@ -207,7 +207,7 @@ class MD_Driver : public Driver
 		void reset_loop_count();
 
 	public:
-		MD_Driver(unsigned int rate, VGM_Writer* vgm, bool is_pal = false);
+		MD_Driver(unsigned int rate, VGM_Interface* vgm_interface, bool is_pal = false);
 		void play_song(Song& song);
 		void reset();
 		bool is_playing();

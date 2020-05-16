@@ -378,9 +378,9 @@ void MD_Channel::key_on_pcm()
 		Wave_Rom::Sample sample = driver->data.wave_rom.get_sample_headers().at(wave_header_id);
 		driver->last_pcm_channel = channel_id;
 		driver->ym2612_w(0, 0x2b, 0, 0, 0x80); // DAC enable
-		if(driver->vgm_writer)
+		if(driver->vgm)
 		{
-			driver->vgm_writer->dac_start(0x00, sample.position + sample.start, sample.size, sample.rate);
+			driver->vgm->dac_start(0x00, sample.position + sample.start, sample.size, sample.rate);
 		}
 	}
 }
@@ -390,9 +390,9 @@ void MD_Channel::key_off_pcm()
 	if(driver->last_pcm_channel == channel_id)
 	{
 		driver->ym2612_w(0, 0x2b, 0, 0, 0x00); // DAC disable
-		if(driver->vgm_writer)
+		if(driver->vgm)
 		{
-			driver->vgm_writer->dac_stop(0x00);
+			driver->vgm->dac_stop(0x00);
 		}
 		driver->last_pcm_channel = -1;
 	}
@@ -733,12 +733,12 @@ void MD_Dummy::v_update_envelope()
 //! constructs a MD_Driver.
 /*!
  * \param rate Sample rate.
- * \param vgm Optional VGM writer. Set to nullptr to disable VGM logging.
+ * \param vgm_interface Optional VGM interface. Set to nullptr to disable VGM.
  * \param is_pal Use 50hz sequence update rate
  */
-MD_Driver::MD_Driver(unsigned int rate, VGM_Writer* vgm, bool is_pal)
-	: Driver(rate, vgm)
-	, vgm_writer(vgm)
+MD_Driver::MD_Driver(unsigned int rate, VGM_Interface* vgm_interface, bool is_pal)
+	: Driver(rate, vgm_interface)
+	, vgm(vgm_interface)
 	, tempo_delta(255)
 	, tempo_counter(0)
 	, fm3_mask(0)
@@ -776,14 +776,14 @@ void MD_Driver::play_song(Song& song)
 	channels.clear();
 	data.read_song(song);
 	std::cout << data.message;
-	if(vgm_writer)
+	if(vgm)
 	{
 		const std::vector<uint8_t>& dbdata = data.wave_rom.get_rom_data();
-		vgm_writer->datablock(0x00,
+		vgm->datablock(0x00,
 			dbdata.size() - data.wave_rom.get_free_bytes(),
 			dbdata.data(),
 			dbdata.size());
-		vgm_writer->dac_setup(0x00, 0x02, 0x00, 0x2a, 0x00);
+		vgm->dac_setup(0x00, 0x02, 0x00, 0x2a, 0x00);
 	}
 	// setup tempo
 	tempo_delta = 128;

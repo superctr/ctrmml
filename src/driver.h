@@ -21,19 +21,20 @@
 class Driver
 {
 	private:
-		VGM_Writer* vgm_writer;
+		VGM_Interface* vgm;
 		double delta;
 		unsigned int rate;
-
 	protected:
 		//! If true, the sound driver has played enough loops or
 		//! stopped playback.
 		bool finished;
+
 		void write(uint8_t command, uint16_t port, uint16_t reg, uint16_t data);
 
 	public:
-		Driver(unsigned int rate, VGM_Writer* vgm);
+		Driver(unsigned int rate, VGM_Interface* vgm);
 
+		// write helpers
 		void ym2612_w(uint8_t port, uint8_t reg, uint8_t ch, uint8_t op, uint16_t data);
 		void sn76489_w(uint8_t reg, uint8_t ch, uint16_t data);
 		void set_loop();

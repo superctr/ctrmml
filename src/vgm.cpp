@@ -18,6 +18,10 @@
 
 #include "vgm.h"
 
+void VGM_Interface::set_loop()
+{
+}
+
 void VGM_Writer::my_memcpy(void* src, int size)
 {
 	std::memcpy(buffer_pos,src,size);
