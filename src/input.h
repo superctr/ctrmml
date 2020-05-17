@@ -22,13 +22,13 @@
  */
 class InputError : public std::exception
 {
-	private:
-		std::shared_ptr<InputRef> reference;
-		char buf[200];
-
 	public:
 		InputError(std::shared_ptr<InputRef> ref, const char* message);
 		const char* what();
+
+	private:
+		std::shared_ptr<InputRef> reference;
+		char buf[200];
 };
 
 //! Reference to input data
@@ -41,12 +41,6 @@ class InputError : public std::exception
  */
 class InputRef
 {
-	private:
-		std::string filename;
-		std::string line_contents;
-		unsigned int line;
-		unsigned int column;
-
 	public:
 		InputRef(const std::string& filename = "", const std::string& line = "", int line_no = 0, int column = 0);
 
@@ -54,6 +48,12 @@ class InputRef
 		const unsigned int& get_line() const;
 		const unsigned int& get_column() const;
 		const std::string& get_line_contents() const;
+
+	private:
+		std::string filename;
+		std::string line_contents;
+		unsigned int line;
+		unsigned int column;
 };
 
 std::ostream& operator<<(std::ostream& os, const class InputRef& ref);
@@ -69,14 +69,14 @@ std::ostream& operator<<(std::ostream& os, const class InputRef& ref);
  */
 class Input
 {
-	private:
-		Song* song;
-		std::string filename;
+	public:
+		Input(Song* song);
+		virtual ~Input();
+
+		void open_file(const std::string& filename);
+		static Input& get_input(const std::string& filename); // Get appropriate input type based on the filename
 
 	protected:
-		//! Used by derived classes to open and parse a file.
-		virtual void parse_file() = 0;
-
 		Song& get_song();
 		const std::string& get_filename();
 		virtual std::shared_ptr<InputRef> get_reference();
@@ -85,12 +85,12 @@ class Input
 		void parse_warning(const char* msg);
 		void include_file(const std::string filename);
 
-	public:
-		Input(Song* song);
-		virtual ~Input();
+		//! Used by derived classes to open and parse a file.
+		virtual void parse_file() = 0;
 
-		void open_file(const std::string& filename);
-		static Input& get_input(const std::string& filename); // Get appropriate input type based on the filename
+	private:
+		Song* song;
+		std::string filename;
 };
 
 //! Line buffer interface
@@ -100,13 +100,12 @@ class Input
 class Line_Buffer
 {
 	friend class Line_Input_Test; // needs access to internal variables.
-	protected:
-		std::shared_ptr<std::string> buffer; // current line used by get/unget functions, etc.
-		void set_buffer(std::string line, unsigned int new_column = 0);
-		unsigned int column;
+
 	public:
 		Line_Buffer(std::string line, unsigned int column = -1);
 		Line_Buffer(const class Line_Buffer& original);
+		virtual ~Line_Buffer();
+
 		int get();
 		int get_token();
 		int get_num();
@@ -114,6 +113,12 @@ class Line_Buffer
 		void unget(int c = 0);
 		unsigned long tell();
 		void seek(unsigned long pos);
+
+	protected:
+		std::shared_ptr<std::string> buffer; // current line used by get/unget functions, etc.
+		void set_buffer(std::string line, unsigned int new_column = 0);
+
+		unsigned int column;
 };
 
 //! Abstract class for text line-based input formats (such as MML)
@@ -131,19 +136,23 @@ class Line_Buffer
 class Line_Input: public Input, protected Line_Buffer
 {
 	friend class Line_Input_Test; // needs access to internal variables.
-	private:
-		unsigned int line;
-		void parse_file();
-
-	protected:
-		//! Used by derived classes to read the input lines.
-		virtual void parse_line() = 0;
-		std::shared_ptr<InputRef> get_reference();
 
 	public:
 		Line_Input(Song* song);
 		virtual ~Line_Input();
+
 		void read_line(const std::string& input_line);
+
+	protected:
+		std::shared_ptr<InputRef> get_reference();
+
+		//! Used by derived classes to read the input lines.
+		virtual void parse_line() = 0;
+
+	private:
+		void parse_file();
+
+		unsigned int line;
 };
 
 #endif

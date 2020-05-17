@@ -262,4 +262,3 @@ void Song::set_ppqn(uint16_t new_ppqn)
 {
 	ppqn = new_ppqn;
 }
-

@@ -90,4 +90,4 @@ check: test
 
 .PHONY: all lib test check clean doc cleandoc
 
--include $(OBJ)/*.d $(OBJ)/unittest/*.d
+-include $(OBJ)/*.d $(OBJ)/unittest/*.d $(OBJ)/platform/*.d

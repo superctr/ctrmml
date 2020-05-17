@@ -34,6 +34,88 @@ MD_Channel::MD_Channel(MD_Driver& driver, int id)
 {
 }
 
+//! Update a channel
+void MD_Channel::update(int seq_ticks)
+{
+	while(seq_ticks--)
+		play_tick();
+	v_update_envelope();
+	update_pitch();
+
+	if(pitch != last_pitch)
+		set_pitch();
+	last_pitch = pitch;
+
+	if(key_on_flag)
+	{
+		if(!slur_flag)
+			key_on();
+		slur_flag = false;
+		key_on_flag = false;
+	}
+}
+
+//! Write a single FM operator
+uint8_t MD_Channel::write_fm_operator(int idx, int bank, int id, const std::vector<uint8_t>& idata)
+{
+	driver->ym2612_w(bank, 0x30, id, idx, idata[idx]);
+	driver->ym2612_w(bank, 0x50, id, idx, idata[4+idx]);
+	driver->ym2612_w(bank, 0x60, id, idx, idata[8+idx]);
+	driver->ym2612_w(bank, 0x70, id, idx, idata[12+idx]);
+	driver->ym2612_w(bank, 0x80, id, idx, idata[16+idx]);
+	driver->ym2612_w(bank, 0x90, id, idx, idata[20+idx]);
+	return idata[24+idx];
+}
+
+//! Write a 4op FM instrument
+void MD_Channel::write_fm_4op(int bank, int id)
+{
+	uint16_t ins_id = get_var(Event::INS);
+	if(driver->data.ins_type[ins_id] != MDSDRV_Data::INS_FM)
+		return;
+
+	const std::vector<uint8_t>& idata = driver->data.data_bank.at(driver->data.envelope_map[ins_id]);
+	driver->ym2612_w(bank, 0x40, id, 0, 0x7f); // tl=max
+	driver->ym2612_w(bank, 0x40, id, 1, 0x7f);
+	driver->ym2612_w(bank, 0x40, id, 2, 0x7f);
+	driver->ym2612_w(bank, 0x40, id, 3, 0x7f);
+	driver->ym2612_w(bank, 0x28, id, 0, 0); // key off
+	for(int op=0; op<4; op++)
+	{
+		// load instrument parameters
+		tl[op] = write_fm_operator(op, bank, id, idata);
+	}
+	// set fb/con
+	driver->ym2612_w(bank, 0xb0, id, 0, idata[28]);
+	con = idata[28] & 7;
+	// set ins transpose
+	ins_transpose = driver->data.ins_transpose[ins_id];
+}
+
+uint16_t MD_Channel::get_fm_pitch(uint16_t pitch) const
+{
+	static const uint16_t freqtab[13] = {644, 681, 722, 765, 810, 858, 910, 964, 1021, 1081, 1146, 1214, 1288};
+	uint8_t note = (pitch >> 8);
+	uint8_t octave = note / 12;
+	uint8_t detune = pitch & 0xff;
+	const uint16_t* base = &freqtab[note % 12];
+	uint16_t set_pitch = base[0] + (((base[1] - base[0]) * detune) >> 8);
+	set_pitch += (octave & 7) << 11;
+	return set_pitch;
+}
+
+uint16_t MD_Channel::get_psg_pitch(uint16_t pitch) const
+{
+	static const uint16_t freqtab[13] = {851, 803, 758, 715, 675, 637, 601, 568, 536, 506, 477, 450, 425};
+	uint8_t note = (pitch >> 8);
+	uint8_t octave = (note / 12)-1;
+	uint8_t detune = pitch & 0xff;
+	const uint16_t* base = &freqtab[note % 12];
+	uint16_t set_pitch = base[0] + (((base[1] - base[0]) * detune) >> 8);
+	set_pitch >>= octave;
+	return set_pitch;
+}
+
 //! Platform-exclusive command parser
 uint32_t MD_Channel::parse_platform_event(const Tag& tag, int16_t* platform_state)
 {
@@ -127,7 +209,7 @@ void MD_Channel::write_event()
 		case Event::TEMPO_BPM:
 			if(bpm_flag())
 			{
-				driver->tempo_delta = driver->tempo_convert(get_var(Event::TEMPO));
+				driver->tempo_delta = driver->bpm_to_delta(get_var(Event::TEMPO));
 				printf("set tempo to %02x (%d bpm)\n", driver->tempo_delta, get_var(Event::TEMPO));
 			}
 			else
@@ -215,66 +297,6 @@ void MD_Channel::update_pitch()
 	}
 }
 
-//! Write a single FM operator
-uint8_t MD_Channel::write_fm_operator(int idx, int bank, int id, const std::vector<uint8_t>& idata)
-{
-	driver->ym2612_w(bank, 0x30, id, idx, idata[idx]);
-	driver->ym2612_w(bank, 0x50, id, idx, idata[4+idx]);
-	driver->ym2612_w(bank, 0x60, id, idx, idata[8+idx]);
-	driver->ym2612_w(bank, 0x70, id, idx, idata[12+idx]);
-	driver->ym2612_w(bank, 0x80, id, idx, idata[16+idx]);
-	driver->ym2612_w(bank, 0x90, id, idx, idata[20+idx]);
-	return idata[24+idx];
-}
-
-//! Write a 4op FM instrument
-void MD_Channel::write_fm_4op(int bank, int id)
-{
-	uint16_t ins_id = get_var(Event::INS);
-	if(driver->data.ins_type[ins_id] != MDSDRV_Data::INS_FM)
-		return;
-
-	const std::vector<uint8_t>& idata = driver->data.data_bank.at(driver->data.envelope_map[ins_id]);
-	driver->ym2612_w(bank, 0x40, id, 0, 0x7f); // tl=max
-	driver->ym2612_w(bank, 0x40, id, 1, 0x7f);
-	driver->ym2612_w(bank, 0x40, id, 2, 0x7f);
-	driver->ym2612_w(bank, 0x40, id, 3, 0x7f);
-	driver->ym2612_w(bank, 0x28, id, 0, 0); // key off
-	for(int op=0; op<4; op++)
-	{
-		// load instrument parameters
-		tl[op] = write_fm_operator(op, bank, id, idata);
-	}
-	// set fb/con
-	driver->ym2612_w(bank, 0xb0, id, 0, idata[28]);
-	con = idata[28] & 7;
-	// set ins transpose
-	ins_transpose = driver->data.ins_transpose[ins_id];
-}
-
-uint16_t MD_Channel::get_fm_pitch(uint16_t pitch) const
-{
-	static const uint16_t freqtab[13] = {644, 681, 722, 765, 810, 858, 910, 964, 1021, 1081, 1146, 1214, 1288};
-	uint8_t note = (pitch >> 8);
-	uint8_t octave = note / 12;
-	uint8_t detune = pitch & 0xff;
-	const uint16_t* base = &freqtab[note % 12];
-	uint16_t set_pitch = base[0] + (((base[1] - base[0]) * detune) >> 8);
-	set_pitch += (octave & 7) << 11;
-	return set_pitch;
-}
-
-uint16_t MD_Channel::get_psg_pitch(uint16_t pitch) const
-{
-	static const uint16_t freqtab[13] = {851, 803, 758, 715, 675, 637, 601, 568, 536, 506, 477, 450, 425};
-	uint8_t note = (pitch >> 8);
-	uint8_t octave = (note / 12)-1;
-	uint8_t detune = pitch & 0xff;
-	const uint16_t* base = &freqtab[note % 12];
-	uint16_t set_pitch = base[0] + (((base[1] - base[0]) * detune) >> 8);
-	set_pitch >>= octave;
-	return set_pitch;
-}
 
 void MD_Channel::key_on()
 {
@@ -395,27 +417,6 @@ void MD_Channel::key_off_pcm()
 			driver->vgm->dac_stop(0x00);
 		}
 		driver->last_pcm_channel = -1;
-	}
-}
-
-//! Update a channel
-void MD_Channel::update(int seq_ticks)
-{
-	while(seq_ticks--)
-		play_tick();
-	v_update_envelope();
-	update_pitch();
-
-	if(pitch != last_pitch)
-		set_pitch();
-	last_pitch = pitch;
-
-	if(key_on_flag)
-	{
-		if(!slur_flag)
-			key_on();
-		slur_flag = false;
-		key_on_flag = false;
 	}
 }
 
@@ -659,7 +660,7 @@ void MD_PSGNoise::v_set_vol()
 
 void MD_PSGNoise::v_set_pitch()
 {
-	if(type == 1 || type == 2)
+	if(type == MD_PSGNoise::PSG3_WHITE || type == MD_PSGNoise::PSG3_PERIODIC)
 	{
 		uint16_t val = get_psg_pitch(pitch);
 		driver->sn76489_w(0, 2, val);
@@ -675,15 +676,21 @@ void MD_PSGNoise::v_set_type()
 {
 	if(get_platform_flag(EVENT_CHANNEL_MODE))
 	{
-		type = get_platform_var(EVENT_CHANNEL_MODE);
+		int mode = get_platform_var(EVENT_CHANNEL_MODE);
 		clear_platform_flag(EVENT_CHANNEL_MODE);
-		if(type == 1)
+		if(mode == 1)
 		{
+			type = MD_PSGNoise::PSG3_WHITE;
 			driver->sn76489_w(0, 3, 7);
 		}
-		else if(type == 2)
+		else if(mode == 2)
 		{
+			type = MD_PSGNoise::PSG3_PERIODIC;
 			driver->sn76489_w(0, 3, 3);
+		}
+		else
+		{
+			type = MD_PSGNoise::NORMAL;
 		}
 		last_pitch = 0xffff;
 	}
@@ -760,15 +767,6 @@ MD_Driver::MD_Driver(unsigned int rate, VGM_Interface* vgm_interface, bool is_pa
 	pcm_counter = pcm_delta = rate/100.0; //not used anyway
 }
 
-//! Converts BPM to fractional tempo
-uint8_t MD_Driver::tempo_convert(uint16_t bpm)
-{
-	double base_tempo = 120. / (song->get_ppqn() * (1./seq_rate));
-	double fract = (bpm / base_tempo)*256.;
-	uint16_t new_tempo = (fract + 0.5) - 1;
-	return std::min<uint16_t>(0xff, new_tempo);
-}
-
 //! Initiate playback
 void MD_Driver::play_song(Song& song)
 {
@@ -808,31 +806,6 @@ void MD_Driver::play_song(Song& song)
 void MD_Driver::reset()
 {
 	channels.clear();
-}
-
-void MD_Driver::seq_update()
-{
-	uint16_t next_counter = tempo_counter + tempo_delta + 1;
-	uint8_t tempo_step = next_counter >> 7;
-	tempo_counter = next_counter & 0x7f;
-	for(auto it = channels.begin(); it != channels.end(); it++)
-	{
-		MD_Channel* ch = it->get();
-		if(ch->is_enabled())
-			ch->update(tempo_step);
-	}
-}
-
-//! Reset loop count
-void MD_Driver::reset_loop_count()
-{
-	if(!channels.size())
-		return;
-
-	for(auto it = channels.begin(); it != channels.end(); it++)
-	{
-		it->get()->reset_loop_count();
-	}
 }
 
 //! Return true if driver is currently playing a song, false otherwise.
@@ -891,4 +864,39 @@ double MD_Driver::play_step()
 	seq_counter -= next_delta;
 	pcm_counter -= next_delta;
 	return next_delta;
+}
+
+
+//! Converts BPM to fractional tempo
+uint8_t MD_Driver::bpm_to_delta(uint16_t bpm)
+{
+	double base_tempo = 120. / (song->get_ppqn() * (1./seq_rate));
+	double fract = (bpm / base_tempo)*256.;
+	uint16_t new_tempo = (fract + 0.5) - 1;
+	return std::min<uint16_t>(0xff, new_tempo);
+}
+
+void MD_Driver::seq_update()
+{
+	uint16_t next_counter = tempo_counter + tempo_delta + 1;
+	uint8_t tempo_step = next_counter >> 7;
+	tempo_counter = next_counter & 0x7f;
+	for(auto it = channels.begin(); it != channels.end(); it++)
+	{
+		MD_Channel* ch = it->get();
+		if(ch->is_enabled())
+			ch->update(tempo_step);
+	}
+}
+
+//! Reset loop count
+void MD_Driver::reset_loop_count()
+{
+	if(!channels.size())
+		return;
+
+	for(auto it = channels.begin(); it != channels.end(); it++)
+	{
+		it->get()->reset_loop_count();
+	}
 }

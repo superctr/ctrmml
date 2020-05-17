@@ -10,7 +10,22 @@
 class Wave_File
 {
 	friend class Wave_Rom;
+	public:
+		Wave_File(uint16_t channels=0, uint32_t rate=0, uint16_t bits=0);
+		Wave_File(const std::string& filename);
+
+		virtual ~Wave_File();
+
+		// Methods to modify waveforms
+		int read(const std::string& filename);
+		void add_sample(const int16_t* sample, int count);
+
+		//int save(const std::string& filename);
+
 	private:
+		int load_file(const std::string& filename, uint8_t** buffer, uint32_t* filesize);
+		uint32_t parse_chunk(const uint8_t* fdata);
+
 		uint16_t channels;
 		uint16_t stype;
 		uint16_t sbits;
@@ -25,18 +40,6 @@ class Wave_File
 
 		// data[channel][n]
 		std::vector<std::vector<int16_t>> data;
-
-		int load_file(const std::string& filename, uint8_t** buffer, uint32_t* filesize);
-		uint32_t parse_chunk(const uint8_t* fdata);
-
-	public:
-		Wave_File(uint16_t channels=0, uint32_t rate=0, uint16_t bits=0);
-		Wave_File(const std::string& filename);
-
-		virtual ~Wave_File();
-		void add_sample(const int16_t* sample, int count);
-		int read(const std::string& filename);
-		int save(const std::string& filename);
 };
 
 //! Base wave rom
@@ -59,13 +62,38 @@ class Wave_Rom
 			void from_bytes(std::vector<uint8_t> input);
 			std::vector<uint8_t> to_bytes() const;
 		};
+
+		Wave_Rom(unsigned long max_size, unsigned long bank_size = 0);
+		virtual ~Wave_Rom();
+
+		// Helper methods
+		void set_include_paths(const Tag& tag);
+
+		// Methods to modify wave ROM memory
+		unsigned int add_sample(const Tag& tag);
+		unsigned int add_sample(Sample header, const std::vector<uint8_t>& sample);
+
+		// Methods to get wave ROM memory
+		const std::vector<Sample>& get_sample_headers();
+		const std::vector<uint8_t>& get_rom_data();
+		unsigned int get_free_bytes();
+		unsigned int get_total_gap();
+		unsigned int get_largest_gap();
+		const std::string& get_error();
+
 	protected:
-		static const uint32_t NO_FIT = (uint32_t)-1;
 		struct Gap
 		{
 			unsigned long start;
 			unsigned long end;
 		};
+
+		static const uint32_t NO_FIT = (uint32_t)-1;
+
+		unsigned int find_gap(const Sample& header, uint32_t& gap_start) const;
+		virtual std::vector<uint8_t> encode_sample(const std::string& encoding_type, const std::vector<int16_t>& input);
+		virtual uint32_t fit_sample(const Sample& header, uint32_t start, uint32_t end) const;
+		virtual int find_duplicate(const Sample& header, const std::vector<uint8_t>& sample) const;
 
 		unsigned long max_size;
 		unsigned long current_size;
@@ -76,25 +104,6 @@ class Wave_Rom
 		std::vector<Gap> gaps;
 		std::vector<Sample> samples;
 		std::string error_message;
-
-		virtual std::vector<uint8_t> encode_sample(const std::string& encoding_type, const std::vector<int16_t>& input);
-		virtual uint32_t fit_sample(const Sample& header, uint32_t start, uint32_t end) const;
-		virtual int find_duplicate(const Sample& header, const std::vector<uint8_t>& sample) const;
-
-	public:
-		Wave_Rom(unsigned long max_size, unsigned long bank_size = 0);
-		virtual ~Wave_Rom();
-
-		void set_include_paths(const Tag& tag);
-		unsigned int find_gap(const Sample& header, uint32_t& gap_start) const;
-		unsigned int add_sample(const Tag& tag);
-		unsigned int add_sample(Sample header, const std::vector<uint8_t>& sample);
-		unsigned int get_free_bytes();
-		unsigned int get_total_gap();
-		unsigned int get_largest_gap();
-		const std::vector<Sample>& get_sample_headers();
-		const std::vector<uint8_t>& get_rom_data();
-		const std::string& get_error();
 };
 
 #endif

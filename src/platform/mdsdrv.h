@@ -14,22 +14,19 @@ class MDSDRV_Data;
 struct MDSDRV_Event;
 class MDSDRV_Track_Writer;
 class MDSDRV_Converter;
+class MDSDRV_Linker;
 
 //! MDSDRV data bank
 class MDSDRV_Data
 {
-	private:
-		static const int data_count_max = 256;
-		int add_unique_data(const std::vector<uint8_t>& data);
-		std::string dump_data(uint16_t id, uint16_t mapped_id); // debug function
-		void read_fm_4op(uint16_t id, const Tag& tag);
-		void read_fm_2op(uint16_t id, const Tag& tag);
-		void read_psg(uint16_t id, const Tag& tag);
-		void read_pitch(uint16_t id, const Tag& tag);
-		void add_pitch_node(const char* s, std::vector<uint8_t>* env_data);
-		void add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_data);
-		void read_wave(uint16_t id, const Tag& tag);
-		void read_envelope(uint16_t id, const Tag& tag);
+	friend MDSDRV_Track_Writer;
+	friend MDSDRV_Converter;
+	friend MDSDRV_Linker;
+	friend class MD_Driver;
+	friend class MD_Channel;
+	friend class MD_PSG;
+	friend class MD_PSGMelody;
+	friend class MD_PSGNoise;
 
 	public:
 		enum InstrumentType
@@ -39,6 +36,27 @@ class MDSDRV_Data
 			INS_FM = 2,
 			INS_PCM = 3
 		};
+
+		MDSDRV_Data();
+
+		void read_song(Song& song);
+		void add_instrument(uint16_t id, const Tag& tag);
+		void add_pitch_envelope(uint16_t id, const Tag& tag);
+
+	private:
+		static const int data_count_max = 256;
+
+		void add_ins_fm_4op(uint16_t id, const Tag& tag);
+		void add_ins_fm_2op(uint16_t id, const Tag& tag);
+		void add_ins_psg(uint16_t id, const Tag& tag);
+		void add_ins_pcm(uint16_t id, const Tag& tag);
+
+		void add_pitch_node(const char* s, std::vector<uint8_t>* env_data);
+		void add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_data);
+
+		int add_unique_data(const std::vector<uint8_t>& data);
+		std::string dump_data(uint16_t id, uint16_t mapped_id); // debug function
+
 		//! Data bank, holds all instrument and envelope data
 		std::vector<std::vector<uint8_t>> data_bank;
 		//! Waverom bank, holds PCM samples.
@@ -55,9 +73,6 @@ class MDSDRV_Data
 		std::map<uint16_t, InstrumentType> ins_type;
 		//! Diagnostic message
 		std::string message;
-
-		MDSDRV_Data();
-		void read_song(Song& song);
 };
 
 //! MDSDRV sequence event
@@ -95,36 +110,40 @@ struct MDSDRV_Event
 		PAT,		// pattern/subroutine
 		FINISH		// normal subroutine exit (0xff)
 	};
-	uint8_t type;
-	uint16_t arg;
 
-	MDSDRV_Event(uint8_t type, uint16_t arg)
+	// explicit constructor needed since type is not enum Type
+	inline MDSDRV_Event(uint8_t type, uint16_t arg)
 		: type(type)
 		, arg(arg)
-	{};
+	{}
+	
+	uint8_t type;
+	uint16_t arg;
 };
 
 //! Track writer.
 class MDSDRV_Track_Writer : public Basic_Player
 {
+	public:
+		MDSDRV_Track_Writer(MDSDRV_Converter& mdsdrv,
+				int id,
+				bool in_drum_mode,
+				std::vector<MDSDRV_Event>& converted_events);
+
 	private:
-		void parse_platform_event(const Tag& tag);
 		void event_hook() override;
 		bool loop_hook() override;
 		void end_hook() override;
-		uint8_t tempo_convert(uint16_t bpm);
-	protected:
+
+		void parse_platform_event(const Tag& tag);
+		uint8_t bpm_to_delta(uint16_t bpm);
+
 		MDSDRV_Converter& mdsdrv;
 		std::vector<MDSDRV_Event>& converted_events;
 		bool in_drum_mode; //! set while executing a drum mode routine
 		uint16_t drum_mode_offset; //! set to >0 to make note events call drum mode routines
 		bool in_loop;
 		uint16_t rest_time;
-	public:
-		MDSDRV_Track_Writer(MDSDRV_Converter& mdsdrv,
-				int id,
-				bool in_drum_mode,
-				std::vector<MDSDRV_Event>& converted_events);
 };
 
 //! MDSDRV sequence converter
@@ -132,7 +151,19 @@ class MDSDRV_Converter
 {
 	friend MDSDRV_Track_Writer;
 	friend class MDSDRV_Converter_Test;
+	public:
+		MDSDRV_Converter(Song& song);
+
+		RIFF get_mds();
+
 	private:
+		void parse_track(int track_id);
+		std::vector<uint8_t> convert_track(const std::vector<MDSDRV_Event>& event_list);
+		int get_subroutine(int track_id, bool in_drum_mode);
+		int get_envelope(int mapped_id);
+
+		inline uint32_t get_data_id(int envelope_id) { return subroutine_list.size() + envelope_id; }
+
 		Song* song;
 		MDSDRV_Data data;
 		//! Map of used data from the data bank.
@@ -143,23 +174,23 @@ class MDSDRV_Converter
 		std::vector<uint8_t> sequence_data;
 		uint16_t sequence_base;
 
-		void parse_track(int track_id);
-		int get_subroutine(int track_id, bool in_drum_mode);
-		int get_envelope(int mapped_id);
-
-		uint32_t get_data_id(int envelope_id) { return subroutine_list.size() + envelope_id; }
-
-		std::vector<uint8_t> convert_track(const std::vector<MDSDRV_Event>& event_list);
-	protected:
-	public:
-		MDSDRV_Converter(Song& song);
-		RIFF get_mds();
 };
 
 //! MDSDRV data linker
 class MDSDRV_Linker
 {
+	public:
+		MDSDRV_Linker();
+
+		void add_song(RIFF& mds);
+		std::string get_seq_data_asm();
+		std::vector<uint8_t> get_seq_data();
+		std::vector<uint8_t> get_pcm_data();
+		std::string get_statistics();
+
 	private:
+		int add_unique_data(const std::vector<uint8_t>& data);
+
 		struct Seq_Data {
 			std::vector<uint8_t> data;
 			std::vector<std::pair<uint16_t,uint16_t>> patch_table;
@@ -168,15 +199,6 @@ class MDSDRV_Linker
 		std::vector<int> data_offset;
 		std::vector<Seq_Data> seq_bank;
 		Wave_Rom wave_rom;
-		int add_unique_data(const std::vector<uint8_t>& data);
-	public:
-		MDSDRV_Linker();
-		void add_song(RIFF& mds);
-		std::string get_seq_data_asm();
-		std::vector<uint8_t> get_seq_data();
-		std::vector<uint8_t> get_pcm_data();
-		std::string get_statistics();
 };
 
 #endif
-

@@ -102,23 +102,6 @@ struct Event
  */
 class Track
 {
-	private:
-		uint8_t flag;
-		uint8_t ch;
-		std::vector<Event> events;
-		int last_note_pos; // last event id that was a note
-		int octave;
-		uint16_t measure_len;
-		uint16_t default_duration; // default duration
-		uint16_t quantize;
-		uint16_t quantize_parts;
-		uint16_t early_release;
-		std::shared_ptr<InputRef> reference;
-
-		void enable();
-		uint16_t on_time(uint16_t duration);
-		uint16_t off_time(uint16_t duration);
-
 	public:
 		//! Default octave setting.
 		static const int DEFAULT_OCTAVE = 5;
@@ -131,13 +114,7 @@ class Track
 
 		Track(uint16_t ppqn = DEFAULT_MEASURE_LEN/4);
 
-		bool is_enabled();
-		bool in_drum_mode();
-		std::vector<Event>& get_events();
-		Event& get_event(unsigned long position);
-		unsigned long get_event_count();
-
-		void set_reference(const std::shared_ptr<InputRef>& ref);
+		// Methods that add Events
 		void add_event(Event& new_event);
 		void add_event(Event::Type type, int16_t param = 0, uint16_t on_time = 0, uint16_t off_time = 0);
 		void add_note(int note, uint16_t duration = 0);
@@ -145,18 +122,45 @@ class Track
 		void add_rest(uint16_t duration = 0);
 		int  add_slur();
 
+		// Methods that modify previous Events
 		void reverse_rest(uint16_t duration = 0);
 
+		// Methods that modify following Events
+		void set_reference(const std::shared_ptr<InputRef>& ref);
 		void set_octave(int param);
 		void change_octave(int param);
+		void set_duration(uint16_t duration);
 		int  set_quantize(uint16_t param, uint16_t parts = 8);
 		void set_early_release(uint16_t param);
 		void set_drum_mode(uint16_t param);
 
-		// These are for use by input handlers but can also be used if duration passed to add_note is 0.
-		void set_duration(uint16_t duration);
-		uint16_t get_duration(uint16_t duration = 0);
-		uint16_t get_measure_len();
+		// Methods to retrieve Events
+		std::vector<Event>& get_events();
+		Event& get_event(unsigned long position);
+		unsigned long get_event_count() const;
+
+		// Methods to get Track state
+		bool is_enabled() const;
+		bool in_drum_mode() const;
+		uint16_t get_duration(uint16_t duration = 0) const;
+		uint16_t get_measure_len() const;
+
+	private:
+		void enable();
+		uint16_t on_time(uint16_t duration) const;
+		uint16_t off_time(uint16_t duration) const;
+
+		uint8_t flag;
+		uint8_t ch;
+		std::vector<Event> events;
+		int last_note_pos; // last event id that was a note
+		int octave;
+		uint16_t measure_len;
+		uint16_t default_duration; // default duration
+		uint16_t quantize;
+		uint16_t quantize_parts;
+		uint16_t early_release;
+		std::shared_ptr<InputRef> reference;
 };
 #endif
 

@@ -30,6 +30,8 @@ const char* InputError::what()
 	return buf;
 }
 
+//=============================================================================
+
 //! Creates an InputRef.
 InputRef::InputRef(const std::string &fn, const std::string &ln, int lno, int col)
 	: filename(fn), line_contents(ln), line(lno), column(col)
@@ -67,6 +69,8 @@ std::ostream& operator<<(std::ostream& os, const class InputRef& ref)
 	return os;
 }
 
+//=============================================================================
+
 //! Creates an Input.
 Input::Input(Song* song)
 	: song(song), filename("")
@@ -75,6 +79,22 @@ Input::Input(Song* song)
 
 Input::~Input()
 {
+}
+
+//! Open a file and parse it.
+/*!
+ *  This adds the filepath to the include_path tag,
+ *  sets the filename and calls parse_file().
+ *
+ *  \exception InputError in case of a read or parse error.
+ */
+void Input::open_file(const std::string& fn)
+{
+	int path_break = fn.find_last_of("/\\");
+	if(path_break != -1)
+		song->add_tag("include_path", fn.substr(0, path_break + 1));
+	filename = fn;
+	parse_file();
 }
 
 //! Get the target Song object
@@ -116,21 +136,7 @@ void Input::parse_warning(const char* msg)
 	std::cerr << get_reference()->get_line_contents() << std::endl;
 }
 
-//! Open a file and parse it.
-/*!
- *  This adds the filepath to the include_path tag,
- *  sets the filename and calls parse_file().
- *
- *  \exception InputError in case of a read or parse error.
- */
-void Input::open_file(const std::string& fn)
-{
-	int path_break = fn.find_last_of("/\\");
-	if(path_break != -1)
-		song->add_tag("include_path", fn.substr(0, path_break + 1));
-	filename = fn;
-	parse_file();
-}
+//=============================================================================
 
 //! Creates a Line_Buffer
 Line_Buffer::Line_Buffer(std::string line, unsigned int column)
@@ -139,18 +145,16 @@ Line_Buffer::Line_Buffer(std::string line, unsigned int column)
 	buffer = std::make_shared<std::string>(line);
 }
 
+//! Duplicates a Line_Buffer
 Line_Buffer::Line_Buffer(const class Line_Buffer& original)
 	: buffer(original.buffer)
 	, column(original.column)
 {
 }
 
-//! Set the contents of the Line_Buffer and clear column.
-void Line_Buffer::set_buffer(std::string line, unsigned int new_column)
+//! Line_Buffer destructor
+Line_Buffer::~Line_Buffer()
 {
-	buffer = std::make_shared<std::string>(line);
-	if(new_column >= 0)
-		column = new_column;
 }
 
 //! Get the next character from the buffer
@@ -249,6 +253,16 @@ void Line_Buffer::seek(unsigned long pos)
 	column = pos;
 }
 
+//! Set the contents of the buffer and reset the position.
+void Line_Buffer::set_buffer(std::string line, unsigned int new_column)
+{
+	buffer = std::make_shared<std::string>(line);
+	if(new_column >= 0)
+		column = new_column;
+}
+
+//=============================================================================
+
 //! Creates a Line_Input.
 Line_Input::Line_Input(Song* song)
 	: Input(song), Line_Buffer("", 0), line(0)
@@ -287,4 +301,3 @@ void Line_Input::read_line(const std::string& input_line)
 	buffer = std::make_shared<std::string>(input_line);
 	parse_line();
 }
-

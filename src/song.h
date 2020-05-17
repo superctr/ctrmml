@@ -19,12 +19,6 @@
  */
 class Song
 {
-	private:
-		Tag_Map tag_map;
-		Track_Map track_map;
-		uint16_t ppqn;
-		int16_t platform_command_index;
-
 	public:
 		Song();
 
@@ -47,6 +41,12 @@ class Song
 
 		uint16_t get_ppqn() const;
 		void set_ppqn(uint16_t new_ppqn);
+
+	private:
+		Tag_Map tag_map;
+		Track_Map track_map;
+		uint16_t ppqn;
+		int16_t platform_command_index;
 };
 #endif
 

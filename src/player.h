@@ -54,7 +54,54 @@ class Basic_Player
 {
 	friend Player; // needed to access position
 	friend class Player_Test;
+
+	public:
+		Basic_Player(Song& song, Track& track);
+		virtual ~Basic_Player();
+
+		void step_event();
+		void reset_loop_count();
+
+		bool is_enabled() const;
+		bool is_inside_loop() const;
+		bool is_inside_jump() const;
+		unsigned int get_play_time() const;
+		int get_loop_count() const;
+		const Event& get_event() const;
+
+	protected:
+		void disable();
+		void stack_push(const Player_Stack& stack_obj);
+		Player_Stack& stack_top(Player_Stack::Type type);
+		Player_Stack stack_pop(Player_Stack::Type type);
+		Player_Stack::Type get_stack_type();
+		unsigned int get_stack_depth(Player_Stack::Type type);
+
+		void error(const char* message) const;
+
+		//! Called at every event.
+		virtual void event_hook() = 0;
+		//! Called at the loop position. Return 1 to continue loop, 0 to end playback (end_hook will be called)
+		virtual bool loop_hook() = 0;
+		//! Called at the end position.
+		virtual void end_hook() = 0;
+
+		//! Current event.
+		Event event;
+		//! Pointer to current event in the track.
+		Event *track_event;
+		//! Current reference
+		std::shared_ptr<InputRef> reference;
+		//! Playing time
+		unsigned int play_time;
+		//! Keyon time from current event
+		unsigned int on_time;
+		//! Keyoff time from current event
+		unsigned int off_time;
+
 	private:
+		void stack_underflow(int type);
+
 		Song* song;
 		Track* track;
 		bool enabled;
@@ -68,46 +115,6 @@ class Basic_Player
 		unsigned int max_stack_depth;
 		// # of loops in the stack where the loop count is 0.
 		unsigned int loop_begin_depth;
-
-		void stack_underflow(int type);
-
-	protected:
-		//! Current event.
-		Event event;
-		//! Pointer to current event in the track.
-		Event *track_event;
-		//! Current reference
-		std::shared_ptr<InputRef> reference;
-		//! Playing time
-		unsigned int play_time;
-		//! Keyon time from current event
-		unsigned int on_time;
-		//! Keyoff time from current event
-		unsigned int off_time;
-		//! Called at every event.
-		virtual void event_hook() = 0;
-		//! Called at the loop position. Return 1 to continue loop, 0 to end playback (end_hook will be called)
-		virtual bool loop_hook() = 0;
-		//! Called at the end position.
-		virtual void end_hook() = 0;
-		void error(const char* message) const;
-		void disable();
-		void stack_push(const Player_Stack& stack_obj);
-		Player_Stack& stack_top(Player_Stack::Type type);
-		Player_Stack stack_pop(Player_Stack::Type type);
-		Player_Stack::Type get_stack_type();
-		unsigned int get_stack_depth(Player_Stack::Type type);
-
-	public:
-		Basic_Player(Song& song, Track& track);
-		bool is_enabled() const;
-		bool is_inside_loop() const;
-		bool is_inside_jump() const;
-		unsigned int get_play_time() const;
-		int get_loop_count() const;
-		const Event& get_event() const;
-		void step_event();
-		void reset_loop_count();
 };
 
 //! Generic track player.
@@ -136,19 +143,19 @@ class Basic_Player
 class Player : public Basic_Player
 {
 	friend class Player_Test;
-	private:
-		bool skip_flag;
-		int note_count;
-		int rest_count;
-		int16_t platform_state[Event::CHANNEL_CMD_COUNT];
-		uint32_t platform_update_mask;
-		int16_t track_state[Event::CHANNEL_CMD_COUNT];
-		uint32_t track_update_mask;
-		void handle_drum_mode();
-		void handle_event();
-		virtual void event_hook() override;
-		virtual bool loop_hook() override;
-		virtual void end_hook() override;
+
+	public:
+		Player(Song& song, Track& track);
+		virtual ~Player();
+
+		void skip_ticks(unsigned int ticks);
+		void play_tick();
+
+		bool coarse_volume_flag() const;
+		bool bpm_flag() const;
+		int16_t get_platform_var(int type) const;
+		int16_t get_var(Event::Type type) const;
+
 	protected:
 		bool get_platform_flag(unsigned int type) const;
 		void clear_platform_flag(unsigned int type);
@@ -156,14 +163,22 @@ class Player : public Basic_Player
 		void clear_update_flag(Event::Type type);
 		virtual uint32_t parse_platform_event(const Tag& tag, int16_t* platform_state);
 		virtual void write_event();
-	public:
-		Player(Song& song, Track& track);
-		bool coarse_volume_flag() const;
-		bool bpm_flag() const;
-		int16_t get_var(Event::Type type) const;
-		int16_t get_platform_var(int type) const;
-		void play_tick();
-		void skip_ticks(unsigned int ticks);
+
+	private:
+		void handle_drum_mode();
+		void handle_event();
+		virtual void event_hook() override;
+		virtual bool loop_hook() override;
+		virtual void end_hook() override;
+
+		bool skip_flag;
+		int note_count;
+		int rest_count;
+		int16_t platform_state[Event::CHANNEL_CMD_COUNT];
+		uint32_t platform_update_mask;
+		int16_t track_state[Event::CHANNEL_CMD_COUNT];
+		uint32_t track_update_mask;
+
 };
 
 //! Track validator
@@ -174,15 +189,18 @@ class Player : public Basic_Player
  */
 class Track_Validator : public Basic_Player
 {
+	public:
+		Track_Validator(Song& song, Track& track);
+
+		unsigned int get_loop_length() const;
+
 	private:
 		void event_hook() override;
 		bool loop_hook() override;
 		void end_hook() override;
+
 		int segno_time;
 		unsigned int loop_time;
-	public:
-		Track_Validator(Song& song, Track& track);
-		unsigned int get_loop_length() const;
 };
 
 //! Song validator
@@ -191,12 +209,13 @@ class Track_Validator : public Basic_Player
  */
 class Song_Validator
 {
-	private:
-		std::map<uint16_t,Track_Validator> track_map;
 	public:
 		Song_Validator(Song& song);
+
 		const std::map<uint16_t,Track_Validator>& get_track_map() const;
+
+	private:
+		std::map<uint16_t,Track_Validator> track_map;
 };
 
 #endif
-

@@ -22,57 +22,6 @@ Track::Track(uint16_t ppqn)
 {
 }
 
-//! Enables the track.
-/*!
- *  This sets bit 7 of the track flag. It is to be used as a convenience
- *  by input routines (by using is_enabled()) to signify that a track is
- *  to be included in the final output.
- */
-void Track::enable()
-{
-	flag |= 0x80;
-}
-
-//! Return true if track is enabled.
-/*!
- *  This returns bit 7 of the track flag. It is to be used as a
- *  convenience by players to signify that a track has been marked as
- *  used by the input routine.
- */
-bool Track::is_enabled()
-{
-	return (flag & 0x80);
-}
-
-//! Get Event::on_time after quantization.
-uint16_t Track::on_time(uint16_t duration)
-{
-	if(early_release)
-	{
-		if(early_release >= duration)
-			return 1;
-		else
-			return duration - early_release;
-	}
-	return (duration * quantize) / quantize_parts;
-}
-
-//! Get Event::off_time after quantization.
-uint16_t Track::off_time(uint16_t duration)
-{
-	return duration - on_time(duration);
-}
-
-//! Sets the reference to use for successive Events.
-/*!
- *  This is used to associate source files with events so that
- *  sensible error messages can be generated outside the parser.
- */
-void Track::set_reference(const std::shared_ptr<InputRef>& ref)
-{
-	reference = ref;
-}
-
 //! Appends an Event to the event list.
 /*!
  *  \param new_event Reference to the Event to be appended.
@@ -270,6 +219,16 @@ void Track::reverse_rest(uint16_t duration)
 	throw std::domain_error("there is no previous duration"); // -1
 }
 
+//! Sets the reference to use for successive Events.
+/*!
+ *  This is used to associate source files with events so that
+ *  sensible error messages can be generated outside the parser.
+ */
+void Track::set_reference(const std::shared_ptr<InputRef>& ref)
+{
+	reference = ref;
+}
+
 //! Set the octave, affecting subsequent calls to add_note().
 /*!
  *  \param[in] param Octave number (typically 0-8)
@@ -286,6 +245,15 @@ void Track::set_octave(int param)
 void Track::change_octave(int param)
 {
 	octave += param;
+}
+
+//! Set the default duration.
+/*!
+ *  \param param Duration value in ticks.
+ */
+void Track::set_duration(uint16_t param)
+{
+	default_duration = param;
 }
 
 //! Set quantization time.
@@ -334,48 +302,6 @@ void Track::set_drum_mode(uint16_t param)
 	add_event(Event::DRUM_MODE, param);
 }
 
-//! Returns the drum mode status.
-/*!
- *  \retval true  Drum mode is enabled.
- *  \retval false Drum mode is disabled.
- */
-bool Track::in_drum_mode()
-{
-	return (flag & 0x01);
-}
-
-//! Set the default duration used by add_note() et al.
-/*!
- *  \param param Duration value in ticks.
- */
-void Track::set_duration(uint16_t param)
-{
-	default_duration = param;
-}
-
-//! Get the implied duration.
-/*!
- *  \param[in] duration If 0, get the default duration as set by
- *                  set_duration(). Otherwise use the param value.
- */
-uint16_t Track::get_duration(uint16_t duration)
-{
-	if(!duration)
-		return default_duration;
-	else
-		return duration;
-}
-
-//! Get the length of a whole note.
-/*!
- *  This is actually not used internally by the track methods, rather it is
- *  provided as convenience to MIDI or MML parsers.
- */
-uint16_t Track::get_measure_len()
-{
-	return measure_len;
-}
-
 //! Get the events list.
 std::vector<Event>& Track::get_events()
 {
@@ -393,8 +319,81 @@ Event& Track::get_event(unsigned long position)
 }
 
 //! Get the total number of events in the track.
-unsigned long Track::get_event_count()
+unsigned long Track::get_event_count() const
 {
 	return events.size();
 }
 
+//! Return true if track is enabled.
+/*!
+ *  This returns bit 7 of the track flag. It is to be used as a
+ *  convenience by players to signify that a track has been marked as
+ *  used by the input routine.
+ */
+bool Track::is_enabled() const
+{
+	return (flag & 0x80);
+}
+
+//! Returns the drum mode status.
+/*!
+ *  \retval true  Drum mode is enabled.
+ *  \retval false Drum mode is disabled.
+ */
+bool Track::in_drum_mode() const
+{
+	return (flag & 0x01);
+}
+
+//! Get the default duration.
+/*!
+ *  \param[in] duration If 0, get the default duration as set by
+ *                  set_duration(). Otherwise use the param value.
+ */
+uint16_t Track::get_duration(uint16_t duration) const
+{
+	if(!duration)
+		return default_duration;
+	else
+		return duration;
+}
+
+//! Get the length of a whole note.
+/*!
+ *  This is actually not used internally by the track methods, rather it is
+ *  provided as convenience to MIDI or MML parsers.
+ */
+uint16_t Track::get_measure_len() const
+{
+	return measure_len;
+}
+
+//! Enables the track.
+/*!
+ *  This sets bit 7 of the track flag. It is to be used as a convenience
+ *  by input routines (by using is_enabled()) to signify that a track is
+ *  to be included in the final output.
+ */
+void Track::enable()
+{
+	flag |= 0x80;
+}
+
+//! Get Event::on_time after quantization.
+uint16_t Track::on_time(uint16_t duration) const
+{
+	if(early_release)
+	{
+		if(early_release >= duration)
+			return 1;
+		else
+			return duration - early_release;
+	}
+	return (duration * quantize) / quantize_parts;
+}
+
+//! Get Event::off_time after quantization.
+uint16_t Track::off_time(uint16_t duration) const
+{
+	return duration - on_time(duration);
+}

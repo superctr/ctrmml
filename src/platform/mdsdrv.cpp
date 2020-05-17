@@ -25,27 +25,83 @@ MDSDRV_Data::MDSDRV_Data()
 {
 }
 
-int MDSDRV_Data::add_unique_data(const std::vector<uint8_t>& data)
+//! Add all instruments and envelopes from a Song to the data bank.
+void MDSDRV_Data::read_song(Song& song)
 {
-	unsigned int i;
-	// look for previous matching data in the data bank
-	for(i=0; i<data_bank.size(); i++)
+	// clear envelope and instrument maps
+	envelope_map.clear();
+	ins_transpose.clear();
+	pitch_map.clear();
+	wave_map.clear();
+	ins_type.clear();
+	try
 	{
-		if(data != data_bank[i])
-			continue;
-		return i;
+		// just do this if we have this tag
+		wave_rom.set_include_paths(song.get_tag("include_path"));
 	}
-	i = data_bank.size();
-	if(i >= data_count_max)
+	catch(std::exception &)
 	{
-		throw InputError(nullptr, "error: maximum amount of data table entries reached\n");
 	}
-	data_bank.push_back(data);
-	return i;
+	// add a unique psg envelope to prevent possible errors
+	envelope_map[0] = add_unique_data({0x10, 0x01, 0x1f, 0x00});
+	ins_transpose[0] = 0;
+	ins_type[0] = MDSDRV_Data::INS_UNDEFINED;
+	Tag& tag_order = song.get_tag_order_list();
+	for(auto it = tag_order.begin(); it != tag_order.end(); it++)
+	{
+		uint16_t id;
+		Tag& tag = song.get_tag(*it);
+		if(std::sscanf(it->c_str(), "@%hu", &id) == 1)
+		{
+			add_instrument(id, tag);
+		}
+		else if(std::sscanf(it->c_str(), "@m%hu", &id) == 1)
+		{
+			add_pitch_envelope(id, tag);
+			std::cout << "read pitch envelope " << dump_data(id, pitch_map[id]) << "\n";
+		}
+	}
 }
 
-//! adds a 4op FM instrument. Data stored in operator order.
-void MDSDRV_Data::read_fm_4op(uint16_t id, const Tag& tag)
+//! Add an instrument to the data bank.
+void MDSDRV_Data::add_instrument(uint16_t id, const Tag& tag)
+{
+	auto it = tag.begin();
+	std::string type = *it++;
+	if(iequal("fm", type))
+	{
+		add_ins_fm_4op(id, Tag(it, tag.end()));
+		message += "read FM envelope " + dump_data(id, envelope_map[id]) + "\n";
+		return;
+	}
+	else if(iequal("2op", type))
+	{
+		add_ins_fm_2op(id, Tag(it, tag.end()));
+		message += "read 2op envelope " + dump_data(id, envelope_map[id]) + "\n";
+		return;
+	}
+	else if(iequal("psg", type))
+	{
+		add_ins_psg(id, Tag(it, tag.end()));
+		message += "read PSG envelope " + dump_data(id, envelope_map[id]) + "\n";
+		return;
+	}
+	else if(iequal("pcm", type))
+	{
+		add_ins_pcm(id, Tag(it, tag.end()));
+		message += "read wave sample " + dump_data(id, envelope_map[id]) + "\n";
+		return;
+	}
+	else
+	{
+		throw InputError(nullptr, stringf("unknown envelope type %s\n",type.c_str()).c_str());
+	}
+}
+
+
+
+//! Add 4op FM instrument. Data stored in operator order.
+void MDSDRV_Data::add_ins_fm_4op(uint16_t id, const Tag& tag)
 {
 	std::vector<uint8_t> fm_data(30, 0);
 	std::vector<uint8_t> tag_data(42, 0);
@@ -95,11 +151,11 @@ void MDSDRV_Data::read_fm_4op(uint16_t id, const Tag& tag)
 	ins_type[id] = INS_FM;
 }
 
-//! Read 2op instrument definition.
+//! Add 2op FM instrument definition.
 /*!
  * Tag format: InsID,Mul1,Mul2,Mul3,Mul4,Transpose
  */
-void MDSDRV_Data::read_fm_2op(uint16_t id, const Tag& tag)
+void MDSDRV_Data::add_ins_fm_2op(uint16_t id, const Tag& tag)
 {
 	std::vector<uint8_t> fm_data(30, 0);
 	std::vector<uint8_t> tag_data(6, 0);
@@ -135,7 +191,7 @@ void MDSDRV_Data::read_fm_2op(uint16_t id, const Tag& tag)
 	}
 }
 
-//! Read PSG volume envelope.
+//! Add PSG volume envelope.
 /*!
  * Envelope input format:
  *   Value
@@ -150,7 +206,7 @@ void MDSDRV_Data::read_fm_2op(uint16_t id, const Tag& tag)
  *   02 pp - loop to <p>
  *   fv - value <v> for <f> frames.
  */
-void MDSDRV_Data::read_psg(uint16_t id, const Tag& tag)
+void MDSDRV_Data::add_ins_psg(uint16_t id, const Tag& tag)
 {
 	std::vector<uint8_t> env_data;
 	int loop_pos = -1, last_pos = 0, last = -1;
@@ -233,6 +289,20 @@ void MDSDRV_Data::read_psg(uint16_t id, const Tag& tag)
 	ins_type[id] = INS_PSG;
 }
 
+//! Add PCM instrument
+void MDSDRV_Data::add_ins_pcm(uint16_t id, const Tag& tag)
+{
+	std::vector<uint8_t> env_data;
+	int wave_header_id;
+
+	// Insert a generic 32-byte generic Wave_Rom::Sample header.
+	wave_header_id = wave_map[id] = wave_rom.add_sample(tag);
+	env_data = wave_rom.get_sample_headers().at(wave_header_id).to_bytes();
+
+	envelope_map[id] = add_unique_data(env_data);
+	ins_type[id] = INS_PCM;
+}
+
 //! Read pitch envelope
 /*!
  * Envelope input format:
@@ -247,7 +317,7 @@ void MDSDRV_Data::read_psg(uint16_t id, const Tag& tag)
  *                 If <s> is ff = continue forever
  *   7F <pp> - loop to <p*4>
  */
-void MDSDRV_Data::read_pitch(uint16_t id, const Tag& tag)
+void MDSDRV_Data::add_pitch_envelope(uint16_t id, const Tag& tag)
 {
 	std::vector<uint8_t> env_data;
 	int loop_pos = -1;
@@ -347,20 +417,30 @@ void MDSDRV_Data::add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_dat
 	add_pitch_node(stringf("%f>%f:%d", -vibrato_depth, vibrato_base, vibrato_rate).c_str(), env_data);
 }
 
-void MDSDRV_Data::read_wave(uint16_t id, const Tag& tag)
+//! Add unique data to the data bank and return the index.
+/*!
+ *  In case of a duplicate, return the index of the previously added data.
+ */
+int MDSDRV_Data::add_unique_data(const std::vector<uint8_t>& data)
 {
-	std::vector<uint8_t> env_data;
-	int wave_header_id;
-
-	// Insert a generic 32-byte generic Wave_Rom::Sample header.
-	wave_header_id = wave_map[id] = wave_rom.add_sample(tag);
-	env_data = wave_rom.get_sample_headers().at(wave_header_id).to_bytes();
-
-	envelope_map[id] = add_unique_data(env_data);
-	ins_type[id] = INS_PCM;
+	unsigned int i;
+	// look for previous matching data in the data bank
+	for(i=0; i<data_bank.size(); i++)
+	{
+		if(data != data_bank[i])
+			continue;
+		return i;
+	}
+	i = data_bank.size();
+	if(i >= data_count_max)
+	{
+		throw InputError(nullptr, "error: maximum amount of data table entries reached\n");
+	}
+	data_bank.push_back(data);
+	return i;
 }
 
-
+//! Dump data bank index to a string for debugging purposes.
 std::string MDSDRV_Data::dump_data(uint16_t id, uint16_t mapped_id)
 {
 	std::string out = stringf("%d = %d [%d]{", id, mapped_id, data_bank[mapped_id].size());
@@ -376,76 +456,7 @@ std::string MDSDRV_Data::dump_data(uint16_t id, uint16_t mapped_id)
 	return out;
 }
 
-void MDSDRV_Data::read_envelope(uint16_t id, const Tag& tag)
-{
-	auto it = tag.begin();
-	std::string type = *it++;
-	if(iequal("psg", type))
-	{
-		read_psg(id, Tag(it, tag.end()));
-		message += "read PSG envelope " + dump_data(id, envelope_map[id]) + "\n";
-		return;
-	}
-	else if(iequal("fm", type))
-	{
-		read_fm_4op(id, Tag(it, tag.end()));
-		message += "read FM envelope " + dump_data(id, envelope_map[id]) + "\n";
-		return;
-	}
-	else if(iequal("2op", type))
-	{
-		read_fm_2op(id, Tag(it, tag.end()));
-		message += "read 2op envelope " + dump_data(id, envelope_map[id]) + "\n";
-		return;
-	}
-	else if(iequal("pcm", type))
-	{
-		read_wave(id, Tag(it, tag.end()));
-		message += "read wave sample " + dump_data(id, envelope_map[id]) + "\n";
-		return;
-	}
-	else
-	{
-		throw InputError(nullptr, stringf("unknown envelope type %s\n",type.c_str()).c_str());
-	}
-}
-
-void MDSDRV_Data::read_song(Song& song)
-{
-	// clear envelope and instrument maps
-	envelope_map.clear();
-	ins_transpose.clear();
-	pitch_map.clear();
-	wave_map.clear();
-	ins_type.clear();
-	try
-	{
-		// just do this if we have this tag
-		wave_rom.set_include_paths(song.get_tag("include_path"));
-	}
-	catch(std::exception &)
-	{
-	}
-	// add a unique psg envelope to prevent possible errors
-	envelope_map[0] = add_unique_data({0x10, 0x01, 0x1f, 0x00});
-	ins_transpose[0] = 0;
-	ins_type[0] = MDSDRV_Data::INS_UNDEFINED;
-	Tag& tag_order = song.get_tag_order_list();
-	for(auto it = tag_order.begin(); it != tag_order.end(); it++)
-	{
-		uint16_t id;
-		Tag& tag = song.get_tag(*it);
-		if(std::sscanf(it->c_str(), "@%hu", &id) == 1)
-		{
-			read_envelope(id, tag);
-		}
-		else if(std::sscanf(it->c_str(), "@m%hu", &id) == 1)
-		{
-			read_pitch(id, tag);
-			std::cout << "read pitch envelope " << dump_data(id, pitch_map[id]) << "\n";
-		}
-	}
-}
+//=====================================================================
 
 //! Converts a Track into MDSDRV_Event stream.
 MDSDRV_Track_Writer::MDSDRV_Track_Writer(MDSDRV_Converter& mdsdrv,
@@ -460,74 +471,6 @@ MDSDRV_Track_Writer::MDSDRV_Track_Writer(MDSDRV_Converter& mdsdrv,
 	, in_loop(0)
 	, rest_time(0)
 {
-}
-
-void MDSDRV_Track_Writer::parse_platform_event(const Tag& tag)
-{
-	if(iequal(tag[0], "mode")) // PSG noise mode
-	{
-		if(tag.size() < 2)
-			error("not enough parameters for 'mode' command");
-		uint16_t param = std::strtol(tag[1].c_str(), 0, 0);
-		if(param == 1)
-			param = 0xe7;
-		else if(param == 2)
-			param = 0xe3;
-		else
-			param = 0x00;
-		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LFO, param));
-	}
-	else if(iequal(tag[0], "lfo")) // LFO depth
-	{
-		if(tag.size() < 3)
-			error("not enough parameters for 'lfo' command");
-		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LFO,
-					(std::strtol(tag[1].c_str(), 0, 0) << 3) | (std::strtol(tag[2].c_str(), 0, 0))));
-	}
-	else if(iequal(tag[0], "lfodelay")) // LFO delay
-	{
-		if(tag.size() < 2)
-			error("not enough parameters for 'lfodelay' command");
-		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LFOD, std::strtol(tag[1].c_str(), 0, 0)));
-	}
-	else if(iequal(tag[0], "lforate")) // LFO rate
-	{
-		if(tag.size() < 2)
-			error("not enough parameters for 'lforate' command");
-		uint8_t param = std::strtol(tag[1].c_str(), 0, 0);
-		if(!param)
-			param = 0;
-		else
-			param = (param-1) | 0x8;
-		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMREG, 0x2200 | param));
-	}
-	else if(iequal(tag[0], "fm3")) // FM3 mode
-	{
-		if(tag.size() < 2)
-			error("not enough parameters for 'fm3' command");
-		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FLG,
-					0x80 | ((std::strtol(tag[1].c_str(), 0, 2) ^ 0x0f) & 0x0f)));
-	}
-	else if(iequal(tag[0], "write")) // FM register write
-	{
-		if(tag.size() < 3)
-			error("not enough parameters for 'write' command");
-		uint8_t write_addr = std::strtol(tag[1].c_str(), 0, 0);
-		uint8_t write_data = std::strtol(tag[2].c_str(), 0, 0);
-		if(write_addr >= 0x30)
-			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMCREG, (write_addr << 8) | write_data));
-		else
-			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMREG, (write_addr << 8) | write_data));
-	}
-}
-
-//! Converts BPM to fractional tempo
-uint8_t MDSDRV_Track_Writer::tempo_convert(uint16_t bpm)
-{
-	double base_tempo = 120. / (mdsdrv.song->get_ppqn() * (1./60.));
-	double fract = (bpm / base_tempo)*256.;
-	uint16_t new_tempo = (fract + 0.5) - 1;
-	return std::min<uint16_t>(0xff, new_tempo);
 }
 
 //! Event conversion
@@ -634,7 +577,7 @@ void MDSDRV_Track_Writer::event_hook()
 			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::VOLM,param));
 			break;
 		case Event::TEMPO_BPM:
-			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::TEMPO,tempo_convert(param)));
+			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::TEMPO,bpm_to_delta(param)));
 			break;
 		case Event::INS:
 			if(mdsdrv.data.ins_type.at(param) != MDSDRV_Data::INS_PCM)
@@ -697,6 +640,76 @@ void MDSDRV_Track_Writer::end_hook()
 		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FINISH,0));
 }
 
+void MDSDRV_Track_Writer::parse_platform_event(const Tag& tag)
+{
+	if(iequal(tag[0], "mode")) // PSG noise mode
+	{
+		if(tag.size() < 2)
+			error("not enough parameters for 'mode' command");
+		uint16_t param = std::strtol(tag[1].c_str(), 0, 0);
+		if(param == 1)
+			param = 0xe7;
+		else if(param == 2)
+			param = 0xe3;
+		else
+			param = 0x00;
+		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LFO, param));
+	}
+	else if(iequal(tag[0], "lfo")) // LFO depth
+	{
+		if(tag.size() < 3)
+			error("not enough parameters for 'lfo' command");
+		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LFO,
+					(std::strtol(tag[1].c_str(), 0, 0) << 3) | (std::strtol(tag[2].c_str(), 0, 0))));
+	}
+	else if(iequal(tag[0], "lfodelay")) // LFO delay
+	{
+		if(tag.size() < 2)
+			error("not enough parameters for 'lfodelay' command");
+		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LFOD, std::strtol(tag[1].c_str(), 0, 0)));
+	}
+	else if(iequal(tag[0], "lforate")) // LFO rate
+	{
+		if(tag.size() < 2)
+			error("not enough parameters for 'lforate' command");
+		uint8_t param = std::strtol(tag[1].c_str(), 0, 0);
+		if(!param)
+			param = 0;
+		else
+			param = (param-1) | 0x8;
+		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMREG, 0x2200 | param));
+	}
+	else if(iequal(tag[0], "fm3")) // FM3 mode
+	{
+		if(tag.size() < 2)
+			error("not enough parameters for 'fm3' command");
+		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FLG,
+					0x80 | ((std::strtol(tag[1].c_str(), 0, 2) ^ 0x0f) & 0x0f)));
+	}
+	else if(iequal(tag[0], "write")) // FM register write
+	{
+		if(tag.size() < 3)
+			error("not enough parameters for 'write' command");
+		uint8_t write_addr = std::strtol(tag[1].c_str(), 0, 0);
+		uint8_t write_data = std::strtol(tag[2].c_str(), 0, 0);
+		if(write_addr >= 0x30)
+			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMCREG, (write_addr << 8) | write_data));
+		else
+			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMREG, (write_addr << 8) | write_data));
+	}
+}
+
+//! Converts BPM to fractional tempo
+uint8_t MDSDRV_Track_Writer::bpm_to_delta(uint16_t bpm)
+{
+	double base_tempo = 120. / (mdsdrv.song->get_ppqn() * (1./60.));
+	double fract = (bpm / base_tempo)*256.;
+	uint16_t new_tempo = (fract + 0.5) - 1;
+	return std::min<uint16_t>(0xff, new_tempo);
+}
+
+//=====================================================================
+
 //! Converts a Song into MDSDRV data, including data and sequences.
 MDSDRV_Converter::MDSDRV_Converter(Song& song)
 	: song(&song)
@@ -753,6 +766,31 @@ MDSDRV_Converter::MDSDRV_Converter(Song& song)
 	}
 }
 
+//! Output a MDSDRV RIFF container
+RIFF MDSDRV_Converter::get_mds()
+{
+	RIFF riff(RIFF::TYPE_RIFF, FOURCC("MDS0"));
+	riff.add_chunk(RIFF(FOURCC("seq "), sequence_data)); // seq
+	RIFF dblk(RIFF::TYPE_LIST, FOURCC("dblk"));
+	for(auto it = used_data_map.begin(); it != used_data_map.end(); it++)
+	{
+		std::vector<uint8_t> d(4);
+		*(uint32_t*)d.data() = get_data_id(it->second);
+		d.insert(d.end(),
+				data.data_bank[it->first & 0x7fff].begin(),
+				data.data_bank[it->first & 0x7fff].end());
+		if(it->first < 0x10000)
+			dblk.add_chunk(RIFF(FOURCC("glob"), d));
+		else
+			dblk.add_chunk(RIFF(FOURCC("pcmh"), d));
+	}
+	riff.add_chunk(dblk);
+	std::vector<uint8_t> d(data.wave_rom.get_rom_data().begin(),
+			data.wave_rom.get_rom_data().end() - data.wave_rom.get_free_bytes());
+	riff.add_chunk(RIFF(FOURCC("pcmd"), d));
+	return riff;
+}
+
 //! uses MDSDRV_Track_Writer to convert a track into an event stream
 void MDSDRV_Converter::parse_track(int track_id)
 {
@@ -760,59 +798,6 @@ void MDSDRV_Converter::parse_track(int track_id)
 	while(writer.is_enabled())
 	{
 		writer.step_event();
-	}
-}
-
-//! Get the subroutine ID.
-/*!
- * Note: if a subroutine is called from a drum mode jump, the drum mode offset
- * is not kept.
- */
-int MDSDRV_Converter::get_subroutine(int track_id, bool in_drum_mode)
-{
-	int mapped_id = (track_id << 1) | in_drum_mode;
-	auto search = subroutine_map.find(mapped_id);
-	if(search == subroutine_map.end())
-	{
-		int sub_id = subroutine_list.size();
-		subroutine_map[mapped_id] = sub_id;
-		subroutine_list.push_back({});
-		// I tried using a pointer or reference to subroutine_list[sub_id] here, but
-		// it turned out to be a terrible idea because the pointers move when this
-		// function is recursively called (probably the push_back above this comment
-		// is to blame)
-		auto event_list = std::vector<MDSDRV_Event>();
-		auto writer = MDSDRV_Track_Writer(*this, track_id, in_drum_mode, event_list);
-		while(writer.is_enabled())
-		{
-			writer.step_event();
-		}
-		subroutine_list[sub_id] = event_list;
-		return sub_id;
-	}
-	else
-	{
-		return search->second;
-	}
-}
-
-//! Get the used_data_map index for the given envelope ID
-/*!
- * Calling this function assumes that the envelope ID is to be used, so it is added
- * to the used_data_map and the new index is returned.
- */
-int MDSDRV_Converter::get_envelope(int mapped_id)
-{
-	auto search = used_data_map.find(mapped_id);
-	if(search == used_data_map.end())
-	{
-		int env_id = used_data_map.size();
-		used_data_map[mapped_id] = env_id;
-		return env_id;
-	}
-	else
-	{
-		return search->second;
 	}
 }
 
@@ -995,31 +980,62 @@ std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Ev
 	return track_data;
 }
 
-//! Output a MDSDRV RIFF container
-RIFF MDSDRV_Converter::get_mds()
+//! Get the subroutine ID.
+/*!
+ * Note: if a subroutine is called from a drum mode jump, the drum mode offset
+ * is not kept.
+ */
+int MDSDRV_Converter::get_subroutine(int track_id, bool in_drum_mode)
 {
-	RIFF riff(RIFF::TYPE_RIFF, FOURCC("MDS0"));
-	riff.add_chunk(RIFF(FOURCC("seq "), sequence_data)); // seq
-	RIFF dblk(RIFF::TYPE_LIST, FOURCC("dblk"));
-	for(auto it = used_data_map.begin(); it != used_data_map.end(); it++)
+	int mapped_id = (track_id << 1) | in_drum_mode;
+	auto search = subroutine_map.find(mapped_id);
+	if(search == subroutine_map.end())
 	{
-		std::vector<uint8_t> d(4);
-		*(uint32_t*)d.data() = get_data_id(it->second);
-		d.insert(d.end(),
-				data.data_bank[it->first & 0x7fff].begin(),
-				data.data_bank[it->first & 0x7fff].end());
-		if(it->first < 0x10000)
-			dblk.add_chunk(RIFF(FOURCC("glob"), d));
-		else
-			dblk.add_chunk(RIFF(FOURCC("pcmh"), d));
+		int sub_id = subroutine_list.size();
+		subroutine_map[mapped_id] = sub_id;
+		subroutine_list.push_back({});
+		// I tried using a pointer or reference to subroutine_list[sub_id] here, but
+		// it turned out to be a terrible idea because the pointers move when this
+		// function is recursively called (probably the push_back above this comment
+		// is to blame)
+		auto event_list = std::vector<MDSDRV_Event>();
+		auto writer = MDSDRV_Track_Writer(*this, track_id, in_drum_mode, event_list);
+		while(writer.is_enabled())
+		{
+			writer.step_event();
+		}
+		subroutine_list[sub_id] = event_list;
+		return sub_id;
 	}
-	riff.add_chunk(dblk);
-	std::vector<uint8_t> d(data.wave_rom.get_rom_data().begin(),
-			data.wave_rom.get_rom_data().end() - data.wave_rom.get_free_bytes());
-	riff.add_chunk(RIFF(FOURCC("pcmd"), d));
-	return riff;
+	else
+	{
+		return search->second;
+	}
 }
 
+//! Get the used_data_map index for the given envelope ID
+/*!
+ * Calling this function assumes that the envelope ID is to be used, so it is added
+ * to the used_data_map and the new index is returned.
+ */
+int MDSDRV_Converter::get_envelope(int mapped_id)
+{
+	auto search = used_data_map.find(mapped_id);
+	if(search == used_data_map.end())
+	{
+		int env_id = used_data_map.size();
+		used_data_map[mapped_id] = env_id;
+		return env_id;
+	}
+	else
+	{
+		return search->second;
+	}
+}
+
+//=====================================================================
+
+//! Creates a MDSDRV_Linker
 MDSDRV_Linker::MDSDRV_Linker()
 	: data_bank()
 	, data_offset()
@@ -1028,20 +1044,7 @@ MDSDRV_Linker::MDSDRV_Linker()
 {
 }
 
-int MDSDRV_Linker::add_unique_data(const std::vector<uint8_t>& data)
-{
-	unsigned int i;
-	// look for previous matching data in the data bank
-	for(i=0; i<data_bank.size(); i++)
-	{
-		if(data != data_bank[i])
-			continue;
-		return i;
-	}
-	data_bank.push_back(data);
-	return data_bank.size()-1;
-}
-
+//! Add a song (converted to MDS RIFF format).
 void MDSDRV_Linker::add_song(RIFF& mds)
 {
 	std::vector<uint8_t> pcmd = {};
@@ -1098,6 +1101,7 @@ void MDSDRV_Linker::add_song(RIFF& mds)
 	seq_bank.push_back({seq, patch_table});
 }
 
+//! Get the output mdsseq.bin
 std::vector<uint8_t> MDSDRV_Linker::get_seq_data()
 {
 	int header_size = 6 + seq_bank.size() * 4;
@@ -1163,12 +1167,14 @@ std::vector<uint8_t> MDSDRV_Linker::get_seq_data()
 	return data;
 }
 
+//! Get the output mdspcm.bin
 std::vector<uint8_t> MDSDRV_Linker::get_pcm_data()
 {
 	auto wave = wave_rom.get_rom_data();
 	return std::vector<uint8_t>(wave.begin(), wave.end() - wave_rom.get_free_bytes());
 }
 
+//! Get linker statistics
 std::string MDSDRV_Linker::get_statistics()
 {
 	auto str = std::string();
@@ -1178,4 +1184,19 @@ std::string MDSDRV_Linker::get_statistics()
 	str += stringf("Gaps: %d bytes, largest %d\n",
 		wave_rom.get_total_gap(), wave_rom.get_largest_gap());
 	return str;
+}
+
+//! Add unique data to the databank (same as MDSDRV_Data::add_unique_data())
+int MDSDRV_Linker::add_unique_data(const std::vector<uint8_t>& data)
+{
+	unsigned int i;
+	// look for previous matching data in the data bank
+	for(i=0; i<data_bank.size(); i++)
+	{
+		if(data != data_bank[i])
+			continue;
+		return i;
+	}
+	data_bank.push_back(data);
+	return data_bank.size()-1;
 }

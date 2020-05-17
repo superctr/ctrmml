@@ -13,12 +13,6 @@
 //! RIFF (Resource Interchange File Format) I/O class
 class RIFF
 {
-	private:
-		uint32_t size;
-		uint32_t position;
-		uint32_t type;
-		std::vector<uint8_t> data;
-
 	public:
 		const static uint32_t TYPE_RIFF = 0x52494646;
 		const static uint32_t TYPE_LIST = 0x4C495354;
@@ -46,6 +40,12 @@ class RIFF
 		std::vector<uint8_t> get_chunk();
 
 		std::vector<uint8_t> to_bytes() const;
+
+	private:
+		uint32_t size;
+		uint32_t position;
+		uint32_t type;
+		std::vector<uint8_t> data;
 };
 
 #endif

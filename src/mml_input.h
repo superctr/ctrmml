@@ -22,16 +22,11 @@
  */
 class MML_Input: public Line_Input
 {
-	private:
-		std::string tag_key;
-		//Tag* tag;
-		Track* track;
-		uint16_t track_id;
-		uint16_t track_offset;
-		std::vector<uint16_t> track_list;
-		void (MML_Input::*last_cmd)();
-		bool conditional_block;
+	public:
+		MML_Input(Song* song);
+		~MML_Input();
 
+	private:
 		// MML read helpers
 		unsigned int read_duration();
 		int read_parameter(int default_parameter);
@@ -66,9 +61,13 @@ class MML_Input: public Line_Input
 		// Virtual function override from Line_Input
 		void parse_line();
 
-	public:
-		MML_Input(Song* song);
-		~MML_Input();
+		std::string tag_key;
+		Track* track;
+		uint16_t track_id;
+		uint16_t track_offset;
+		std::vector<uint16_t> track_list;
+		void (MML_Input::*last_cmd)();
+		bool conditional_block;
 };
 #endif
 

@@ -14,6 +14,15 @@
 #include "stringf.h"
 #include "util.h"
 
+static bool operator==(const Wave_Rom::Sample& s1, const Wave_Rom::Sample& s2)
+{
+	// Can't directly compare structs properly, so we convert to bytes instead
+	// and then compare the arrays.
+	return s1.to_bytes() == s2.to_bytes();
+}
+
+//=====================================================================
+
 Wave_File::Wave_File(uint16_t channels, uint32_t rate, uint16_t bits)
 	: channels(channels)
 	, sbits(bits)
@@ -30,6 +39,64 @@ Wave_File::Wave_File(uint16_t channels, uint32_t rate, uint16_t bits)
 Wave_File::~Wave_File()
 {
 	return;
+}
+
+int Wave_File::read(const std::string& filename)
+{
+	uint8_t* filebuf;
+	uint32_t filesize, pos=0, wavesize;
+	channels = 0;
+
+	if(load_file(filename,&filebuf,&filesize))
+	{
+		return -1;
+	}
+	if(filesize < 13)
+	{
+		fprintf(stderr,"Malformed wav file '%s'\n", filename.c_str());
+		return -1;
+	}
+	if(memcmp(&filebuf[0],"RIFF",4))
+	{
+		fprintf(stderr,"Riff header not found in '%s'\n", filename.c_str());
+		return -1;
+	}
+	wavesize = (*(uint32_t*)(filebuf+4)) + 8;
+	pos += 8;
+	if(filesize != wavesize)
+	{
+		fprintf(stderr,"Warning: reported file size and actual file size do not match.\n"
+				"Reported %d, actual %d\n", wavesize, filesize);
+
+	}
+	if(memcmp(&filebuf[pos],"WAVE",4))
+	{
+		fprintf(stderr,"'%s' is not a WAVE format file.\n", filename.c_str());
+		return -1;
+	}
+	pos += 4;
+	while(pos < wavesize)
+	{
+		uint32_t chunksize, ret;
+		if(pos & 1)
+			pos++;
+
+		chunksize = *(uint32_t*)(filebuf+pos+4) + 8;
+		if(pos+chunksize > filesize)
+		{
+			printf("Illegal chunk size (%d, %d)\n", pos+chunksize+8, filesize);
+			return -1;
+		}
+		ret = parse_chunk(filebuf+pos);
+		if(!ret)
+		{
+			printf("Failed to parse chunk %c%c%c%c.\n",filebuf[pos],filebuf[pos+1],filebuf[pos+2],filebuf[pos+3]);
+			return -1;
+		}
+		pos += chunksize;
+	}
+	free(filebuf);
+	return 0;
 }
 
 int Wave_File::load_file(const std::string& filename, uint8_t** buffer, uint32_t* filesize)
@@ -116,64 +183,10 @@ uint32_t Wave_File::parse_chunk(const uint8_t *fdata)
 	return chunksize;
 }
 
-int Wave_File::read(const std::string& filename)
-{
-	uint8_t* filebuf;
-	uint32_t filesize, pos=0, wavesize;
-	channels = 0;
 
-	if(load_file(filename,&filebuf,&filesize))
-	{
-		return -1;
-	}
-	if(filesize < 13)
-	{
-		fprintf(stderr,"Malformed wav file '%s'\n", filename.c_str());
-		return -1;
-	}
-	if(memcmp(&filebuf[0],"RIFF",4))
-	{
-		fprintf(stderr,"Riff header not found in '%s'\n", filename.c_str());
-		return -1;
-	}
-	wavesize = (*(uint32_t*)(filebuf+4)) + 8;
-	pos += 8;
-	if(filesize != wavesize)
-	{
-		fprintf(stderr,"Warning: reported file size and actual file size do not match.\n"
-				"Reported %d, actual %d\n", wavesize, filesize);
+//=====================================================================
 
-	}
-	if(memcmp(&filebuf[pos],"WAVE",4))
-	{
-		fprintf(stderr,"'%s' is not a WAVE format file.\n", filename.c_str());
-		return -1;
-	}
-	pos += 4;
-	while(pos < wavesize)
-	{
-		uint32_t chunksize, ret;
-		if(pos & 1)
-			pos++;
-
-		chunksize = *(uint32_t*)(filebuf+pos+4) + 8;
-		if(pos+chunksize > filesize)
-		{
-			printf("Illegal chunk size (%d, %d)\n", pos+chunksize+8, filesize);
-			return -1;
-		}
-		ret = parse_chunk(filebuf+pos);
-		if(!ret)
-		{
-			printf("Failed to parse chunk %c%c%c%c.\n",filebuf[pos],filebuf[pos+1],filebuf[pos+2],filebuf[pos+3]);
-			return -1;
-		}
-		pos += chunksize;
-	}
-	free(filebuf);
-	return 0;
-}
-
+//! Creates a Wave_Rom
 Wave_Rom::Wave_Rom(unsigned long max_size, unsigned long bank_size)
 	: max_size(max_size)
 	, current_size(0)
@@ -187,105 +200,16 @@ Wave_Rom::Wave_Rom(unsigned long max_size, unsigned long bank_size)
 		this->bank_size = max_size;
 }
 
+//! Wave_Rom destructor
 Wave_Rom::~Wave_Rom()
 {
 	return;
-}
-
-//! Encode the sample, convert it from 16-bit data to 8-bit.
-std::vector<uint8_t> Wave_Rom::encode_sample(const std::string& encoding_type, const std::vector<int16_t>& input)
-{
-	// default encoder, simply convert 16-bit to 8-bit unsigned
-	std::vector<uint8_t> output;
-	for(auto&& i : input)
-	{
-		output.push_back((i >> 8) ^ 0x80);
-	}
-	return output;
-}
-
-//! Returns the next possible aligned start address for the rom.
-/*!
- *  Given a sample header, a proposed start address and end address,
- *  return the appropriate end address of the sample. If the sample
- *  cannot fit within the boundaries. return NO_FIT.
- */
-uint32_t Wave_Rom::fit_sample(const Wave_Rom::Sample& header, uint32_t start, uint32_t end) const
-{
-	uint32_t sample_end = start + header.size;
-	uint32_t start_bank = start / bank_size;
-	uint32_t end_bank = sample_end / bank_size;
-	// Sample must fit in the same bank
-	if (start_bank != end_bank)
-		start = end_bank * bank_size;
-	// Crossed end boundary?
-	if ((start + header.size) > end)
-		return NO_FIT;
-	return start;
-}
-
-//! Look for duplicates in the sample ROM.
-/*!
- *  If a duplicate is found, return the index to the duplicate wave entry.
- *  Otherwise, return -1.
- */
-int Wave_Rom::find_duplicate(const Wave_Rom::Sample& header, const std::vector<uint8_t>& sample) const
-{
-	int id = 0;
-	for(auto&& i : samples)
-	{
-		// The reason for the loop start check is that some sound chips (like C352)
-		// require that the looping part of the sample fit in the same bank.
-		if(   i.position + sample.size() <= rom_data.size()
-		   && i.loop_start <= header.loop_start
-		   && !memcmp(&sample[0], &rom_data[i.position], sample.size()))
-			return id;
-		id++;
-	}
-	return -1;
 }
 
 //! Set a list of include paths to check when reading samples from a Tag.
 void Wave_Rom::set_include_paths(const Tag& tag)
 {
 	include_paths = tag;
-}
-
-//! Check if the sample fits in an existing alignment gap
-/*!
- *  If the sample cannot fit in any gap, return NO_FIT. Otherwise, return
- *  the index of the smallest gap that fits the sample.
- *
- *  \p gap_start will be set with the aligned start position of the gap.
- */
-unsigned int Wave_Rom::find_gap(const Wave_Rom::Sample& header, uint32_t& gap_start) const
-{
-	unsigned int best_gap = NO_FIT;
-	if(gaps.size())
-	{
-		// Look for the smallest gap that fits our sample
-		int best_gap_size = max_size;
-		uint32_t start_pos;
-		for(unsigned int i = 0; i < gaps.size(); i++)
-		{
-			int gap_size = gaps[i].end - gaps[i].start;
-			start_pos = fit_sample(header, gaps[i].start, gaps[i].end);
-			if(start_pos != NO_FIT && gap_size < best_gap_size)
-			{
-				best_gap = i;
-				best_gap_size = gap_size;
-				gap_start = start_pos;
-			}
-		}
-	}
-	return best_gap;
-}
-//! Quick and dirty comparison operator (used below)
-static bool operator==(const Wave_Rom::Sample& s1, const Wave_Rom::Sample& s2)
-{
-	// Can't directly compare structs properly, so we convert to bytes instead
-	// and then compare the arrays.
-	return s1.to_bytes() == s2.to_bytes();
 }
 
 //! Convert and add sample to the waverom.
@@ -392,6 +316,18 @@ unsigned int Wave_Rom::add_sample(Wave_Rom::Sample header, const std::vector<uin
 	}
 }
 
+//! Get sample headers
+const std::vector<Wave_Rom::Sample>& Wave_Rom::get_sample_headers()
+{
+	return samples;
+}
+
+//! Get the sample ROM data
+const std::vector<uint8_t>& Wave_Rom::get_rom_data()
+{
+	return rom_data;
+}
+
 //! Get the number of unused allocated bytes in the Wave_Rom.
 unsigned int Wave_Rom::get_free_bytes()
 {
@@ -425,21 +361,96 @@ unsigned int Wave_Rom::get_largest_gap()
 	return largest_gap;
 }
 
-const std::vector<Wave_Rom::Sample>& Wave_Rom::get_sample_headers()
-{
-	return samples;
-}
-
-const std::vector<uint8_t>& Wave_Rom::get_rom_data()
-{
-	return rom_data;
-}
-
+//! Get error message
 const std::string& Wave_Rom::get_error()
 {
 	return error_message;
 }
 
+//! Check if the sample fits in an existing alignment gap
+/*!
+ *  If the sample cannot fit in any gap, return NO_FIT. Otherwise, return
+ *  the index of the smallest gap that fits the sample.
+ *
+ *  \p gap_start will be set with the aligned start position of the gap.
+ */
+unsigned int Wave_Rom::find_gap(const Wave_Rom::Sample& header, uint32_t& gap_start) const
+{
+	unsigned int best_gap = NO_FIT;
+	if(gaps.size())
+	{
+		// Look for the smallest gap that fits our sample
+		int best_gap_size = max_size;
+		uint32_t start_pos;
+		for(unsigned int i = 0; i < gaps.size(); i++)
+		{
+			int gap_size = gaps[i].end - gaps[i].start;
+			start_pos = fit_sample(header, gaps[i].start, gaps[i].end);
+			if(start_pos != NO_FIT && gap_size < best_gap_size)
+			{
+				best_gap = i;
+				best_gap_size = gap_size;
+				gap_start = start_pos;
+			}
+		}
+	}
+	return best_gap;
+}
+
+//! Encode the sample, convert it from 16-bit data to 8-bit.
+std::vector<uint8_t> Wave_Rom::encode_sample(const std::string& encoding_type, const std::vector<int16_t>& input)
+{
+	// default encoder, simply convert 16-bit to 8-bit unsigned
+	std::vector<uint8_t> output;
+	for(auto&& i : input)
+	{
+		output.push_back((i >> 8) ^ 0x80);
+	}
+	return output;
+}
+
+//! Returns the next possible aligned start address for the rom.
+/*!
+ *  Given a sample header, a proposed start address and end address,
+ *  return the appropriate end address of the sample. If the sample
+ *  cannot fit within the boundaries. return NO_FIT.
+ */
+uint32_t Wave_Rom::fit_sample(const Wave_Rom::Sample& header, uint32_t start, uint32_t end) const
+{
+	uint32_t sample_end = start + header.size;
+	uint32_t start_bank = start / bank_size;
+	uint32_t end_bank = sample_end / bank_size;
+	// Sample must fit in the same bank
+	if (start_bank != end_bank)
+		start = end_bank * bank_size;
+	// Crossed end boundary?
+	if ((start + header.size) > end)
+		return NO_FIT;
+	return start;
+}
+
+//! Look for duplicates in the sample ROM.
+/*!
+ *  If a duplicate is found, return the index to the duplicate wave entry.
+ *  Otherwise, return -1.
+ */
+int Wave_Rom::find_duplicate(const Wave_Rom::Sample& header, const std::vector<uint8_t>& sample) const
+{
+	int id = 0;
+	for(auto&& i : samples)
+	{
+		// The reason for the loop start check is that some sound chips (like C352)
+		// require that the looping part of the sample fit in the same bank.
+		if(   i.position + sample.size() <= rom_data.size()
+		   && i.loop_start <= header.loop_start
+		   && !memcmp(&sample[0], &rom_data[i.position], sample.size()))
+			return id;
+		id++;
+	}
+	return -1;
+}
+
+//=====================================================================
 //! Fill a sample header with values from a byte vector.
 /*!
  *  The format matches the data created by to_bytes().
