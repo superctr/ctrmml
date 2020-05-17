@@ -80,6 +80,11 @@ clean:
 doc:
 	doxygen Doxyfile
 
+sample_mml: mmlc sample/idk.vgm sample/passport.vgm sample/sand_light.vgm
+	./mmlc sample/idk.mml
+	./mmlc sample/passport.mml
+	./mmlc sample/sand_light.mml
+
 cleandoc:
 	rm -rf doxygen
 
@@ -88,6 +93,6 @@ test: unittest
 
 check: test
 
-.PHONY: all lib test check clean doc cleandoc
+.PHONY: all lib test check clean doc cleandoc sample_mml
 
 -include $(OBJ)/*.d $(OBJ)/unittest/*.d $(OBJ)/platform/*.d
