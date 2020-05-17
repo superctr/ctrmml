@@ -295,7 +295,7 @@ void MDSDRV_Data::add_ins_pcm(uint16_t id, const Tag& tag)
 	std::vector<uint8_t> env_data;
 	int wave_header_id;
 
-	// Insert a generic 32-byte generic Wave_Rom::Sample header.
+	// Insert a generic 32-byte generic Wave_Bank::Sample header.
 	wave_header_id = wave_map[id] = wave_rom.add_sample(tag);
 	env_data = wave_rom.get_sample_headers().at(wave_header_id).to_bytes();
 
@@ -1088,7 +1088,7 @@ void MDSDRV_Linker::add_song(RIFF& mds)
 			// PCM header
 			auto data = chunk.get_data();
 			uint32_t addr = seq_sdata + read_le32(data, 0)*2;
-			Wave_Rom::Sample header;
+			Wave_Bank::Sample header;
 			header.from_bytes(std::vector<uint8_t>(data.begin()+4, data.end()));
 			auto begin = pcmd.begin() + header.position;
 			auto end = pcmd.begin() + header.position + header.size;

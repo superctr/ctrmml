@@ -14,7 +14,7 @@
 #include "stringf.h"
 #include "util.h"
 
-static bool operator==(const Wave_Rom::Sample& s1, const Wave_Rom::Sample& s2)
+static bool operator==(const Wave_Bank::Sample& s1, const Wave_Bank::Sample& s2)
 {
 	// Can't directly compare structs properly, so we convert to bytes instead
 	// and then compare the arrays.
@@ -186,8 +186,8 @@ uint32_t Wave_File::parse_chunk(const uint8_t *fdata)
 
 //=====================================================================
 
-//! Creates a Wave_Rom
-Wave_Rom::Wave_Rom(unsigned long max_size, unsigned long bank_size)
+//! Creates a Wave_Bank
+Wave_Bank::Wave_Bank(unsigned long max_size, unsigned long bank_size)
 	: max_size(max_size)
 	, current_size(0)
 	, bank_size(bank_size)
@@ -200,20 +200,20 @@ Wave_Rom::Wave_Rom(unsigned long max_size, unsigned long bank_size)
 		this->bank_size = max_size;
 }
 
-//! Wave_Rom destructor
-Wave_Rom::~Wave_Rom()
+//! Wave_Bank destructor
+Wave_Bank::~Wave_Bank()
 {
 	return;
 }
 
 //! Set a list of include paths to check when reading samples from a Tag.
-void Wave_Rom::set_include_paths(const Tag& tag)
+void Wave_Bank::set_include_paths(const Tag& tag)
 {
 	include_paths = tag;
 }
 
 //! Convert and add sample to the waverom.
-unsigned int Wave_Rom::add_sample(const Tag& tag)
+unsigned int Wave_Bank::add_sample(const Tag& tag)
 {
 	int status = -1;
 	if(!tag.size())
@@ -239,7 +239,7 @@ unsigned int Wave_Rom::add_sample(const Tag& tag)
 
 	// convert sample
 	std::vector<uint8_t> sample = encode_sample("", wf.data[0]);
-	Wave_Rom::Sample header = {
+	Wave_Bank::Sample header = {
 		0,
 		0,
 		wf.slength,
@@ -253,7 +253,7 @@ unsigned int Wave_Rom::add_sample(const Tag& tag)
 };
 
 //! Add sample to the waverom in raw format.
-unsigned int Wave_Rom::add_sample(Wave_Rom::Sample header, const std::vector<uint8_t>& sample)
+unsigned int Wave_Bank::add_sample(Wave_Bank::Sample header, const std::vector<uint8_t>& sample)
 {
 	// Find duplicates of sample data and selected header parameters if needed
 	int duplicate = find_duplicate(header, sample);
@@ -317,25 +317,25 @@ unsigned int Wave_Rom::add_sample(Wave_Rom::Sample header, const std::vector<uin
 }
 
 //! Get sample headers
-const std::vector<Wave_Rom::Sample>& Wave_Rom::get_sample_headers()
+const std::vector<Wave_Bank::Sample>& Wave_Bank::get_sample_headers()
 {
 	return samples;
 }
 
 //! Get the sample ROM data
-const std::vector<uint8_t>& Wave_Rom::get_rom_data()
+const std::vector<uint8_t>& Wave_Bank::get_rom_data()
 {
 	return rom_data;
 }
 
-//! Get the number of unused allocated bytes in the Wave_Rom.
-unsigned int Wave_Rom::get_free_bytes()
+//! Get the number of unused allocated bytes in the Wave_Bank.
+unsigned int Wave_Bank::get_free_bytes()
 {
 	return max_size - current_size;
 }
 
 //! Get the total size of alignment gaps.
-unsigned int Wave_Rom::get_total_gap()
+unsigned int Wave_Bank::get_total_gap()
 {
 	unsigned int gap_size = 0;
 	for(auto&& gap : gaps)
@@ -349,7 +349,7 @@ unsigned int Wave_Rom::get_total_gap()
 /*!
  *  If there are no gaps, return 0.
  */
-unsigned int Wave_Rom::get_largest_gap()
+unsigned int Wave_Bank::get_largest_gap()
 {
 	unsigned int largest_gap = 0;
 	for(auto&& gap : gaps)
@@ -362,7 +362,7 @@ unsigned int Wave_Rom::get_largest_gap()
 }
 
 //! Get error message
-const std::string& Wave_Rom::get_error()
+const std::string& Wave_Bank::get_error()
 {
 	return error_message;
 }
@@ -374,7 +374,7 @@ const std::string& Wave_Rom::get_error()
  *
  *  \p gap_start will be set with the aligned start position of the gap.
  */
-unsigned int Wave_Rom::find_gap(const Wave_Rom::Sample& header, uint32_t& gap_start) const
+unsigned int Wave_Bank::find_gap(const Wave_Bank::Sample& header, uint32_t& gap_start) const
 {
 	unsigned int best_gap = NO_FIT;
 	if(gaps.size())
@@ -398,7 +398,7 @@ unsigned int Wave_Rom::find_gap(const Wave_Rom::Sample& header, uint32_t& gap_st
 }
 
 //! Encode the sample, convert it from 16-bit data to 8-bit.
-std::vector<uint8_t> Wave_Rom::encode_sample(const std::string& encoding_type, const std::vector<int16_t>& input)
+std::vector<uint8_t> Wave_Bank::encode_sample(const std::string& encoding_type, const std::vector<int16_t>& input)
 {
 	// default encoder, simply convert 16-bit to 8-bit unsigned
 	std::vector<uint8_t> output;
@@ -415,7 +415,7 @@ std::vector<uint8_t> Wave_Rom::encode_sample(const std::string& encoding_type, c
  *  return the appropriate end address of the sample. If the sample
  *  cannot fit within the boundaries. return NO_FIT.
  */
-uint32_t Wave_Rom::fit_sample(const Wave_Rom::Sample& header, uint32_t start, uint32_t end) const
+uint32_t Wave_Bank::fit_sample(const Wave_Bank::Sample& header, uint32_t start, uint32_t end) const
 {
 	uint32_t sample_end = start + header.size;
 	uint32_t start_bank = start / bank_size;
@@ -434,7 +434,7 @@ uint32_t Wave_Rom::fit_sample(const Wave_Rom::Sample& header, uint32_t start, ui
  *  If a duplicate is found, return the index to the duplicate wave entry.
  *  Otherwise, return -1.
  */
-int Wave_Rom::find_duplicate(const Wave_Rom::Sample& header, const std::vector<uint8_t>& sample) const
+int Wave_Bank::find_duplicate(const Wave_Bank::Sample& header, const std::vector<uint8_t>& sample) const
 {
 	int id = 0;
 	for(auto&& i : samples)
@@ -457,7 +457,7 @@ int Wave_Rom::find_duplicate(const Wave_Rom::Sample& header, const std::vector<u
  *
  *  \exception std::out_of_range Input too small
  */
-void Wave_Rom::Sample::from_bytes(std::vector<uint8_t> input)
+void Wave_Bank::Sample::from_bytes(std::vector<uint8_t> input)
 {
 	position = read_le32(input, 0);
 	start = read_le32(input, 4);
@@ -473,7 +473,7 @@ void Wave_Rom::Sample::from_bytes(std::vector<uint8_t> input)
 /*!
  *  Output can be made as a header again using to_bytes().
  */
-std::vector<uint8_t> Wave_Rom::Sample::to_bytes() const
+std::vector<uint8_t> Wave_Bank::Sample::to_bytes() const
 {
 	auto output = std::vector<uint8_t>();
 	write_le32(output, 0, position);

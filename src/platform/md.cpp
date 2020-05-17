@@ -397,7 +397,7 @@ void MD_Channel::key_on_pcm()
 	if(driver->data.ins_type[ins_id] == MDSDRV_Data::INS_PCM)
 	{
 		int wave_header_id = driver->data.wave_map[ins_id];
-		Wave_Rom::Sample sample = driver->data.wave_rom.get_sample_headers().at(wave_header_id);
+		Wave_Bank::Sample sample = driver->data.wave_rom.get_sample_headers().at(wave_header_id);
 		driver->last_pcm_channel = channel_id;
 		driver->ym2612_w(0, 0x2b, 0, 0, 0x80); // DAC enable
 		if(driver->vgm)

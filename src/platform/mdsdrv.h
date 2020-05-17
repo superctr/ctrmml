@@ -60,7 +60,7 @@ class MDSDRV_Data
 		//! Data bank, holds all instrument and envelope data
 		std::vector<std::vector<uint8_t>> data_bank;
 		//! Waverom bank, holds PCM samples.
-		Wave_Rom wave_rom;
+		Wave_Bank wave_rom;
 		//! Maps the current song instruments to data_bank entries.
 		std::map<uint16_t, int> envelope_map;
 		//! Maps the PCM instruments to a wave_rom header.
@@ -198,7 +198,7 @@ class MDSDRV_Linker
 		std::vector<std::vector<uint8_t>> data_bank;
 		std::vector<int> data_offset;
 		std::vector<Seq_Data> seq_bank;
-		Wave_Rom wave_rom;
+		Wave_Bank wave_rom;
 };
 
 #endif

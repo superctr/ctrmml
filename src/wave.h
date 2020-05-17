@@ -9,7 +9,7 @@
 //! Wave file
 class Wave_File
 {
-	friend class Wave_Rom;
+	friend class Wave_Bank;
 	public:
 		Wave_File(uint16_t channels=0, uint32_t rate=0, uint16_t bits=0);
 		Wave_File(const std::string& filename);
@@ -42,8 +42,8 @@ class Wave_File
 		std::vector<std::vector<int16_t>> data;
 };
 
-//! Base wave rom
-class Wave_Rom
+//! Base wave rom bank
+class Wave_Bank
 {
 	public:
 		//! Aggregate sample header class.
@@ -63,8 +63,8 @@ class Wave_Rom
 			std::vector<uint8_t> to_bytes() const;
 		};
 
-		Wave_Rom(unsigned long max_size, unsigned long bank_size = 0);
-		virtual ~Wave_Rom();
+		Wave_Bank(unsigned long max_size, unsigned long bank_size = 0);
+		virtual ~Wave_Bank();
 
 		// Helper methods
 		void set_include_paths(const Tag& tag);
