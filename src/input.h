@@ -142,7 +142,7 @@ class Line_Input: public Input, protected Line_Buffer
 		Line_Input(Song* song);
 		virtual ~Line_Input();
 
-		void read_line(const std::string& input_line);
+		void read_line(const std::string& input_line, int line_number = -1);
 
 	protected:
 		std::shared_ptr<InputRef> get_reference();

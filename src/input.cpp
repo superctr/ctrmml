@@ -295,8 +295,13 @@ std::shared_ptr<InputRef> Line_Input::get_reference()
 }
 
 //! Read a single input line and parse it.
-void Line_Input::read_line(const std::string& input_line)
+/*!
+ *  Optionally also set the line number.
+ */
+void Line_Input::read_line(const std::string& input_line, int line_number)
 {
+	if (line_number >= 0)
+		line = line_number;
 	column = 0;
 	buffer = std::make_shared<std::string>(input_line);
 	parse_line();
