@@ -25,6 +25,7 @@ class InputError : public std::exception
 	public:
 		InputError(std::shared_ptr<InputRef> ref, const char* message);
 		const char* what();
+		inline std::shared_ptr<InputRef> get_reference() { return reference; }
 
 	private:
 		std::shared_ptr<InputRef> reference;
