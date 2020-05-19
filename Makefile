@@ -1,15 +1,19 @@
 SRC = src
 OBJ = obj
-LIBCTRMML = lib/libctrmml.a
+OBJ_BASE := $(OBJ)
+LIBCTRMML = lib/libctrmml
 
 CFLAGS = -Wall
 LDFLAGS =
 
 ifneq ($(RELEASE),1)
 CFLAGS += -g
+LIBCTRMML := $(LIBCTRMML)_debug.a
 else
+OBJ := $(OBJ)/release
 CFLAGS += -O2
 LDFLAGS += -s
+LIBCTRMML := $(LIBCTRMML).a
 endif
 
 LDFLAGS_TEST = -lcppunit
@@ -75,7 +79,7 @@ unittest: $(UNITTEST_OBJS)
 	$(CXX) $(UNITTEST_OBJS) $(LDFLAGS) $(LDFLAGS_TEST) -o $@
 
 clean:
-	rm -rf $(OBJ)
+	rm -rf $(OBJ_BASE)
 
 doc:
 	doxygen Doxyfile
