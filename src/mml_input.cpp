@@ -18,10 +18,13 @@ unsigned int MML_Input::read_duration()
 		else
 		{
 			unget(c);
-			duration = track->get_measure_len() / get_num();
+			int div = get_num();
+			if(div < 1)
+				parse_error("illegal duration");
+			duration = track->get_measure_len() / div;
 		}
 		if(duration < 0)
-			throw std::out_of_range("MMLInput::read_duration()");
+			parse_error("illegal duration");
 	}
 	catch(std::invalid_argument&)
 	{
