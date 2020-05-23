@@ -55,6 +55,7 @@ UNITTEST_OBJS = \
 	$(OBJ)/unittest/test_riff.o \
 	$(OBJ)/unittest/test_conf.o \
 	$(OBJ)/unittest/test_mdsdrv.o \
+	$(OBJ)/unittest/test_misc.o \
 	$(OBJ)/unittest/main.o
 
 $(OBJ)/%.o: $(SRC)/%.cpp
