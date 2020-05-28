@@ -101,7 +101,11 @@ depends on the platform. They may be ignored or the accepted range may differ.
 -	`V<0..255>` - Set volume (fine).
 -	`V<-128..+127>` - Modify volume (fine).
 -	`p<-128..127>` - Set panning.
--	`k<-128..127>` - Set transpose.
+-	`_<-128..127>` - Set transpose.
+-	`__<-128..127>` - Set relative transpose.
+-	`k<-128..127>` - Set transpose. The default behavior is the same as the
+	`_` command, but in the future there will be an option to change the
+	behavior of this command.
 -	`K<-128..127>` - Set detune.
 -	`E<0..255>` - Set envelope. 0 to disable.
 -	`M<0..255>` - Set pitch envelope. 0 to disable.

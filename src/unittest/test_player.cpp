@@ -9,6 +9,7 @@ class Player_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST_SUITE(Player_Test);
 	CPPUNIT_TEST(test_get_event);
 	CPPUNIT_TEST(test_get_event_signed_param);
+	CPPUNIT_TEST(test_transpose);
 	CPPUNIT_TEST(test_get_event_optional_relative_param);
 	CPPUNIT_TEST(test_loop);
 	CPPUNIT_TEST(test_is_inside_loop);
@@ -52,6 +53,33 @@ public:
 		player.step_event();
 		CPPUNIT_ASSERT_EQUAL(Event::TRANSPOSE, player.get_event().type);
 		CPPUNIT_ASSERT_EQUAL((int16_t)-5, player.get_event().param);
+		player.step_event();
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(false, player.is_enabled());
+	}
+	void test_transpose()
+	{
+		mml_input->read_line("A k-5o3c _0c __1c __+2c __-3c");
+		auto player = Player(*song, song->get_track(0));
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::TRANSPOSE, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)-5, player.get_event().param);
+		player.step_event();
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::TRANSPOSE, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)0, player.get_event().param);
+		player.step_event();
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::TRANSPOSE_REL, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)1, player.get_event().param);
+		player.step_event();
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::TRANSPOSE_REL, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)2, player.get_event().param);
+		player.step_event();
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::TRANSPOSE_REL, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)-3, player.get_event().param);
 		player.step_event();
 		player.step_event();
 		CPPUNIT_ASSERT_EQUAL(false, player.is_enabled());

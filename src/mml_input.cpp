@@ -143,6 +143,24 @@ void MML_Input::mml_grace()
 	track->add_note(c, duration);
 }
 
+void MML_Input::mml_transpose()
+{
+	int c = get_token();
+	if(c == '_')
+	{
+		track->add_event(Event::TRANSPOSE_REL, expect_signed());
+	}
+	else if(c == '{')
+	{
+		// key signature, not supported yet
+	}
+	else
+	{
+		unget();
+		track->add_event(Event::TRANSPOSE, expect_signed());
+	}
+}
+
 //! combination command that allows for two Event::Type depending on
 //! if a sign prefix is found.
 void MML_Input::event_relative(Event::Type type, Event::Type subtype)
@@ -226,10 +244,10 @@ bool MML_Input::mml_envelope()
 	int c = get_token();
 	if(c == '@')
 		track->add_event(Event::INS, expect_parameter());
-	else if(c == 'k')
-		track->add_event(Event::TRANSPOSE, expect_signed());
-	else if(c == 'm') // TODO: finalize the command for relative transpose!
-		event_relative(Event::TRANSPOSE, Event::TRANSPOSE_REL);
+	else if(c == '_')
+		mml_transpose();
+	else if(c == 'k') // TODO: ktype command to set compile-time transpose?
+		mml_transpose();
 	else if(c == 'K')
 		track->add_event(Event::DETUNE, expect_signed());
 	else if(c == 'v')
