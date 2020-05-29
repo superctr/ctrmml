@@ -139,11 +139,16 @@ class Track
 		Event& get_event(unsigned long position);
 		unsigned long get_event_count() const;
 
+		// Methods that set Track state
+		void set_key_signature(const char* key);
+		void modify_key_signature(char note, int8_t modifier);
+
 		// Methods to get Track state
 		bool is_enabled() const;
 		bool in_drum_mode() const;
 		uint16_t get_duration(uint16_t duration = 0) const;
 		uint16_t get_measure_len() const;
+		int8_t get_key_signature(char note);
 
 	private:
 		void enable();
@@ -160,6 +165,8 @@ class Track
 		uint16_t quantize;
 		uint16_t quantize_parts;
 		uint16_t early_release;
+		uint8_t sharp_mask;
+		uint8_t flat_mask;
 		std::shared_ptr<InputRef> reference;
 };
 #endif

@@ -18,6 +18,7 @@ class MML_Input_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST(test_mml_conditional);
 	CPPUNIT_TEST(test_mml_platform_command);
 	CPPUNIT_TEST(test_mml_error_duration);
+	CPPUNIT_TEST(test_mml_key_signature);
 	CPPUNIT_TEST_SUITE_END();
 private:
 	Song *song;
@@ -151,6 +152,66 @@ public:
 		CPPUNIT_ASSERT_THROW(mml_input->read_line("A l0cdef"), InputError);
 		CPPUNIT_ASSERT_THROW(mml_input->read_line("A l-2cdef"), InputError);
 		CPPUNIT_ASSERT_THROW(mml_input->read_line("A l:-5cdef"), InputError);
+	}
+	void test_mml_key_signature()
+	{
+		mml_input->read_line("A _{c+} l4 o4cdefgab>c");
+		mml_input->read_line("A _{=dg} l4 o4cdefgab>c");
+		mml_input->read_line("A _{C} l4 o4cdefgab>c");
+
+		// c# minor
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(0).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)37, song->get_track(0).get_event(0).param); // c+
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(1).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)39, song->get_track(0).get_event(1).param); // d+
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(2).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)40, song->get_track(0).get_event(2).param); // e
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(3).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)42, song->get_track(0).get_event(3).param); // f+
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(4).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)44, song->get_track(0).get_event(4).param); // g+
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(5).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)45, song->get_track(0).get_event(5).param); // a
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(6).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)47, song->get_track(0).get_event(6).param); // b
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(7).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)49, song->get_track(0).get_event(7).param); // c+
+
+		// removed # from d,g
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(8).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)37, song->get_track(0).get_event(8).param); // c+
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(9).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)38, song->get_track(0).get_event(9).param); // d
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(10).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)40, song->get_track(0).get_event(10).param); // e
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(11).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)42, song->get_track(0).get_event(11).param); // f+
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(12).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)43, song->get_track(0).get_event(12).param); // g
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(13).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)45, song->get_track(0).get_event(13).param); // a
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(14).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)47, song->get_track(0).get_event(14).param); // b
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(15).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)49, song->get_track(0).get_event(15).param); // c+
+
+		// reset to c major
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(16).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)36, song->get_track(0).get_event(16).param); // c
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(17).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)38, song->get_track(0).get_event(17).param); // d
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(18).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)40, song->get_track(0).get_event(18).param); // e
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(19).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)41, song->get_track(0).get_event(19).param); // f
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(20).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)43, song->get_track(0).get_event(20).param); // g
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(21).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)45, song->get_track(0).get_event(21).param); // a
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(22).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)47, song->get_track(0).get_event(22).param); // b
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(23).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)48, song->get_track(0).get_event(23).param); // c
 	}
 };
 

@@ -23,9 +23,7 @@ class Track_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST_EXCEPTION(test_reverse_rest_overflow, std::length_error);
 	CPPUNIT_TEST_EXCEPTION(test_reverse_rest_impossible, std::domain_error);
 	CPPUNIT_TEST(test_get_event_count);
-	//CPPUNIT_TEST(test_finalize_restore_state);
-	//CPPUNIT_TEST(test_finalize_no_redundant_restore);
-	//CPPUNIT_TEST(test_finalize_vol_tempo_flags);
+	CPPUNIT_TEST(test_key_signature);
 	CPPUNIT_TEST_SUITE_END();
 private:
 	Track *track;
@@ -248,21 +246,64 @@ public:
 		unsigned long expected = 3;
 		CPPUNIT_ASSERT_EQUAL(expected, track->get_event_count());
 	}
-	// Verify that finalize restores changed channel state after loop.
-	void test_finalize_restore_state()
+	void test_key_signature()
 	{
+		// set key to A major
+		track->set_key_signature("A");
+		CPPUNIT_ASSERT_EQUAL((int8_t)1, track->get_key_signature('c'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('d'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('e'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)1, track->get_key_signature('f'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)1, track->get_key_signature('g'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('a'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('b'));
+		//remove the c and f sharp
+		track->set_key_signature("=cf");
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('c'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('d'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('e'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('f'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)1, track->get_key_signature('g'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('a'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('b'));
+		//add them back
+		track->set_key_signature("+cf");
+		CPPUNIT_ASSERT_EQUAL((int8_t)1, track->get_key_signature('c'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('d'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('e'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)1, track->get_key_signature('f'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)1, track->get_key_signature('g'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('a'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('b'));
+		// set key to Bb minor
+		track->set_key_signature("b-");
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('c'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('d'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('e'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('f'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('g'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('a'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('b'));
+		// add a flat to C and F
+		track->set_key_signature("-cf");
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('c'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('d'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('e'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('f'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('g'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('a'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('b'));
+		// try resetting and setting at the same time
+		track->set_key_signature("=d+f");
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('c'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)0, track->get_key_signature('d'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('e'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)1, track->get_key_signature('f'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('g'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('a'));
+		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('b'));
 	}
-	// Verify that finalize does no redundant restore if channel state
-	// was unchanged during loop.
-	void test_finalize_no_redundant_restore()
-	{
-		// These tests are currently unimplemented because the player class is not implemented.
-	}
-	// Verify that volume/tempo flags are set properly if respective
-	// commands are used.
-	void test_finalize_vol_tempo_flags()
-	{
-	}
+
 };
 
 CPPUNIT_TEST_SUITE_REGISTRATION(Track_Test);

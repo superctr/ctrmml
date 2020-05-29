@@ -82,19 +82,25 @@ int MML_Input::read_note(int c)
 {
 	// would be nice to support key signatures...
 	static const int note_values[8] = {9,11,0,2,4,5,7,11}; // abcdefgh
-	int val = c - 'a';
+	int8_t val = c - 'a';
+	int8_t sig = 0;
 	// linear if in drum mode
 	if(!track->in_drum_mode())
-		val = note_values[val];
+	{
+		val = note_values[val & 7];
+		sig = track->get_key_signature(c);
+	}
 	// sharps/flats
 	c = get();
 	if(c == '+')
-		val++;
+		sig = 1;
 	else if(c == '-')
-		val--;
+		sig = -1;
+	else if(c == '=')
+		sig = 0;
 	else
 		unget(c);
-	return val;
+	return val + sig;
 }
 
 //! Platform-exclusive messages ('<key> <value> ...')
@@ -152,7 +158,23 @@ void MML_Input::mml_transpose()
 	}
 	else if(c == '{')
 	{
-		// key signature, not supported yet
+		try
+		{
+			// Read key signature
+			std::string str = "";
+			do
+			{
+				c = get();
+				if(c && c != '}' && !std::isspace(c))
+					str.push_back(c);
+			}
+			while(c && c != '}');
+			track->set_key_signature(str.c_str());
+		}
+		catch(std::invalid_argument&)
+		{
+			parse_error("invalid key signature");
+		}
 	}
 	else
 	{

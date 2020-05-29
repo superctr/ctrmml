@@ -59,7 +59,9 @@ the previously specified channels will be used.
 	- Durations are calculated by dividing the value with the length of a
 	measure. Optionally a dot `.` can be specified to extend the duration by
 	half. Specify duration in number of frames with the `:` prefix.
-	- 'h' has the same value as 'b' in normal mode.
+	- `h` has the same value as `b` in normal mode.
+	- `+`, `-`, `=` specify accidentals. `+` adds a sharp, `-` adds a flat,
+	`=` adds a natural. Using accidentals will override the key signature.
 -	`^` - Tie. Extends duration of previous note.
 -	`&` - Slur. Used to connect two notes (legato).
 -	`r` - Rest. Optionally set duration after the rest.
@@ -103,6 +105,8 @@ depends on the platform. They may be ignored or the accepted range may differ.
 -	`p<-128..127>` - Set panning.
 -	`_<-128..127>` - Set transpose.
 -	`__<-128..127>` - Set relative transpose.
+-	`_{<data>}` - Set key signature.
+	For details, see [Using key signatures](#using-key-signatures)
 -	`k<-128..127>` - Set transpose. The default behavior is the same as the
 	`_` command, but in the future there will be an option to change the
 	behavior of this command.
@@ -124,6 +128,42 @@ depends on the platform. They may be ignored or the accepted range may differ.
 	platform-exclusive meta-command (see previous section) with the specified
 	number.
 -	``'<key> <value> ...'`` - Inline definition of platform-specific commands.
+
+#### Using key signatures
+The `_{}` command can be used to set or modify a key signature. It's possible
+to specify a scale directly, or a list of notes to be made sharp, flat or
+natural.
+
+The default key signature is always C major or A minor (no sharp or flat notes)
+
+After a key signature has been set, when a note is inserted, if no accidental
+is also specified, the sharps/flats as defined in the key signature will be
+used.
+
+##### Specifying a key signature
+These scales are recognized. Upper case indicates a major scale, and lower case
+indicates a minor key. When a scale is specified, the existing key signature
+is cancelled.
+
+-	Sharp key signatures: `C`, `a`, `G`, `e`, `D`, `b`, `A`, `f+`, `E`, `c+`,
+	`B`, `g+`, `F+`, `d+`, `C+`, `a+`
+-	Flat key signatures: `C`, `a`, `F`, `d`, `B-`, `g`, `E-`, `c`, `A-`, `f`,
+	`D-`, `b-` `G-`, `e-`, `C-`, `a-`
+
+Example:
+-	 `_{c}`: Set C minor scale.
+	-	`cdefgab` automatically becomes `cde-fga-b-`
+
+##### Modifying a key signature
+If the key signature specification begins with `+`, `-` or `=`, the following
+notes will be sharpened, flattened or become natural.
+
+Examples:
+-	`_{+cfg}`: `c`, `f`, `g` automatically becomes sharp.
+	- This does not cancel the previously set key signature.
+
+-	`_{D} _{=f}`: Set D major key signature, then make `f` natural.
+	- End result: `cdefgab` automatically becomes `c+defgab`.
 
 ### Comparison with other MML formats (incomplete)
 #### PMD

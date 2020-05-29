@@ -1,4 +1,6 @@
-#include <stdio.h>
+#include <cstdio>
+#include <cstring>
+#include <cctype>
 #include <algorithm>
 #include <stdexcept>
 #include "track.h"
@@ -10,15 +12,17 @@
  *              and can also be used as a reference for input handlers.
  */
 Track::Track(uint16_t ppqn)
-	: flag(0),
-	ch(0),
-	last_note_pos(-1),
-	octave(DEFAULT_OCTAVE),
-	measure_len(ppqn * 4),
-	default_duration(measure_len / 4),
-	quantize(DEFAULT_QUANTIZE),
-	quantize_parts(DEFAULT_QUANTIZE_PARTS),
-	early_release(0)
+	: flag(0)
+	, ch(0)
+	, last_note_pos(-1)
+	, octave(DEFAULT_OCTAVE)
+	, measure_len(ppqn * 4)
+	, default_duration(measure_len / 4)
+	, quantize(DEFAULT_QUANTIZE)
+	, quantize_parts(DEFAULT_QUANTIZE_PARTS)
+	, early_release(0)
+	, sharp_mask(0)
+	, flat_mask(0)
 {
 }
 
@@ -200,7 +204,7 @@ void Track::reverse_rest(uint16_t duration)
 						it->on_time -= duration;
 						return;
 					}
-					throw std::length_error("previous duration not long enough"); // -2
+					throw std::length_error("Track::reverse_rest: previous duration not long enough"); // -2
 				}
 				else
 				{
@@ -211,12 +215,12 @@ void Track::reverse_rest(uint16_t duration)
 			// unpredictable.
 			case Event::SEGNO:
 			case Event::LOOP_END:
-				throw std::domain_error("unable to modify previous duration"); // -1
+				throw std::domain_error("Track::reverse_rest: unable to modify previous duration"); // -1
 			default:
 				break;
 		}
 	}
-	throw std::domain_error("there is no previous duration"); // -1
+	throw std::domain_error("Track::reverse_rest: there is no previous duration"); // -1
 }
 
 //! Sets the reference to use for successive Events.
@@ -377,6 +381,122 @@ uint16_t Track::get_measure_len() const
 void Track::enable()
 {
 	flag |= 0x80;
+}
+
+//! Set the key signature
+/*!
+ *  Takes a string input and sets the key signature (only used with
+ *  get_key_signature()).
+ *
+ *  The string can be formatted in one of two forms:
+ *  - using the name of a scale. Lower case indicates a minor scale,
+ *    upper case indicates a major scale. Using this method will reset
+ *    the key signature.
+ *  - adding a sharp ("+"), flat ("-"), or natural ("=") sign followed
+ *    by a list of notes that are to be modified.
+ *
+ *  \except std::invalid_argument Scale or modifier string is invalid.
+ */
+void Track::set_key_signature(const char* key)
+{
+	static const struct {
+		uint8_t sharp;
+		uint8_t flat;
+		const char* major;
+		const char* minor;
+	} scales[15] =
+	{ //  +hgfedcba   -hgfedcba  maj   min
+	   { 0b00000000, 0b00000000, "C",  "a"  },
+	   { 0b00100000, 0b00000000, "G",  "e"  },
+	   { 0b00100100, 0b00000000, "D",  "b"  },
+	   { 0b01100100, 0b00000000, "A",  "f+" },
+	   { 0b01101100, 0b00000000, "E",  "c+" },
+	   { 0b01101101, 0b00000000, "B",  "g+" },
+	   { 0b01111101, 0b00000000, "F+", "d+" },
+	   { 0b01111111, 0b00000000, "C+", "a+" },
+	   { 0b00000000, 0b00000010, "F",  "d"  },
+	   { 0b00000000, 0b00010010, "B-", "g"  },
+	   { 0b00000000, 0b00010011, "E-", "c"  },
+	   { 0b00000000, 0b00011011, "A-", "f"  },
+	   { 0b00000000, 0b01011011, "D-", "b-" },
+	   { 0b00000000, 0b01011111, "G-", "e-" },
+	   { 0b00000000, 0b01111111, "C-", "a-" }
+	};
+
+	char k = *key;
+	int8_t modifier = 0;
+	if(std::isalpha(k))
+	{
+		for(int i=0; i<15; i++)
+		{
+			if(!std::strcmp(scales[i].major, key) || !std::strcmp(scales[i].minor, key))
+			{
+				sharp_mask = scales[i].sharp;
+				flat_mask = scales[i].flat;
+				return;
+			}
+		}
+		throw std::invalid_argument("Track::set_key_signature : unknown key");
+	}
+	else
+	{
+		do
+		{
+			if(k == '+')
+				modifier = 1;
+			else if(k == '-')
+				modifier = -1;
+			else if(k == '=')
+				modifier = 0;
+			else if(isalpha(k))
+				modify_key_signature(k, modifier);
+			else
+				throw std::invalid_argument("Track::set_key_signature : unknown modifier");
+			k = *key++;
+		}
+		while(k);
+	}
+}
+
+//! Modify the key signature
+/*!
+ *  This will directly modify the key signature modifier for the
+ *  given note. The \p modifier must be either -1, 0 or 1.
+ *
+ *  \except std::invalid_argument Note or modifier parameter is
+ *          invalid.
+ */
+void Track::modify_key_signature(char note, int8_t modifier)
+{
+	note = std::tolower(note) - 'a';
+	if(note > 7)
+		throw std::invalid_argument("Track::modify_key_signature - invalid note");
+
+	sharp_mask &= ~(1 << note);
+	flat_mask &= ~(1 << note);
+	if(modifier == 1)
+		sharp_mask |= (1 << note);
+	else if(modifier == -1)
+		flat_mask |= (1 << note);
+	else if(modifier != 0)
+		throw std::invalid_argument("Track::modify_key_signature - invalid modifier");
+}
+
+//! Get the key signature modifier for the note.
+/*!
+ *  \except std::invalid_argument Note is invalid.
+ */
+int8_t Track::get_key_signature(char note)
+{
+	note = std::tolower(note) - 'a';
+	if(note > 7)
+		throw std::invalid_argument("Track::get_key_signature - invalid note");
+
+	if(sharp_mask & (1 << note))
+		return 1;
+	else if(flat_mask & (1 << note))
+		return -1;
+	return 0;
 }
 
 //! Get Event::on_time after quantization.
