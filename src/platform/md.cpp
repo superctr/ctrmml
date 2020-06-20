@@ -162,6 +162,14 @@ uint32_t MD_Channel::parse_platform_event(const Tag& tag, int16_t* platform_stat
 		platform_state[EVENT_WRITE_DATA] = std::strtol(tag[2].c_str(), 0, 0);
 		return (1 << EVENT_WRITE_ADDR);
 	}
+	else if(iequal(tag[0], "pcmrate"))
+	{
+		if(tag.size() < 2)
+			error("not enough parameters for 'pcmrate' command");
+		platform_state[EVENT_WRITE_ADDR] = 0x25;
+		platform_state[EVENT_WRITE_DATA] = std::strtol(tag[1].c_str(), 0, 0);
+		return (1 << EVENT_FM3);
+	}
 	return 0;
 }
 
@@ -224,6 +232,11 @@ void MD_Channel::write_event()
 				last_pitch = 0xffff;
 				v_key_off();
 				clear_platform_flag(EVENT_FM3);
+			}
+			if(get_platform_flag(EVENT_WRITE_DATA))
+			{
+				driver->ym2612_w(channel_id / 3, get_platform_var(EVENT_WRITE_ADDR), channel_id % 3, 0, get_platform_var(EVENT_WRITE_DATA));
+				clear_platform_flag(EVENT_WRITE_DATA);
 			}
 			v_set_type();
 			break;

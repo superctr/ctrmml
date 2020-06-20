@@ -697,6 +697,14 @@ void MDSDRV_Track_Writer::parse_platform_event(const Tag& tag)
 		else
 			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMREG, (write_addr << 8) | write_data));
 	}
+	else if(iequal(tag[0], "pcmrate")) // PCM timer (0=13.3khz, 1=17.7khz)
+	{
+		if(tag.size() < 2)
+			error("not enough parameters for 'pcmrate' command");
+		uint8_t write_addr = 0x25;
+		uint8_t write_data = std::strtol(tag[1].c_str(), 0, 0);
+		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMREG, (write_addr << 8) | write_data));
+	}
 }
 
 //! Converts BPM to fractional tempo

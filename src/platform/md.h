@@ -28,7 +28,7 @@ class MD_Channel : public Player
 			EVENT_LFO_CONFIG = 3,
 			EVENT_FM3 = 4,
 			EVENT_WRITE_ADDR = 5,
-			EVENT_WRITE_DATA = 6
+			EVENT_WRITE_DATA = 6,
 		};
 
 		uint8_t write_fm_operator(int idx, int bank, int id, const std::vector<uint8_t>& idata);

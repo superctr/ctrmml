@@ -188,8 +188,9 @@ Examples:
 	this is active.
 -	`fm3 <mask>` - Enables FM3 special mode. Mask defines the operators that
 	are affected by this channel. Example: `fm3 0011` to use operators 1 and 2.
-	Set the mask to `1111` to disable the special mode. You can use this on any
-	channel (for example `I`) to temporarily use this MML track for FM3.
+	Set the mask to `1111` to disable the special mode. You can use this on PSG
+	channel 3 (`I`) or the dummy channels (`KLMNOP`) to temporarily use this
+	MML track for FM3.
 
 #### Limitations
 Pan envelopes not supported.
