@@ -168,7 +168,7 @@ uint32_t MD_Channel::parse_platform_event(const Tag& tag, int16_t* platform_stat
 			error("not enough parameters for 'pcmrate' command");
 		platform_state[EVENT_WRITE_ADDR] = 0x25;
 		platform_state[EVENT_WRITE_DATA] = std::strtol(tag[1].c_str(), 0, 0);
-		return (1 << EVENT_FM3);
+		return (1 << EVENT_WRITE_ADDR);
 	}
 	return 0;
 }
