@@ -3,7 +3,7 @@ OBJ = obj
 OBJ_BASE := $(OBJ)
 LIBCTRMML = lib/libctrmml
 
-CFLAGS = -Wall
+CFLAGS = -Wall --std=c++14
 LDFLAGS =
 
 ifneq ($(RELEASE),1)
