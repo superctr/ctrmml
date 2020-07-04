@@ -23,7 +23,7 @@ bool iequal(const std::string &s1, const std::string &s2);
 #include <cwchar>
 std::vector<wchar_t> get_native_filename(const std::string &s, unsigned int cp = 65001, int max = 1024);
 #else
-inline std::string get_native_filename(const std::string &s, unsigned int cp, unsigned int max)
+inline std::string get_native_filename(const std::string &s, unsigned int cp = 0, unsigned int max = 0)
 {
 	return s;
 }
