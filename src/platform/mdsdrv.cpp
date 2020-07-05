@@ -534,7 +534,7 @@ void MDSDRV_Track_Writer::event_hook()
 			break;
 		case Event::SEGNO:
 			in_loop = true;
-			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LP,0));
+			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::SEGNO,0));
 			break;
 		case Event::JUMP:
 			try
@@ -548,7 +548,7 @@ void MDSDRV_Track_Writer::event_hook()
 			break;
 		case Event::END:
 			if(in_loop)
-				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LPF,0));
+				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::JUMP,0));
 			else
 				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FINISH,0));
 			break;
@@ -635,7 +635,7 @@ void MDSDRV_Track_Writer::end_hook()
 	}
 
 	if(in_loop)
-		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LPF,0));
+		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::JUMP,0));
 	else
 		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FINISH,0));
 }
@@ -737,7 +737,6 @@ MDSDRV_Converter::MDSDRV_Converter(Song& song)
 			parse_track(id);
 	}
 
-	uint16_t track_mask = 0;
 	uint16_t track_header_offset = 4;
 	uint16_t track_count = 0;
 	uint16_t data_base = 4 + (4 * track_list.size());
@@ -747,8 +746,8 @@ MDSDRV_Converter::MDSDRV_Converter(Song& song)
 	// we should use something else to define the track list, i think...
 	for(auto it = track_list.begin(); it != track_list.end(); it++)
 	{
+		track_count++;
 		uint16_t offset = sequence_data.size() - data_base;
-		track_mask |= 0x8000 >> track_count++;
 		sequence_data[track_header_offset++] = it->first;
 		sequence_data[track_header_offset++] = 0;
 		sequence_data[track_header_offset++] = offset >> 8;
@@ -760,8 +759,8 @@ MDSDRV_Converter::MDSDRV_Converter(Song& song)
 
 	sequence_data[0] = data_base >> 8;
 	sequence_data[1] = data_base;
-	sequence_data[2] = track_mask >> 8;
-	sequence_data[3] = track_mask;
+	sequence_data[2] = 0;				// global volume (currently unsupported)
+	sequence_data[3] = track_count;
 
 	for(auto it = subroutine_list.begin(); it != subroutine_list.end(); it++)
 	{
@@ -777,8 +776,10 @@ MDSDRV_Converter::MDSDRV_Converter(Song& song)
 //! Output a MDSDRV RIFF container
 RIFF MDSDRV_Converter::get_mds()
 {
+	std::vector<uint8_t> ver = {MDSDRV_SEQ_VERSION_MAJOR, MDSDRV_SEQ_VERSION_MINOR};
 	RIFF riff(RIFF::TYPE_RIFF, FOURCC("MDS0"));
-	riff.add_chunk(RIFF(FOURCC("seq "), sequence_data)); // seq
+	riff.add_chunk(RIFF(FOURCC("ver "), ver)); // version data
+	riff.add_chunk(RIFF(FOURCC("seq "), sequence_data));
 	RIFF dblk(RIFF::TYPE_LIST, FOURCC("dblk"));
 	for(auto it = used_data_map.begin(); it != used_data_map.end(); it++)
 	{
@@ -816,6 +817,7 @@ void MDSDRV_Converter::parse_track(int track_id)
  */
 std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Event>& event_list)
 {
+	uint16_t segno_pos = 0x0000;
 	uint16_t last_rest = 0xffff; // even though we have a default rest/note time it's best not to
 	uint16_t last_note = 0xffff; // rely on them, for example in the beginning of a subroutine
 	auto track_data = std::vector<uint8_t>();
@@ -888,6 +890,9 @@ std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Ev
 		{
 			switch(type)
 			{
+				case MDSDRV_Event::SEGNO:
+					segno_pos = track_data.size();
+					break;
 				case MDSDRV_Event::SLR: // no argument
 				case MDSDRV_Event::FINISH:
 					track_data.push_back(type);
@@ -927,6 +932,12 @@ std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Ev
 					track_data.push_back(arg >> 8);
 					track_data.push_back(arg);
 					break;
+				case MDSDRV_Event::JUMP:
+					segno_pos = (segno_pos - (track_data.size() + 3));
+					track_data.push_back(MDSDRV_Event::JUMP);
+					track_data.push_back(segno_pos >> 8);
+					track_data.push_back(segno_pos);
+					break;
 				case MDSDRV_Event::PAT: // subroutine
 					track_data.push_back(type);
 					track_data.push_back(arg);
@@ -954,17 +965,15 @@ std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Ev
 					{
 						uint16_t offset = track_data.size() - loop_break_address.top();
 						auto break_cmd = std::vector<uint8_t>();
-						if(offset < 254)
+						if(offset < 256)
 						{
 							// short version
-							offset += 2;
 							break_cmd.push_back(MDSDRV_Event::LPB);
 							break_cmd.push_back(offset);
 						}
 						else
 						{
 							// long version
-							offset += 3;
 							break_cmd.push_back(MDSDRV_Event::LPBL);
 							break_cmd.push_back(offset >> 8);
 							break_cmd.push_back(offset);
@@ -1055,6 +1064,7 @@ MDSDRV_Linker::MDSDRV_Linker()
 //! Add a song (converted to MDS RIFF format).
 void MDSDRV_Linker::add_song(RIFF& mds)
 {
+	std::vector<uint8_t> ver = {0, 0};
 	std::vector<uint8_t> pcmd = {};
 	std::vector<uint8_t> seq = {};
 	std::vector<std::pair<uint16_t,uint16_t>> patch_table;
@@ -1072,7 +1082,11 @@ void MDSDRV_Linker::add_song(RIFF& mds)
 			pcmd = chunk.get_data();
 		else if(chunk.get_type() == RIFF::TYPE_LIST && chunk.get_id() == FOURCC("dblk"))
 			dblk = chunk;
+		else if(chunk.get_type() == FOURCC("ver "))
+			ver = chunk.get_data();
 	}
+
+	check_version(ver[0], ver[1]);
 
 	if(!seq.size() || dblk.get_type() != RIFF::TYPE_LIST)
 		throw InputError(nullptr, ".MDS data is malformed");
@@ -1109,14 +1123,37 @@ void MDSDRV_Linker::add_song(RIFF& mds)
 	seq_bank.push_back({seq, patch_table});
 }
 
+//! Check that sequence version is compatible
+void MDSDRV_Linker::check_version(uint8_t major, uint8_t minor)
+{
+	bool compatible = true;
+	if(major < MDSDRV_MIN_SEQ_VERSION_MAJOR)
+		compatible = false;
+	if(major == MDSDRV_MIN_SEQ_VERSION_MAJOR && minor < MDSDRV_MIN_SEQ_VERSION_MINOR)
+		compatible = false;
+	if(major > MDSDRV_SEQ_VERSION_MAJOR)
+		compatible = false;
+#if (MDSDRV_MIN_SEQ_VERSION_MAJOR == 0)
+	// Special case: 0.x is unstable
+	if(major == 0 && minor != MDSDRV_MIN_SEQ_VERSION_MINOR)
+		compatible = false;
+#endif
+	if(!compatible)
+		throw InputError(nullptr,
+			stringf("Incompatible sequence data format version %d.%d (minimum: %d.%d)",
+				major, minor,
+				MDSDRV_MIN_SEQ_VERSION_MAJOR, MDSDRV_MIN_SEQ_VERSION_MINOR).c_str());
+
+}
+
 //! Get the output mdsseq.bin
 std::vector<uint8_t> MDSDRV_Linker::get_seq_data()
 {
-	int header_size = 6 + seq_bank.size() * 4;
+	int header_size = 12 + seq_bank.size() * 4;
 	auto data = std::vector<uint8_t>(header_size);
 
 	// sdtop - 0
-	int offset = header_size - 6;
+	int offset = header_size - 8;
 	int id = 0;
 	for(auto&& i : data_bank)
 	{
@@ -1135,7 +1172,7 @@ std::vector<uint8_t> MDSDRV_Linker::get_seq_data()
 		id++;
 	}
 
-	id = 0;
+	id = 1;
 	for(auto&& i : seq_bank)
 	{
 		printf("put seq %02x at %04x\n", id, offset);
@@ -1147,7 +1184,7 @@ std::vector<uint8_t> MDSDRV_Linker::get_seq_data()
 				write_be16(i.data, j.first, data_offset[j.second]);
 		}
 		data.insert(data.end(), i.data.begin(), i.data.end());
-		write_be32(data, 6 + (id * 4), offset);
+		write_be32(data, 8 + (id * 4), offset);
 		offset += i.data.size();
 		if(offset & 1)
 		{
@@ -1158,8 +1195,10 @@ std::vector<uint8_t> MDSDRV_Linker::get_seq_data()
 	}
 
 	// write header
-	write_be32(data, 0, offset);
-	write_be16(data, 4, id);
+	write_be32(data, 0, 0x10011f00);
+	write_be16(data, 4, (MDSDRV_SEQ_VERSION_MAJOR<<8)|(MDSDRV_SEQ_VERSION_MINOR));
+	write_be16(data, 6, id - 1);
+	write_be32(data, 8, offset);
 
 	// write wave table
 	offset = data.size();

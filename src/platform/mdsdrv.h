@@ -16,6 +16,14 @@ class MDSDRV_Track_Writer;
 class MDSDRV_Converter;
 class MDSDRV_Linker;
 
+// Current sequence version
+#define MDSDRV_SEQ_VERSION_MAJOR 0
+#define MDSDRV_SEQ_VERSION_MINOR 2
+
+// Minimum compatible sequence version
+#define MDSDRV_MIN_SEQ_VERSION_MAJOR 0
+#define MDSDRV_MIN_SEQ_VERSION_MINOR 2
+
 //! MDSDRV data bank
 class MDSDRV_Data
 {
@@ -79,6 +87,8 @@ class MDSDRV_Data
 struct MDSDRV_Event
 {
 	enum Type {
+		SEGNO = 0x7f,	// virtual "segno" event
+
 		REST = 0x80,
 		TIE,
 		NOTE,
@@ -99,11 +109,12 @@ struct MDSDRV_Event
 		FMTL,		// tl write
 		FMTLM,		// tl modulate
 		PCM,		// PCM instrument
-		FMREG = 0xf6,	// global FM register write
+		JUMP = 0xf5, // jump
+		FMREG,		// global FM register write
 		DMFINISH,	// drum mode subroutine: play note and exit
 		COMM,		// communication variable byte
 		TEMPO,		// tempo
-		LP,		// loop start
+		LP,			// loop start
 		LPF,		// loop finish
 		LPB,		// loop break
 		LPBL,		// loop break (long jump)
@@ -190,6 +201,7 @@ class MDSDRV_Linker
 
 	private:
 		int add_unique_data(const std::vector<uint8_t>& data);
+		void check_version(uint8_t major, uint8_t minor);
 
 		struct Seq_Data {
 			std::vector<uint8_t> data;

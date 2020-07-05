@@ -60,13 +60,13 @@ public:
 		CPPUNIT_ASSERT_EQUAL((int)5, (int)converter.track_list[1].size());
 		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::VOL, (uint16_t)converter.track_list[1][0].type);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0x05, converter.track_list[1][0].arg);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::LP, (uint16_t)converter.track_list[1][1].type);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::SEGNO, (uint16_t)converter.track_list[1][1].type);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0x00, converter.track_list[1][1].arg);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0xad, (uint16_t)converter.track_list[1][2].type); // gn4
 		CPPUNIT_ASSERT_EQUAL((uint16_t)12, converter.track_list[1][2].arg);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0xaf, (uint16_t)converter.track_list[1][3].type); // an4
 		CPPUNIT_ASSERT_EQUAL((uint16_t)12, converter.track_list[1][3].arg);
-		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::LPF, (uint16_t)converter.track_list[1][4].type);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::JUMP, (uint16_t)converter.track_list[1][4].type);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0x00, converter.track_list[1][4].arg);
 	}
 	//! test basic functionality of the track writer.
@@ -97,12 +97,12 @@ public:
 		CPPUNIT_ASSERT_EQUAL((int)8, (int)trk2.size());
 		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::VOL, (uint16_t)trk2.at(0));
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0x05, (uint16_t)trk2.at(1));
-		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::LP, (uint16_t)trk2.at(2));
-		CPPUNIT_ASSERT_EQUAL((uint16_t)0xad, (uint16_t)trk2.at(3)); // gn4
-		CPPUNIT_ASSERT_EQUAL((uint16_t)11, (uint16_t)trk2.at(4));
-		CPPUNIT_ASSERT_EQUAL((uint16_t)0xaf, (uint16_t)trk2.at(5)); // an4
-		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::LPF, (uint16_t)trk2.at(6));
-		CPPUNIT_ASSERT_EQUAL((uint16_t)0x00, (uint16_t)trk2.at(7));
+		CPPUNIT_ASSERT_EQUAL((uint16_t)0xad, (uint16_t)trk2.at(2)); // gn4 (loop pos)
+		CPPUNIT_ASSERT_EQUAL((uint16_t)11, (uint16_t)trk2.at(3));
+		CPPUNIT_ASSERT_EQUAL((uint16_t)0xaf, (uint16_t)trk2.at(4)); // an4
+		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::JUMP, (uint16_t)trk2.at(5));
+		CPPUNIT_ASSERT_EQUAL((uint16_t)0xff, (uint16_t)trk2.at(6));
+		CPPUNIT_ASSERT_EQUAL((uint16_t)0xfa, (uint16_t)trk2.at(7)); // 2-8 (loop_pos-next_inst)
 	}
 	void test_subroutine_handling()
 	{
@@ -237,7 +237,7 @@ public:
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0xa8, (uint16_t)trk.at(5)); // dn4
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0xaa, (uint16_t)trk.at(6)); // en4
 		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::LPB, (uint16_t)trk.at(7));
-		CPPUNIT_ASSERT_EQUAL((uint16_t)5, (uint16_t)trk.at(8));
+		CPPUNIT_ASSERT_EQUAL((uint16_t)3, (uint16_t)trk.at(8));
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0xab, (uint16_t)trk.at(9)); // fn4
 		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::LPF, (uint16_t)trk.at(10));
 		CPPUNIT_ASSERT_EQUAL((uint16_t)4, (uint16_t)trk.at(11)); // fn4
@@ -318,7 +318,7 @@ public:
 		// sequence data
 		std::vector<uint8_t> expected_data = {
 			0x00,0x0c, // 00  &sdtop
-			0xc0,0x00, // 02  tmask
+			0x00,0x02, // 02  tcount
 			0x00,0x00,0x00,0x12-0x0c, // 04 t0 - sdtop
 			0x06,0x00,0x00,0x1f-0x0c, // 08 t1 - sdtop
 			0x00,0x2a-0x0c,  // 0c sub 0
