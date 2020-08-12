@@ -776,8 +776,10 @@ MD_Driver::MD_Driver(unsigned int rate, VGM_Interface* vgm_interface, bool is_pa
 		vgm->poke8(0x2b, 0x03);
 	}
 	seq_rate = (is_pal) ? 50.0 : 60.0;
-	seq_counter = seq_delta = rate/seq_rate;
-	pcm_counter = pcm_delta = rate/100.0; //not used anyway
+	seq_counter = 1;
+	seq_delta = rate/seq_rate;
+	pcm_counter = 1;
+	pcm_delta = rate/100.0; //not used anyway
 }
 
 //! Initiate playback
@@ -855,16 +857,16 @@ int MD_Driver::loop_count()
 //! Updates the sound driver state and return delta until the next event.
 double MD_Driver::play_step()
 {
-	if(seq_counter < 1)
+	if(seq_counter >= 0)
 	{
 		// update tracks
-		seq_counter += seq_delta;
+		seq_counter -= seq_delta;
 		seq_update();
 	}
-	if(pcm_counter < 1)
+	if(pcm_counter >= 0)
 	{
 		// update pcm
-		pcm_counter += pcm_delta;
+		pcm_counter -= pcm_delta;
 	}
 	if(loop_trigger && loop_count() == 0)
 	{
@@ -873,9 +875,13 @@ double MD_Driver::play_step()
 		loop_trigger = 0;
 	}
 	// get the time to the next event
-	double next_delta = std::min(seq_counter, pcm_counter);
-	seq_counter -= next_delta;
-	pcm_counter -= next_delta;
+	double next_delta = std::max(seq_delta, pcm_delta);
+	if((seq_counter + next_delta) > 0)
+		next_delta - (seq_counter + next_delta);
+	if((pcm_counter + next_delta) > 0)
+		next_delta - (pcm_counter + next_delta);
+	seq_counter += next_delta;
+	pcm_counter += next_delta;
 	return next_delta;
 }
 

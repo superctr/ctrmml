@@ -32,14 +32,10 @@ class Driver
 		virtual void reset() = 0;
 		//! Play a tick and return the delta until the next.
 		virtual double play_step() = 0;
-
-		bool is_finished() const;
+		//! Return false if song has finished playback, true otherwise.
+		virtual bool is_playing() = 0;
 
 	protected:
-		//! If true, the sound driver has played enough loops or
-		//! stopped playback.
-		bool finished;
-
 		// VGM low-level
 		void write(uint8_t command, uint16_t port, uint16_t reg, uint16_t data);
 		void set_loop();

@@ -7,16 +7,10 @@
 //#define DEBUG_PSG(fmt,...) { printf(fmt, __VA_ARGS__); }
 
 Driver::Driver(unsigned int rate, VGM_Interface* vgm)
-	: finished(0)
-	, vgm(vgm)
+	: vgm(vgm)
 	, delta(0)
 	, rate(rate)
 {
-}
-
-bool Driver::is_finished() const
-{
-	return finished;
 }
 
 void Driver::write(uint8_t command, uint16_t port, uint16_t reg, uint16_t data)
