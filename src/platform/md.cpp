@@ -6,6 +6,7 @@
 #include <cctype>
 #include <climits>
 #include <algorithm>
+#include <cmath>
 
 #include "md.h"
 #include "mdsdrv.h"
@@ -776,9 +777,9 @@ MD_Driver::MD_Driver(unsigned int rate, VGM_Interface* vgm_interface, bool is_pa
 		vgm->poke8(0x2b, 0x03);
 	}
 	seq_rate = (is_pal) ? 50.0 : 60.0;
-	seq_counter = 1;
+	seq_counter = 0;
 	seq_delta = rate/seq_rate;
-	pcm_counter = 1;
+	pcm_counter = 0;
 	pcm_delta = rate/100.0; //not used anyway
 }
 
@@ -877,9 +878,11 @@ double MD_Driver::play_step()
 	// get the time to the next event
 	double next_delta = std::max(seq_delta, pcm_delta);
 	if((seq_counter + next_delta) > 0)
-		next_delta - (seq_counter + next_delta);
+		next_delta -= seq_counter + next_delta;
 	if((pcm_counter + next_delta) > 0)
-		next_delta - (pcm_counter + next_delta);
+		next_delta -= pcm_counter + next_delta;
+	if(std::abs(next_delta) < 1/10000.0)
+		next_delta += 1/10000.0;
 	seq_counter += next_delta;
 	pcm_counter += next_delta;
 	return next_delta;
