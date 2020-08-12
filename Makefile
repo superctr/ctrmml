@@ -62,6 +62,9 @@ $(OBJ)/%.o: $(SRC)/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) -MMD -c $< -o $@
 
+sample/%.vgm: sample/%.mml mmlc
+	./mmlc $< 
+
 all: mmlc mdslink test
 
 lib: $(LIBCTRMML)
