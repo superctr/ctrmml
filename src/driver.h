@@ -34,6 +34,8 @@ class Driver
 		virtual double play_step() = 0;
 		//! Return false if song has finished playback, true otherwise.
 		virtual bool is_playing() = 0;
+		//! Get the number of player ticks (playing time).
+		virtual uint32_t get_player_ticks() = 0;
 
 	protected:
 		// VGM low-level

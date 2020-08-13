@@ -762,6 +762,7 @@ MD_Driver::MD_Driver(unsigned int rate, VGM_Interface* vgm_interface, bool is_pa
 	, vgm(vgm_interface)
 	, tempo_delta(255)
 	, tempo_counter(0)
+	, ticks(0)
 	, fm3_mask(0)
 	, fm3_con(0)
 	, fm3_tl()
@@ -802,6 +803,7 @@ void MD_Driver::play_song(Song& song)
 	// setup tempo
 	tempo_delta = 128;
 	tempo_counter = 0;
+	ticks = 0;
 	loop_trigger = 0;
 	// setup channels
 	for(auto it=song.get_track_map().begin(); it != song.get_track_map().end(); it++)
@@ -903,6 +905,7 @@ void MD_Driver::seq_update()
 	uint16_t next_counter = tempo_counter + tempo_delta + 1;
 	uint8_t tempo_step = next_counter >> 7;
 	tempo_counter = next_counter & 0x7f;
+	ticks += tempo_step;
 	for(auto it = channels.begin(); it != channels.end(); it++)
 	{
 		MD_Channel* ch = it->get();
@@ -921,4 +924,9 @@ void MD_Driver::reset_loop_count()
 	{
 		it->get()->reset_loop_count();
 	}
+}
+
+uint32_t MD_Driver::get_player_ticks()
+{
+	return ticks;
 }

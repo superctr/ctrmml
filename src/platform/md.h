@@ -202,6 +202,7 @@ class MD_Driver : public Driver
 		bool is_playing();
 		int loop_count();
 		double play_step();
+		uint32_t get_player_ticks();
 
 	private:
 		uint8_t bpm_to_delta(uint16_t bpm);
@@ -221,6 +222,8 @@ class MD_Driver : public Driver
 
 		uint8_t tempo_delta;
 		uint8_t tempo_counter;
+		uint32_t ticks;
+
 		uint8_t fm3_mask;
 		uint8_t fm3_con;
 		uint8_t fm3_tl[4];
