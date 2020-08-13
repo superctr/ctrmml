@@ -69,6 +69,8 @@ class Basic_Player
 		int get_loop_count() const;
 		const Event& get_event() const;
 
+		virtual std::vector<std::shared_ptr<InputRef>> get_references();
+
 	protected:
 		void disable();
 		void stack_push(const Player_Stack& stack_obj);

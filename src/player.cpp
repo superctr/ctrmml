@@ -237,6 +237,23 @@ const Event& Basic_Player::get_event() const
 	return event;
 }
 
+//! Get a list of references to the current track position and calling commands.
+std::vector<std::shared_ptr<InputRef>> Basic_Player::get_references()
+{
+	std::vector<std::shared_ptr<InputRef>> reflist;
+	reflist.push_back(track->get_events().at(position-1).reference);
+
+	std::stack<Player_Stack> copy_stack = stack;
+	while(!copy_stack.empty())
+	{
+		auto frame = copy_stack.top();
+		if(frame.type != Player_Stack::LOOP)
+			reflist.push_back(frame.track->get_events().at(frame.position-1).reference);
+		copy_stack.pop();
+	}
+	return reflist;
+}
+
 //! Indicate that track processing is finished.
 /*!
  *  This is typically done at the end of the track, and can also be
@@ -249,7 +266,7 @@ void Basic_Player::disable()
 
 //! Push a stack frame.
 /*!
- *  \param frame Stack frame to be pushed. 
+ *  \param frame Stack frame to be pushed.
  *  \exception InputError if the stack size has reached the maximum allowed
  *                     stack depth.
  */
