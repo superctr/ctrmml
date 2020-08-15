@@ -431,6 +431,18 @@ MML_Input::~MML_Input()
 {
 }
 
+//! Get a list of tracks that were affected by the previous read_line()
+MML_Input::Track_Position_Map MML_Input::get_track_map()
+{
+	Track_Position_Map out = {};
+	if(last_cmd == &MML_Input::parse_mml)
+	{
+		for(auto && i : track_list)
+			out[i] = get_song().get_track(i).get_event_count();
+	}
+	return out;
+}
+
 void MML_Input::parse_line()
 {
 	int c = get_track_id();

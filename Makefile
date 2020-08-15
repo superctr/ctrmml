@@ -7,6 +7,10 @@ CFLAGS = -Wall --std=c++14
 LDFLAGS =
 
 ifneq ($(RELEASE),1)
+ifeq ($(ASAN),1)
+CFLAGS += -fsanitize=address -O1 -fno-omit-frame-pointer
+LDFLAGS += -fsanitize=address
+endif
 CFLAGS += -g
 LIBCTRMML := $(LIBCTRMML)_debug.a
 else

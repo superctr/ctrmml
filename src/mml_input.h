@@ -9,6 +9,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <map>
 #include "input.h"
 #include "track.h"
 
@@ -23,8 +24,12 @@
 class MML_Input: public Line_Input
 {
 	public:
+		typedef std::map<uint16_t, unsigned long> Track_Position_Map;
+
 		MML_Input(Song* song);
 		~MML_Input();
+
+		Track_Position_Map get_track_map();
 
 	private:
 		// MML read helpers

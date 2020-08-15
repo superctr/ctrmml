@@ -44,7 +44,7 @@ void Track::add_event(Event& new_event)
  */
 void Track::add_event(Event::Type type, int16_t param, uint16_t on_time, uint16_t off_time)
 {
-	Event a = {type, param, on_time, off_time, reference};
+	Event a = {type, param, on_time, off_time, -1, reference};
 	events.push_back(a);
 }
 
