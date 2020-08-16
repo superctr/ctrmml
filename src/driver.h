@@ -30,6 +30,8 @@ class Driver
 		//! allowing for playback to be restarted or a new
 		//! song to be played.
 		virtual void reset() = 0;
+		//! Skip a specified number of ticks
+		virtual void skip_ticks(unsigned int ticks) = 0;
 		//! Play a tick and return the delta until the next.
 		virtual double play_step() = 0;
 		//! Return false if song has finished playback, true otherwise.

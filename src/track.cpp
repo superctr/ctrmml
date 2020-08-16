@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cctype>
+#include <climits>
 #include <algorithm>
 #include <stdexcept>
 #include "track.h"
@@ -44,7 +45,7 @@ void Track::add_event(Event& new_event)
  */
 void Track::add_event(Event::Type type, int16_t param, uint16_t on_time, uint16_t off_time)
 {
-	Event a = {type, param, on_time, off_time, -1, reference};
+	Event a = {type, param, on_time, off_time, UINT_MAX, reference};
 	events.push_back(a);
 }
 

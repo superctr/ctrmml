@@ -56,6 +56,17 @@ void MD_Channel::update(int seq_ticks)
 	}
 }
 
+void MD_Channel::seek(int ticks)
+{
+	skip_ticks(ticks);
+	if(get_update_flag(Event::TEMPO))
+		update_tempo();
+	if(get_update_flag(Event::PAN))
+		v_set_pan();
+	clear_update_flag(Event::PAN);
+	update_state();
+}
+
 //! Write a single FM operator
 uint8_t MD_Channel::write_fm_operator(int idx, int bank, int id, const std::vector<uint8_t>& idata)
 {
@@ -216,30 +227,10 @@ void MD_Channel::write_event()
 			break;
 		case Event::TEMPO:
 		case Event::TEMPO_BPM:
-			if(bpm_flag())
-			{
-				driver->tempo_delta = driver->bpm_to_delta(get_var(Event::TEMPO));
-				printf("set tempo to %02x (%d bpm)\n", driver->tempo_delta, get_var(Event::TEMPO));
-			}
-			else
-			{
-				driver->tempo_delta = get_var(Event::TEMPO);
-				printf("set tempo to %02x (direct)\n", driver->tempo_delta);
-			}
+			update_tempo();
 			break;
 		case Event::PLATFORM:
-			if(get_platform_flag(EVENT_FM3))
-			{
-				last_pitch = 0xffff;
-				v_key_off();
-				clear_platform_flag(EVENT_FM3);
-			}
-			if(get_platform_flag(EVENT_WRITE_DATA))
-			{
-				driver->ym2612_w(channel_id / 3, get_platform_var(EVENT_WRITE_ADDR), channel_id % 3, 0, get_platform_var(EVENT_WRITE_DATA));
-				clear_platform_flag(EVENT_WRITE_DATA);
-			}
-			v_set_type();
+			update_state();
 			break;
 		case Event::PAN:
 			v_set_pan();
@@ -247,6 +238,37 @@ void MD_Channel::write_event()
 		default:
 			break;
 	}
+}
+
+void MD_Channel::update_tempo()
+{
+	clear_update_flag(Event::TEMPO);
+	if(bpm_flag())
+	{
+		driver->tempo_delta = driver->bpm_to_delta(get_var(Event::TEMPO));
+		printf("set tempo to %02x (%d bpm)\n", driver->tempo_delta, get_var(Event::TEMPO));
+	}
+	else
+	{
+		driver->tempo_delta = get_var(Event::TEMPO);
+		printf("set tempo to %02x (direct)\n", driver->tempo_delta);
+	}
+}
+
+void MD_Channel::update_state()
+{
+	if(get_platform_flag(EVENT_FM3))
+	{
+		last_pitch = 0xffff;
+		v_key_off();
+		clear_platform_flag(EVENT_FM3);
+	}
+	if(get_platform_flag(EVENT_WRITE_DATA))
+	{
+		driver->ym2612_w(channel_id / 3, get_platform_var(EVENT_WRITE_ADDR), channel_id % 3, 0, get_platform_var(EVENT_WRITE_DATA));
+		clear_platform_flag(EVENT_WRITE_DATA);
+	}
+	v_set_type();
 }
 
 void MD_Channel::update_pitch()
@@ -824,6 +846,18 @@ void MD_Driver::play_song(Song& song)
 void MD_Driver::reset()
 {
 	channels.clear();
+}
+
+//! Skip a specified number of ticks
+void MD_Driver::skip_ticks(unsigned int ticks)
+{
+	this->ticks = ticks;
+	for(auto it = channels.begin(); it != channels.end(); it++)
+	{
+		MD_Channel* ch = it->get();
+		if(ch->is_enabled())
+			ch->seek(ticks);
+	}
 }
 
 //! Return true if driver is currently playing a song, false otherwise.

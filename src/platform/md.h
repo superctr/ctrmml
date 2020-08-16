@@ -18,6 +18,7 @@ class MD_Channel : public Player
 	public:
 		MD_Channel(MD_Driver& driver, int id);
 		void update(int seq_ticks);
+		void seek(int ticks);
 
 	protected:
 		enum
@@ -68,6 +69,8 @@ class MD_Channel : public Player
 		uint32_t parse_platform_event(const Tag& tag, int16_t* platform_state) override;
 		void write_event() override;
 
+		void update_tempo();
+		void update_state();
 		void update_pitch();
 
 		void key_on();
@@ -199,6 +202,7 @@ class MD_Driver : public Driver
 
 		void play_song(Song& song);
 		void reset();
+		void skip_ticks(unsigned int ticks);
 		bool is_playing();
 		int loop_count();
 		double play_step();

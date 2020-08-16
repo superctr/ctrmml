@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <stdexcept>
+#include <climits>
 
 #include "player.h"
 #include "input.h"
@@ -57,14 +58,14 @@ void Basic_Player::step_event()
 		// Read the next event
 		track_event = &track->get_event(position++);
 		// Set the event time
-		if(track_event->play_time == 0 || track_event->play_time > play_time)
+		if(track_event->play_time > play_time)
 			track_event->play_time = play_time;
 		event = *track_event;
 	}
 	catch(std::out_of_range&)
 	{
 		// reached the end
-		event = {Event::END, 0, 0, 0, -1, reference};
+		event = {Event::END, 0, 0, 0, UINT_MAX, reference};
 		track_event = nullptr;
 	}
 	// Set new on/off time
@@ -449,7 +450,7 @@ void Player::play_tick()
 		// key off
 		if(!on_time && off_time)
 		{
-			event = {Event::REST, 0, 0, 0, -1, reference};
+			event = {Event::REST, 0, 0, 0, UINT_MAX, reference};
 			write_event();
 		}
 	}
@@ -734,7 +735,7 @@ bool Player::loop_hook()
 
 void Player::end_hook()
 {
-	event = {Event::END, 0, 0, 0, -1, reference};
+	event = {Event::END, 0, 0, 0, UINT_MAX, reference};
 	write_event();
 }
 

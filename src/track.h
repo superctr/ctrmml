@@ -89,7 +89,7 @@ struct Event
 	//! Key-off time (for \ref NOTE, \ref REST and \ref TIE types only)
 	uint16_t off_time;
 	//! Set by a Player to help look up the play time of an event.
-	int play_time;
+	uint32_t play_time;
 	//! Pointer to an input file reference.
 	std::shared_ptr<InputRef> reference;
 };
