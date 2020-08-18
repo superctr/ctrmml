@@ -273,12 +273,12 @@ public:
 		auto player = Player(*song, song->get_track(0));
 		for(int i=0; i<30; i++)
 			player.play_tick();
-		CPPUNIT_ASSERT_EQUAL((unsigned int)30, player.get_play_time());
+		CPPUNIT_ASSERT_EQUAL((unsigned int)29, player.get_play_time());
 		CPPUNIT_ASSERT_EQUAL(5, player.note_count);
 		CPPUNIT_ASSERT_EQUAL(0, player.rest_count);
 		for(int i=0; i<30; i++)
 			player.play_tick();
-		CPPUNIT_ASSERT_EQUAL((unsigned int)60, player.get_play_time());
+		CPPUNIT_ASSERT_EQUAL((unsigned int)30, player.get_play_time());
 		CPPUNIT_ASSERT_EQUAL(5, player.note_count);
 		CPPUNIT_ASSERT_EQUAL(1, player.rest_count);
 	}
@@ -289,12 +289,12 @@ public:
 		auto player = Player(*song, song->get_track(0));
 		for(int i=0; i<30; i++)
 			player.play_tick();
-		CPPUNIT_ASSERT_EQUAL((unsigned int)30, player.get_play_time());
+		CPPUNIT_ASSERT_EQUAL((unsigned int)29, player.get_play_time());
 		CPPUNIT_ASSERT_EQUAL(5, player.note_count);
 		CPPUNIT_ASSERT_EQUAL(5, player.rest_count);
 		for(int i=0; i<30; i++)
 			player.play_tick();
-		CPPUNIT_ASSERT_EQUAL((unsigned int)60, player.get_play_time());
+		CPPUNIT_ASSERT_EQUAL((unsigned int)30, player.get_play_time());
 		CPPUNIT_ASSERT_EQUAL(5, player.note_count);
 		CPPUNIT_ASSERT_EQUAL(6, player.rest_count);
 	}
@@ -305,12 +305,12 @@ public:
 		auto player = Player(*song, song->get_track(0));
 		for(int i=0; i<30; i++)
 			player.play_tick();
-		CPPUNIT_ASSERT_EQUAL((unsigned int)30, player.get_play_time());
+		CPPUNIT_ASSERT_EQUAL((unsigned int)29, player.get_play_time());
 		CPPUNIT_ASSERT_EQUAL(5, player.note_count);
 		CPPUNIT_ASSERT_EQUAL(5, player.rest_count);
 		for(int i=0; i<30; i++)
 			player.play_tick();
-		CPPUNIT_ASSERT_EQUAL((unsigned int)60, player.get_play_time());
+		CPPUNIT_ASSERT_EQUAL((unsigned int)30, player.get_play_time());
 		CPPUNIT_ASSERT_EQUAL(5, player.note_count);
 		CPPUNIT_ASSERT_EQUAL(6, player.rest_count);
 	}
@@ -322,7 +322,7 @@ public:
 		player.skip_ticks(23);
 		for(int i=0; i<13; i++)
 			player.play_tick();
-		CPPUNIT_ASSERT_EQUAL((unsigned int)36, player.get_play_time());
+		CPPUNIT_ASSERT_EQUAL((unsigned int)30, player.get_play_time());
 		CPPUNIT_ASSERT_EQUAL(1, player.note_count);
 		CPPUNIT_ASSERT_EQUAL(1, player.rest_count);
 	}
