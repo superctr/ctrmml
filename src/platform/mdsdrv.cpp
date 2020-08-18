@@ -110,13 +110,13 @@ void MDSDRV_Data::add_ins_fm_4op(uint16_t id, const Tag& tag)
 	{
 		if(it == tag.end())
 			throw InputError(nullptr, stringf("error: not enough parameters for fm instrument @%d", id).c_str());
-		tag_data[i] = std::strtol(it->c_str(), NULL, 0);
+		tag_data[i] = std::strtol(it->c_str(), NULL, 10);
 		it++;
 	}
 
 	// Transpose
 	if(it != tag.end())
-		fm_data[29] = (std::strtol(it->c_str(), NULL, 0) + 24) << 1;
+		fm_data[29] = (std::strtol(it->c_str(), NULL, 10) + 24) << 1;
 	else
 		fm_data[29] = 24 << 1;
 
@@ -165,7 +165,7 @@ void MDSDRV_Data::add_ins_fm_2op(uint16_t id, const Tag& tag)
 	{
 		if(it == tag.end())
 			throw InputError(nullptr, stringf("error: not enough parameters for 2op fm instrument @%d", id).c_str());
-		tag_data[i] = std::strtol(it->c_str(), NULL, 0);
+		tag_data[i] = std::strtol(it->c_str(), NULL, 10);
 		it++;
 	}
 
@@ -233,20 +233,21 @@ void MDSDRV_Data::add_ins_psg(uint16_t id, const Tag& tag)
 		}
 		else if(std::isdigit(*s))
 		{
-			uint8_t initial = std::strtol(s, (char**)&s, 0);
+			// TODO: make my own strtol...
+			uint8_t initial = std::strtol(s, (char**)&s, 10);
 			uint8_t target = initial;
 			uint8_t length = 0;
 			double delta = 0, counter = 0;
 
 			if(*s == '>' && *++s)
-				target = strtol(s, (char**)&s, 0);
+				target = strtol(s, (char**)&s, 10);
 			target = (target > 15) ? 15 : (target < 0) ? 0 : target; // bounds check
 			initial = (initial > 15) ? 15 : (initial < 0) ? 0 : initial;
 
 			if(target != initial)
 				length = std::abs(target-initial)+1;
 			if(*s == ':' && *++s)
-				length = strtol(s, (char**)&s, 0);
+				length = strtol(s, (char**)&s, 10);
 			if(length == 0)
 				length++;
 			else if(length > 1) // calculate slide
@@ -368,7 +369,7 @@ void MDSDRV_Data::add_pitch_node(const char* s, std::vector<uint8_t>* env_data)
 	if(target != initial)
 		length = std::lround(std::fabs(target-initial)+1.5) >> 4;
 	if(*s == ':' && *++s)
-		length = strtol(s, (char**)&s, 0);
+		length = strtol(s, (char**)&s, 10);
 	if(length < 1)
 		length += 1;
 
@@ -407,7 +408,7 @@ void MDSDRV_Data::add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_dat
 	if(*s == ':' && *++s)
 		vibrato_depth = strtod(s, (char**)&s) / 2.0;
 	if(*s == ':' && *++s)
-		vibrato_rate = strtol(s, (char**)&s, 0);
+		vibrato_rate = strtol(s, (char**)&s, 10);
 	else // TODO: throw an exception or warning
 		message += stringf("Invalid vibrato definition: '%s'\n", s);
 
