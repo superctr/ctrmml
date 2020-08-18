@@ -430,7 +430,7 @@ void Player::skip_ticks(unsigned int ticks)
 			ticks -= off_time;
 			off_time = 0;
 		}
-		while (!on_time && !off_time)
+		while (!on_time && !off_time && is_enabled())
 		{
 			if(ticks == 0)
 				skip_flag = false;
