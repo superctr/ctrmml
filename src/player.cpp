@@ -408,25 +408,34 @@ void Player::skip_ticks(unsigned int ticks)
 	skip_flag = true;
 	while(ticks && is_enabled())
 	{
-		if(on_time > ticks)
+		if(on_time)
 		{
-			on_time -= ticks;
-			break;
+			if(on_time > ticks)
+			{
+				on_time -= ticks;
+				break;
+			}
+			play_time += on_time;
+			ticks -= on_time;
+			on_time = 0;
 		}
-		play_time += on_time;
-		ticks -= on_time;
-		on_time = 0;
-
-		if(off_time > ticks)
+		else if(off_time)
 		{
-			off_time -= ticks;
-			break;
+			if(off_time > ticks)
+			{
+				off_time -= ticks;
+				break;
+			}
+			play_time += off_time;
+			ticks -= off_time;
+			off_time = 0;
 		}
-		play_time += off_time;
-		ticks -= off_time;
-		off_time = 0;
-
-		step_event();
+		while (!on_time && !off_time)
+		{
+			if(ticks == 0)
+				skip_flag = false;
+			step_event();
+		}
 	}
 	play_time += ticks;
 	skip_flag = false;
@@ -447,6 +456,7 @@ void Player::play_tick()
 	if(on_time)
 	{
 		on_time--;
+		play_time++;
 		// key off
 		if(!on_time && off_time)
 		{
@@ -457,12 +467,12 @@ void Player::play_tick()
 	else if(off_time)
 	{
 		off_time--;
+		play_time++;
 	}
 	while(is_enabled() && !on_time && !off_time)
 	{
 		step_event();
 	}
-	play_time++;
 }
 
 //! Return the coarse volume flag.
