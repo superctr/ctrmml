@@ -901,6 +901,7 @@ std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Ev
 				case MDSDRV_Event::VOL: // 8-bit argument
 				case MDSDRV_Event::VOLM:
 				case MDSDRV_Event::TRS:
+				case MDSDRV_Event::TRSM:
 				case MDSDRV_Event::DTN:
 				case MDSDRV_Event::PTA:
 				case MDSDRV_Event::PAN:
