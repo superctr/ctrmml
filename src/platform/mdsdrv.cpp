@@ -663,12 +663,6 @@ void MDSDRV_Track_Writer::parse_platform_event(const Tag& tag)
 		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LFO,
 					(std::strtol(tag[1].c_str(), 0, 0) << 3) | (std::strtol(tag[2].c_str(), 0, 0))));
 	}
-	else if(iequal(tag[0], "lfodelay")) // LFO delay
-	{
-		if(tag.size() < 2)
-			error("not enough parameters for 'lfodelay' command");
-		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LFOD, std::strtol(tag[1].c_str(), 0, 0)));
-	}
 	else if(iequal(tag[0], "lforate")) // LFO rate
 	{
 		if(tag.size() < 2)
@@ -698,13 +692,23 @@ void MDSDRV_Track_Writer::parse_platform_event(const Tag& tag)
 		else
 			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMREG, (write_addr << 8) | write_data));
 	}
-	else if(iequal(tag[0], "pcmrate")) // PCM timer (0=13.3khz, 1=17.7khz)
+	else if(iequal(tag[0], "pcmrate")) // PCM channel sample rate
 	{
 		if(tag.size() < 2)
 			error("not enough parameters for 'pcmrate' command");
-		uint8_t write_addr = 0x25;
-		uint8_t write_data = std::strtol(tag[1].c_str(), 0, 0);
-		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMREG, (write_addr << 8) | write_data));
+		uint8_t data = std::strtol(tag[1].c_str(), 0, 0);
+		if(data < 1 || data > 8)
+			error("pcmrate argument must be between 1 and 8");
+		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PCMRATE, data));
+	}
+	else if(iequal(tag[0], "pcmmode")) // PCM mixing mode
+	{
+		if(tag.size() < 2)
+			error("not enough parameters for 'pcmmode' command");
+		uint8_t data = std::strtol(tag[1].c_str(), 0, 0);
+		if(data < 2 || data > 3)
+			error("pcmmode argument must be between 2 and 3");
+		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PCMMODE, data));
 	}
 }
 
@@ -906,11 +910,13 @@ std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Ev
 				case MDSDRV_Event::PTA:
 				case MDSDRV_Event::PAN:
 				case MDSDRV_Event::LFO:
-				case MDSDRV_Event::LFOD:
+				case MDSDRV_Event::MTAB:
 				case MDSDRV_Event::FLG:
 				case MDSDRV_Event::DMFINISH:
 				case MDSDRV_Event::COMM:
 				case MDSDRV_Event::TEMPO:
+				case MDSDRV_Event::PCMRATE:
+				case MDSDRV_Event::PCMMODE:
 					track_data.push_back(type);
 					track_data.push_back(arg);
 					break;
@@ -1104,7 +1110,7 @@ void MDSDRV_Linker::add_song(RIFF& mds)
 			auto data = chunk.get_data();
 			uint32_t addr = seq_sdata + read_le32(data, 0)*2;
 			uint16_t offset = add_unique_data(std::vector<uint8_t>(data.begin()+4, data.end()));
-			printf("replace seq+%04x with %04x\n", addr, offset);
+			printf("replace seq+%04x with %04x (Envelope)\n", addr, offset);
 			patch_table.push_back({addr, offset});
 		}
 		else if(chunk.get_type() == FOURCC("pcmh"))
@@ -1117,12 +1123,31 @@ void MDSDRV_Linker::add_song(RIFF& mds)
 			auto begin = pcmd.begin() + header.position;
 			auto end = pcmd.begin() + header.position + header.size;
 			header.position = 0;
-			uint16_t offset = wave_rom.add_sample(header, std::vector<uint8_t>(begin, end)) | 0x8000;
-			printf("replace seq+%04x with %04x\n", addr, offset);
+			uint16_t offset = wave_rom.add_sample(header, std::vector<uint8_t>(begin, end));
+
+			// Get new PCM header
+			header = wave_rom.get_sample_headers().at(offset);
+			auto hdata = get_pcm_header(header);
+			offset = add_unique_data(std::vector<uint8_t>(hdata.begin(), hdata.end()));
+			printf("replace seq+%04x with %04x (PCM header)\n", addr, offset);
 			patch_table.push_back({addr, offset});
 		}
 	}
 	seq_bank.push_back({seq, patch_table});
+}
+
+std::vector<uint8_t> MDSDRV_Linker::get_pcm_header(const Wave_Bank::Sample& sample) const
+{
+	std::vector<uint8_t> output = {};
+	float pitch = sample.rate / (MDSDRV_PCM_RATE / 8.0);
+	uint8_t cp = pitch + 0.5;
+	if(cp < 1)
+		cp = 1;
+	else if(cp > 8)
+		cp = 8;
+	write_be32(output, 0, (sample.position + sample.start) | (cp << 24));
+	write_be32(output, 4, sample.size);
+	return output;
 }
 
 //! Check that sequence version is compatible
@@ -1137,7 +1162,7 @@ void MDSDRV_Linker::check_version(uint8_t major, uint8_t minor)
 		compatible = false;
 #if (MDSDRV_MIN_SEQ_VERSION_MAJOR == 0)
 	// Special case: 0.x is unstable
-	if(major == 0 && minor != MDSDRV_MIN_SEQ_VERSION_MINOR)
+	if(major != 0 || minor < MDSDRV_MIN_SEQ_VERSION_MINOR || minor > MDSDRV_SEQ_VERSION_MINOR)
 		compatible = false;
 #endif
 	if(!compatible)
@@ -1180,10 +1205,7 @@ std::vector<uint8_t> MDSDRV_Linker::get_seq_data()
 		printf("put seq %02x at %04x\n", id, offset);
 		for(auto&& j : i.patch_table)
 		{
-			if(j.second & 0x8000)
-				write_be16(i.data, j.first, j.second & 0x7fff);
-			else
-				write_be16(i.data, j.first, data_offset[j.second]);
+			write_be16(i.data, j.first, data_offset[j.second]);
 		}
 		data.insert(data.end(), i.data.begin(), i.data.end());
 		write_be32(data, 8 + (id * 4), offset);
@@ -1208,9 +1230,10 @@ std::vector<uint8_t> MDSDRV_Linker::get_seq_data()
 	offset += 2;
 	for(auto&& i : wave_rom.get_sample_headers())
 	{
-		write_be32(data, offset, i.position + i.start);
-		write_be16(data, offset + 4, i.size);
-		offset += 6;
+		auto hdata = get_pcm_header(i);
+		uint16_t hoffset = find_unique_data(std::vector<uint8_t>(hdata.begin(), hdata.end()));
+		write_be16(data, offset, data_offset[hoffset]);
+		offset += 2;
 	}
 
 	return data;
@@ -1248,4 +1271,18 @@ int MDSDRV_Linker::add_unique_data(const std::vector<uint8_t>& data)
 	}
 	data_bank.push_back(data);
 	return data_bank.size()-1;
+}
+
+//! Find unique data in the databank. Throws out_of_range if not found.
+int MDSDRV_Linker::find_unique_data(const std::vector<uint8_t>& data) const
+{
+	unsigned int i;
+	// look for previous matching data in the data bank
+	for(i=0; i<data_bank.size(); i++)
+	{
+		if(data != data_bank[i])
+			continue;
+		return i;
+	}
+	throw std::out_of_range("MDSDRV_Linker::find_unique_data");
 }

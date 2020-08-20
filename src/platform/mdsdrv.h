@@ -18,11 +18,14 @@ class MDSDRV_Linker;
 
 // Current sequence version
 #define MDSDRV_SEQ_VERSION_MAJOR 0
-#define MDSDRV_SEQ_VERSION_MINOR 2
+#define MDSDRV_SEQ_VERSION_MINOR 3
 
 // Minimum compatible sequence version
 #define MDSDRV_MIN_SEQ_VERSION_MAJOR 0
 #define MDSDRV_MIN_SEQ_VERSION_MINOR 2
+
+// PCM sampling rate
+#define MDSDRV_PCM_RATE 17500
 
 //! MDSDRV data bank
 class MDSDRV_Data
@@ -103,12 +106,14 @@ struct MDSDRV_Event
 		PEG,		// pitch envelope
 		PAN,		// panning enable
 		LFO,		// lfo ams/pms
-		LFOD,		// lfo delay
+		MTAB,		// macro table
 		FLG,		// channel flags
 		FMCREG,		// channel register write
 		FMTL,		// tl write
 		FMTLM,		// tl modulate
 		PCM,		// PCM instrument
+		PCMRATE,	// PCM rate
+		PCMMODE,	// PCM mixing mode
 		JUMP = 0xf5, // jump
 		FMREG,		// global FM register write
 		DMFINISH,	// drum mode subroutine: play note and exit
@@ -127,7 +132,7 @@ struct MDSDRV_Event
 		: type(type)
 		, arg(arg)
 	{}
-	
+
 	uint8_t type;
 	uint16_t arg;
 };
@@ -201,6 +206,8 @@ class MDSDRV_Linker
 
 	private:
 		int add_unique_data(const std::vector<uint8_t>& data);
+		int find_unique_data(const std::vector<uint8_t>& data) const;
+		std::vector<uint8_t> get_pcm_header(const Wave_Bank::Sample& sample) const;
 		void check_version(uint8_t major, uint8_t minor);
 
 		struct Seq_Data {

@@ -118,9 +118,9 @@ uint16_t MD_Channel::get_fm_pitch(uint16_t pitch) const
 
 uint16_t MD_Channel::get_psg_pitch(uint16_t pitch) const
 {
-	static const uint16_t freqtab[13] = {851, 803, 758, 715, 675, 637, 601, 568, 536, 506, 477, 450, 425};
+	static const uint16_t freqtab[13] = {1710, 1614, 1524, 1438, 1357, 1281, 1209, 1141, 1077, 1017, 960, 906, 855};
 	uint8_t note = (pitch >> 8);
-	uint8_t octave = (note / 12)-1;
+	uint8_t octave = (note / 12);
 	uint8_t detune = pitch & 0xff;
 	const uint16_t* base = &freqtab[note % 12];
 	uint16_t set_pitch = base[0] + (((base[1] - base[0]) * detune) >> 8);
@@ -178,9 +178,17 @@ uint32_t MD_Channel::parse_platform_event(const Tag& tag, int16_t* platform_stat
 	{
 		if(tag.size() < 2)
 			error("not enough parameters for 'pcmrate' command");
-		platform_state[EVENT_WRITE_ADDR] = 0x25;
-		platform_state[EVENT_WRITE_DATA] = std::strtol(tag[1].c_str(), 0, 0);
-		return (1 << EVENT_WRITE_ADDR);
+		uint8_t data = std::strtol(tag[1].c_str(), 0, 0);
+		if(data < 1 || data > 8)
+			error("pcmrate argument must be between 1 and 8");
+	}
+	else if(iequal(tag[0], "pcmmode"))
+	{
+		if(tag.size() < 2)
+			error("not enough parameters for 'pcmmode' command");
+		uint8_t data = std::strtol(tag[1].c_str(), 0, 0);
+		if(data < 2 || data > 3)
+			error("pcmmode argument must be between 2 or 3");
 	}
 	return 0;
 }
