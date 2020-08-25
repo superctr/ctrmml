@@ -1,0 +1,156 @@
+#title midnight 2019
+#composer ctr
+#platform megadrive
+
+;=== melody ===
+@1 fm 2 7 ;ians bajsbas
+ 31  17   0   0   6  11   2   0   0   0
+ 31  15   0  15  15  11   0   6   2   0
+ 31  13   0   5   2  38   0   2   4   0
+ 31  17   0  11   1   0   0   1   0   0
+
+@4 psg 11>15:3 15>12:20 / 15>0:20
+
+@9 fm 4 7; FM3 Square + PAD
+ 31   0   0   0   0  26   0   8   0   0
+ 20  10   0  15   7   0   0   4   0   0
+ 31   9   7   1   3  15   2   4   3   0
+ 10   0   4   7   0   0   0   4   7   0
+
+@10 fm 4 0; Dual PAD
+ 31   9   7   1   3  15   2   6   3   0
+ 10   9   4   7   3   0   0   6   7   0
+ 31   9   7   1   3  15   2   4   3   0
+ 10   0   4   7   0   0   0   4   7   0
+
+@11 fm 2 7 ;Dist square lead
+ 17   0   0   1   0  30   0   8   3   0
+ 31   8   4   7   2  11   0   4   7   0
+ 20   0   0   1   0  42   0  12   3   0
+ 31  10   4   7   4   0   0  12   0   0
+; 20   0   0   1   0  42   0   8   3   0 ;mult was 12
+; 31  10   4   7   4   0   0  10   0   0 ;mult was 12
+
+@12 fm 2 7 ;Dist square lead
+ 17   0   0   1   0  30   0   8   3   0
+ 31   8   4   7   2  11   0   4   7   0
+ 20   0   0   1   0  42   0   8   3   0 ;mult was 12
+ 31  10   4   7   4   0   0  10   0   0 ;mult was 12
+
+@13 2op 10 8 8 5 5 -4 ; n+6; Dual PAD
+
+@14 fm 4 7; FM3 Square + PAD
+ 31   0   0   0   0  26   0   8   0   0
+ 20  10   0  15   7   4   0   4   0   0
+ 31   9   7   1   3  13   2   2   3   0
+ 25   0   4   7   0   0   0   2   7   0
+
+@15 fm 4 0; Dual PAD2
+ 31   9   7   1   3  13   2   6   3   0
+ 25   9   4   7   3   0   0   6   7   0
+ 31   9   7   1   3  13   2   4   3   0
+ 25   0   4   7   0   0   0   4   7   0
+@16 2op 15 8 8 5 5 -4 ; n+6; Dual PAD2
+@17 2op 15 10 10 6 6 -7 ; n+9; Dual PAD2
+
+; pcm drum mode
+@30 pcm "pcm/bd_17k5.wav"
+@31 pcm "pcm/sd_17k5.wav"
+@32 pcm "pcm/crash_17k5.wav"
+@33 pcm "pcm/bd_crash_17k5.wav"
+@34 pcm "pcm/esd_17k5.wav"
+@36 pcm "pcm/tom2m_17k5.wav"
+@37 pcm "pcm/tom2h_17k5.wav"
+
+*30 p3@30c ;D30a
+*31 p3@31c ;D30b
+*32 p3@32c ;D30c
+*33 p3@33c ;D30d
+*34 p3@34c ;D30e
+*36 p1@36c ;D30g
+*37 p2@37c ;D30h
+
+;=== psg drums ===
+@40 psg 13>0:4 ; D40a closed hat
+*40 @40M0o9b
+@41 psg 9>0:4  ; D40b closed hat (muted)
+*41 @41M0o9b
+@42 psg 13>11:3 10>6:6 5>0:20 ; D40c open hat
+*42 @42M0o9b
+@43 psg 12>6:3 5>1:15 1>0:20 ; D40d ride
+*43 @43M0o9d
+@44 psg 12>0:4  ; D40e closed hat (muted2)
+*44 @41M0o9b
+@M45 0>5:10 5>4:11
+@45 psg 14>11:3 15>0:40
+*45 @45M45o8g ;D40f  Crashing the party
+@46 psg 13>11:3 11>0:130
+*46 @46M0o8b ;D40g    loooong cymbal
+@47 psg 0>11:150 / 0
+*47 @47M0o8b ;D40h  reverse pls
+
+
+
+A   t128
+
+ABCDEFGHIJ L
+
+;--bass--;
+A @1o3v10
+;--lead--
+B p1 @11o2v10 K20
+C 'fm3 0011' @9v10o2 r16
+E p2 @12o2v9K40
+;--pad--
+I 'fm3 1100' v9o2
+D @10 v9o2
+;--drums--
+F D30
+J 'mode 1'D40v15
+;--arps--
+G @4o3v10
+H @4o3v9K20
+
+A l16 [ggrggrfgrgfrgb-gf ggrggrfrg8b-8>c8d8< ggrggrfgrgfrgb-gf ggrggrfrg8f8d4]12
+F l4  [aaaa]24 [a/bab]24 l16b^a^^ba^b^bb
+J l16 [arbbarbr]96
+BCE  l1 [r]8
+DI l1 [r]8
+
+GH l16 o2g (2r)2 [o3d(2o2g)2 o3f(2o3d)2 o2g(2o3f)2
+GH     o3d(2o2g)2 o3g(2o3d)2 o2g(2o3g)2 o3d(2o2g)2
+GH     o3f(2o3d)2 o2g(2o3f)2 o3d(2o2g)2 o3b-(2o3d)2
+GH     o3d(2o3b-)2 o3f(2o3d)2 o4c(2o3f)2 o3b-(2o4c)2 /o2g(2o3b-)2 ]24
+
+BCE l8 [g2.>df2./^dfg4ad2.agfgfd4 l4g.d.c.f.dcd.<g2g16a16l8b-4>c<g4ggf]2 >agfl4g.d.c.f.dcd.<g.f.b-.gfg.>d.c.f.df
+
+BC l4 gr2.[r1]7 <l8g2.>df2.dfd {/R16} [l16g<g>d<g>dg<g>d<g>/dgdfdcd]2 b-gfgfdc <b-agagfgfdfdcdc<b->c d8<g>c<g>dfcd8<g>c<g>fdc d8<g>cdfdfg8fgfb-gb- >c8dc<b->dfdfgb-gfgb->c
+BC l4 d2.d8f.dc8<b->d.<ggf8gg8b-8g8>d8c8<b- >c.<g.f.b-.gfg.>d.c.f.df
+E v6l8 [o2p1g>p2dp1f<p2g>p1dp2g<p1g>p2dp1f<p2g>p1dp2b-p1dp2f>p1c<p2b-]12
+
+D l1 [[g ^  b-^ >c^/ c^]2 c/^  [r]8 ]2 @13d2e2
+I l1 [[b-^ >d ^ e^ /e-^]2 e-/^ [r]8 ]2    f2g2
+
+; --part2--
+
+A l8 o3[gfgf16b-b-g16>cc<gfgf16ccc16dd]4
+E l8v9p3 K60 o1[gfgf16b-b-g16>cc<gfgf16ccc16dd]4
+C @14v9
+GH v12 {/(2r8.} l8 [[o2g.>d.g4<g>dg</f.>c.f4e16d16ec]2 <b-.>f.b-4a16b-16>c<a ]2 g4r2.l1rrr {/R8.}
+
+BC l16 o4g2.^8fef4.ede4.dcd4.<g4.^8gab-4>c8<g4g8g8f8 g2.^8fgb-8.>d8.c8.f8.d8f8g4b-8g8^4.gb->d4c<b->c<b-gb-gfgfdf
+D v7l16 [@16o3b8.br8brr2 r8a8r4.@17g4gr @16b8.br8brr2 r8>drd rr4e4er]2
+I v7l16 [   o4d8.dr8drr2 r8c8r4.   c4cr    d8.dr8drr2 r8 frf rr4g4gr]2
+
+F l16 d^^^bh^ha^aab^g^ [^^aab^g^ahh^b^g^/ a^g^bh^ha^aab^g^]4
+J l16 [arbb]32
+
+A l16o3 ggrggrfgrgfrgb-gf ggrggrfrg8b-8>c8d8 < ggrggrfgrgfrgb-gf ggrggrfrg8f8d4
+BC l1 grrr
+D  l4 <br2. l1rrr
+E  l1 rrrr
+I  l4 dr2. l1rrr
+
+F l4  [aaaa]4
+J l16 [arbbarbr]8
+

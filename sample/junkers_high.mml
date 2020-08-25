@@ -1,0 +1,211 @@
+#title Hot Fire (Junker's High Edit) / Title
+#game OutRun 2019
+#composer Shigeki Sako / ctr
+#programmer ctr
+#date 2019-05-17~18
+
+#format megadrive
+
+;==== Instrument section =====
+@3 fm 3 5 ;distgtr2
+ 18 0 7 1 0 60 0 10 3 0
+ 25 8 0 7 2 5 0 0 3 0
+ 20 0 0 1 0 14 0 2 3 0
+ 29 8 4 7 2 0 0 1 7 0
+
+@4 fm 3 5 ;distgtr_mute2
+ 18 0 14 1 0 60 0 10 3 0
+ 25 0 5 7 0 5 0 0 3 0
+ 20 0 0 1 0 14 0 2 3 0
+ 29 16 15 7 1 0 0 2 7 0
+
+@5 fm 4 0 ;2op piano
+ 20 0 0 1 0 30 0 4 3 0
+ 31 8 4 7 2 0 0 4 0 0
+ 20 0 0 1 0 30 0 4 6 0
+ 31 8 4 7 2 10 0 4 3 0
+
+@7 fm 3 0 ;bass
+ 31 0 19 5 0 23 0 0 0 0
+ 31 6 0 4 3 19 0 0 0 0
+ 31 15 0 5 4 38 0 4 0 0
+ 31 27 0 11 1 0 0 1 0 0
+
+@8 fm 5 5 ;synpad
+ 21 0 0 3 0 23 0 2 7 0
+ 28 14 0 6 1 0 0 2 0 0
+ 17 0 0 15 0 19 0 2 4 0
+ 31 15 0 15 3 15 0 4 1 0
+
+@9 fm 5 7 ;trumpet
+ 22 0 0 0 0 25 0 2 1 0
+ 31 16 0 8 2 0  0 4 0 0
+ 31 14 0 8 2 0  0 2 7 0
+ 31 16 0 13 2 0 0 2 3 0
+
+@10 psg 15>11:5 / 10>0:20
+@11 psg 15>12:7 / 12>0:20
+
+@30 pcm "pcm/bd_17k5.wav"
+*30 @30p3c ; D30a kick
+
+@31 pcm "pcm/sd_17k5.wav"
+*31 @31p3c ; D30b snare
+
+@32 pcm "pcm/tom2h_17k5.wav"
+*32 @32p2c ; D30c tom
+*33 @32p3c ; D30d tom
+*34 @32p1c ; D30e tom
+
+@33 pcm "pcm/tom2l_17k5.wav"
+*35 @33p1c ; D30f tom2
+
+@40 psg 13>0:4 ; D40a closed hat
+*40 @40o9b
+@41 psg 9>0:4  ; D40b closed hat (muted)
+*41 @41o9b
+@42 psg 13>11:3 10>6:6 5>0:20 ; D40c open hat
+*42 @42o9b
+@43 psg 12>6:3 5>1:15 1>0:20 ; D40d ride
+*43 @43o9d
+@44 psg 12>0:4  ; D40e closed hat (muted2)
+*44 @41o9b
+
+@M1 -0.4>0:2 0:10 V0:0.8:3
+@M2 0:10 V0:2:3
+
+@M5 -2>0:5 0
+@M6 12>0:10
+@M7 0:10 0>-12:20
+
+;==== Subroutines ===
+*100 l16o4 [aga>c8<ga>ce-dcdc<age aga>c8<ga>ce-dcM5g8M0ed+d< aga>c8<ga>ce-dcd8c<ag>e8.d8.c8<b4/a-4]2 g4
+
+;==== Intro ====
+A t140
+ABCDEGH r2
+F D30l16 a8bbbbbb
+J 'mode 1'D40v15 r2
+
+;==== Part 1 ====
+ABCDEFGHJ [
+
+A @7v10p3
+BC @3v10p3 {/(3p1r8K20}
+DE @8v9p3 {/(1p2}
+G @10v14M0
+
+A l8 o3  [aaaaaaaa aaaaaaaa aaaaaaaa f.f.fg4e4]2
+BC l16 o4 *100
+G l8 o4 [rcccc.c.c c.c.cc.c.c rcccc.c.c c.c.c<b4b4]2
+D l8 o4 [raaaa.a.a a.a.aa.a.a raaaa.a.a a.a.ag4a-4]2
+E l8 o5 [reeee-.e-.e- e.e.e-e.e.e- reeee-.e-.e- f.f.fd4e4]2
+H [r1]8
+F l16 [[a^b^a^b^a^ba^ab^]3 c8.d8.e8f8bbbbbb]2
+J l16 [[abc^abc^abc^bbc^]3 d8.d8.d8a8bbbbbb]2
+
+;==== Part 2 ====
+BC @3v9
+D @9v11M1 ;{/(3r8K10}
+G @10v14M1r8
+H @10v14M1
+E @5v8
+
+A l8 o3 [aaaaaaaa ffffffff gggggggg >cccc<bbbb]2
+BC l16 o4 [[@3a@4aa@3a@4aa@3a@4a]2 >[@3c@4cc@3c@4cc@3c@4c]2 [@3d@4dd@3d@4dd@3d@4d]2 @3e@4ee@3e@4ee@3e@4e </@3b@4bb@3b@4bb@3b@4b]2 @3g@4gg@3g@4gg@3g@4g
+DG l16 {o4/o3} [a2a8ga8.b8 >c2.cde8 d8.<b8.g4.b>cd8 /edcd8c<b>c8<bab8ag8]2 >eeddcc<bb>c8<ab8a{g8/}
+E l16 o3 [p3aa>ea<p1aa>ea<p3aa>ea<p2aa>ea< p3ff>cf<p1ff>cf<p3ff>cf<p2ff>cf< p3gg>dg<p1gg>dg<p3gg>dg<p2gg>dg< p3gg>cg<p1gg>cg<p3gg>cg<p2gg>cg<]2
+F l16 [a^b^a^b^a^b/a^ab^]8 abbbb
+H [r1]8
+J l16 [abc^abc^abc^/bbc^]8  bbbb
+
+A l8 o3 [ffff gggg aaaa aa/gg]2 aa
+BC l16 o4 @3f@4ff@3f@4ff@3f@4f @3g@4gg@3g@4gg@3g@4g [@3a@4aa@3a@4aa@3a@4a]2 >@3c@4cc@3c@4cc@3c@4c <@3b@4bb@3b@4bb@3b@4b [@3a@4a/a@3a@4aa@3a@4a]2 @3g@4g@3a8 r8
+DE @9v11M1 {/(3K10r8} l16 o4 a4.ab>c8<ba8.g8a2.{g4a4.ab>c8<ba8.g8a2. / )3K0R8b4>c4.cde8dc8.<b8>c2.} r4
+G l8 @11v15o3 [rfrfrgrg aaaa g8. a16r4]2
+H l8 @11v15o3 [rararbrb>cccc<b8.>c16r4]2
+F l16 [a^b^a^b^a^b/a^ab^]4 acdeb
+J l16 [abc^abc^abc^/bbc^]4  bbbb
+
+A o3 l8 a.g.a4>de-d c.<g.ar (3M6a4. M0 )3
+BC o4 l8 a.g.a4>de-d16e-16 c.<g.ar (3M6a4. M0
+DE {/(3K10r8} o4 l8 a.g.a4>de-d c.<g.ar2
+
+F l4 aaaa l16 b8f b8e b4 edc4
+J l4 bbbb8 l16 bbc8b c8b c4 r4b8
+GH [r1]2
+
+;===== part 3 ====
+B    @8v8
+G    @10v12M0
+C R8 @8v8p1
+H    @10v14M0
+
+A l8 [ddddeeeeffffg/ggg]2 r>c<b
+BG l8 {o4/o3} [a.a.ab.b.b>c.c.cdr/<b4] r4
+C l8 o5 [d.d.de.e.ef.f.fgr/<e4] r4
+H o3[f.f.fg.g.ga.a.abr/g4] r4
+DE l8 d.c.de.d.ef.e.fg4e4 {d.c.de.d.ef.e.fg4>c<b / R8)2f.e.fg.e.ga.g.ab4>ed (2r8}
+F l8 [a.a.aa.a.aa.a.ab4/r4] d16c8.
+J l16 [[abcb]6 abbbabbb]2
+
+A l16 [[a8>aa<]4 [a-8>a-a-<]4 [g8>gg<]4 [f+8>f+f+<]4 [f8>ff<]4 [g8>gg<]4 [a8>aa<]4 a8r2.^8]2
+BG l1 o4 ee dd cd e {/e8r2.^8)2}
+C l1 o4 aa-gf+ fg a a8r2.^8
+H l1 o4 cc<ba  ab>c c8r2.^8
+DE l8 o4 a2>e.d.ge2 r4.d16c16 d2d.c.<b>c16<b16a^2g4 a2a.b.>cd2<g2>c16<b16a8^2. r1
+F l16 [[a^b^a^b^a^b/a^ab^]4 abbbb [a^b^a^b^a^ba^a/b^]3 bb edcfdcfdcfdcedbb]2
+J l16 [[abc^abc^abc^/bbc^]4  bbbb [abc^abc^abc^bbc^]3 r1]2
+
+B @3v9 l16 o5edcdc<a>c<agagegedc
+
+B l16 o4 *100
+DE l8 o4 a2>e.d.ge2 r4.e16g16 a2>c.<b.ge1 <a2a.b.>cd2g2a16g16a8^2. / l16 (2 >edcdc<a>c<agagege{dc/}
+G l1 o4 ee dd cd e e8r2.^8
+C l1 o4 aa-gf+ fg a a8r2.^8
+H l1 o4 cc<ba  ab>c c8r2.^8
+
+ABCDEFGHJ ]2
+DE l4o5defg
+
+;===== part 4 ====
+A l16 [[a8>aa<]4 [a-8>a-a-<]4 [g8>gg<]4 [f+8>f+f+<]4 [f8>ff<]4 [g8>gg<]4 [a8>aa<]4 / c8>cc< d8>dd< f8>ff< a-8>a-a-< ]2 a8r2.^8
+B l16 o4 [aga>c8<ga>ce-dcdc<age aga>c8<ga>ce-dcM5g8M0ed+d< aga>c8<ga>ce-dcd8c<ag> / e8.d8.c8<b4g4]2 >c8@4cc <@3b8@4bb @3a8@4aa @3a-8@4a-a- @3 *100
+DE l8  l8a2a.e.a a-2a-.e.a- g2^.a.g f+2.d8e8 f2^.e.f g2^.e.g a16g16a8^2. l4 >c<baa-
+DE l16 o5 [a/ec]6 [a-/ec]6 [>c/<ge]6  [>d/<af+]6 >e2 l8e.d.c l16dc<a>c<agagegededeg [ae/c]3 [a/ec]3 g M2a2 M0G50<&a2 G0 {/R8}
+G l1 o4 [ee dd cd e / l4eddd ]2 e8r2.^8
+C l1 o4 [aa-gf+ fg a / l4gf+ff ]2 a8r2.^8
+H l1 o4 [cc<ba  ab>c / l4c<baa- ]2 >c8r2.^8
+
+F l16 [[a^b^a^b^a^b/a^ab^]4 abbbb]3  [a^b^a^b^a^ba^a/b^]3 bb edcfdcfdcfdcedbb
+J l16 [[abc^abc^abc^/bbc^]4  bbbb]3  [abc^abc^abc^bbc^]3 r1
+
+A @7v10p3
+BC @3v10p3 {/(3p1r8K20}
+DE @8v9p3 {/(1p2}
+G @10v14M0
+
+;===== repris ====
+A l8 o3  [aaaaaaaa aaaaaaaa aaaaaaaa f.f.fg4e4]2
+BC l16 o4 *100
+G l8 o4 [rcccc.c.c c.c.cc.c.c rcccc.c.c c.c.c<b4b4>]2
+D l8 o4 [raaaa.a.a a.a.aa.a.a raaaa.a.a a.a.ag4a-4]2
+E l8 o5 [reeee-.e-.e- e.e.e-e.e.e- reeee-.e-.e- f.f.fd4e4]2
+H [r1]8
+F l16 [[a^b^a^b^a^ba^ab^]3 c8.d8.e8f8bbbbbb]2
+J l16 [[abc^abc^abc^bbc^]3 d8.d8.d8a8bbbbbb]2
+
+;===== outro ====
+A  f.f.fg4e4
+BC l16o5 e8.d8.c8<b4g4
+G c.c.c<b4b4
+D a.a.ag4a-4
+E f.f.fd4e4
+H r1r1
+F c8.d8.e8f8bbbbbb
+J d8.d8.d8a8bbbbbb
+
+A a1 a8 r1
+BC l16 a1 M7 a8 r8^4 M0
+GDE o4l1 {c/a/>e} l8 {c/a/e}
+F fedcedcedcedcedc b2

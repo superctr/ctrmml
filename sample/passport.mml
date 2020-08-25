@@ -54,12 +54,12 @@
 @11 psg 15>13:5 / 10>0:15
 ;----------------------------------------------------------
 ; PCM voice data
-@20 pcm "pcm/bd_16k.wav"
-@21 pcm "pcm/sd_16k.wav"
-@22 pcm "pcm/bd_crash2_16k.wav"
-@23 pcm "pcm/tom2l_16k.wav"
-@24 pcm "pcm/tom2m_16k.wav"
-@25 pcm "pcm/tom2h_16k.wav"
+@20 pcm "pcm/bd_17k5.wav"
+@21 pcm "pcm/sd_17k5.wav"
+@22 pcm "pcm/bd_crash_17k5.wav"
+@23 pcm "pcm/tom2l_17k5.wav"
+@24 pcm "pcm/tom2m_17k5.wav"
+@25 pcm "pcm/tom2h_17k5.wav"
 *20 @20c ;D20a
 *21 @21c ;D20b
 *22 @22c ;D20c

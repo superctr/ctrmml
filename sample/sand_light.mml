@@ -48,13 +48,13 @@
 @12 psg 15>12 11>6:20 / 6>0:75
 
 ; pcm drum mode
-@30 pcm "pcm/bd_16k.wav"
-@31 pcm "pcm/sd_16k.wav"
-@32 pcm "pcm/crash2_16k.wav"
-@33 pcm "pcm/bd_crash2_16k.wav"
-@34 pcm "pcm/esd_16k.wav"
-@36 pcm "pcm/tom2m_16k.wav"
-@37 pcm "pcm/tom2h_16k.wav"
+@30 pcm "pcm/bd_17k5.wav"
+@31 pcm "pcm/sd_17k5.wav"
+@32 pcm "pcm/crash_17k5.wav"
+@33 pcm "pcm/bd_crash_17k5.wav"
+@34 pcm "pcm/esd_17k5.wav"
+@36 pcm "pcm/tom2m_17k5.wav"
+@37 pcm "pcm/tom2h_17k5.wav"
 
 *30 @30c ;D30a
 *31 @31c ;D30b

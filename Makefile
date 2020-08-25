@@ -62,12 +62,19 @@ UNITTEST_OBJS = \
 	$(OBJ)/unittest/test_misc.o \
 	$(OBJ)/unittest/main.o
 
+SAMPLE_MML = \
+	sample/idk.vgm \
+	sample/junkers_high.vgm \
+	sample/midnight.vgm \
+	sample/passport.vgm \
+	sample/sand_light.vgm
+
 $(OBJ)/%.o: $(SRC)/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) -MMD -c $< -o $@
 
 sample/%.vgm: sample/%.mml mmlc
-	./mmlc $< 
+	./mmlc $<
 
 all: mmlc mdslink test
 
@@ -92,10 +99,8 @@ clean:
 doc:
 	doxygen Doxyfile
 
-sample_mml: mmlc sample/idk.vgm sample/passport.vgm sample/sand_light.vgm
-	./mmlc sample/idk.mml
-	./mmlc sample/passport.mml
-	./mmlc sample/sand_light.mml
+sample_mml: mmlc $(SAMPLE_MML)
+	# dummy
 
 cleandoc:
 	rm -rf doxygen
