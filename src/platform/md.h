@@ -204,7 +204,7 @@ class MD_Driver : public Driver
 		void reset();
 		void skip_ticks(unsigned int ticks);
 		bool is_playing();
-		int loop_count();
+		int get_loop_count();
 		double play_step();
 		uint32_t get_player_ticks();
 

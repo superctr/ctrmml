@@ -88,18 +88,18 @@ VGM_Tag get_tags(Song& song)
 void generate_vgm(Song& song, const std::string& filename, int max_seconds)
 {
 	VGM_Writer vgm(filename.c_str(), 0x61, 0x100);
-	MD_Driver driver(44100, &vgm);
+	auto driver = song.get_driver(44100, &vgm);
 	long max_time = max_seconds * 44100;
-	driver.play_song(song);
+	driver->play_song(song);
 	double elapsed_time = 0;
 	double delta = 0;
 	bool looped_or_finished = 0;
 	while(elapsed_time < max_time)
 	{
 		vgm.delay(delta);
-		delta = driver.play_step();
+		delta = driver->play_step();
 		elapsed_time += delta;
-		if(!driver.is_playing() || driver.loop_count() > 0)
+		if(!driver->is_playing() || driver->get_loop_count() > 0)
 		{
 			looped_or_finished = 1;
 			break;

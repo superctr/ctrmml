@@ -100,7 +100,6 @@ doc:
 	doxygen Doxyfile
 
 sample_mml: mmlc $(SAMPLE_MML)
-	# dummy
 
 cleandoc:
 	rm -rf doxygen

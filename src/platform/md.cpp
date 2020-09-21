@@ -884,7 +884,7 @@ bool MD_Driver::is_playing()
 }
 
 //! Get loop count (untested)
-int MD_Driver::loop_count()
+int MD_Driver::get_loop_count()
 {
 	int loop_count = INT_MAX;
 	if(!channels.size())
@@ -913,7 +913,7 @@ double MD_Driver::play_step()
 		// update pcm
 		pcm_counter -= pcm_delta;
 	}
-	if(loop_trigger && loop_count() == 0)
+	if(loop_trigger && get_loop_count() == 0)
 	{
 		set_loop();
 		reset_loop_count();

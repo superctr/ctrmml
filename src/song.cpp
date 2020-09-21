@@ -5,13 +5,15 @@
 #include "song.h"
 #include "track.h"
 #include "stringf.h"
+#include "platform/md.h"
 
 //! Constructs a Song.
 Song::Song()
-	: tag_map(),
-	track_map(),
-	ppqn(24),
-	platform_command_index(-32768)
+	: tag_map()
+	, track_map()
+	, ppqn(24)
+	, platform_command_index(-32768)
+	, type("mdsdrv")
 {
 }
 
@@ -262,3 +264,24 @@ void Song::set_ppqn(uint16_t new_ppqn)
 {
 	ppqn = new_ppqn;
 }
+
+//! Get appropriate playback driver.
+std::shared_ptr<Driver> Song::get_driver(unsigned int rate, VGM_Interface* vgm_interface) const
+{
+	// TODO: Currently only one driver type supported.
+	return std::static_pointer_cast<Driver>(std::make_shared<MD_Driver>(rate, vgm_interface));
+}
+
+//! Gets the type string.
+const std::string& Song::get_type() const
+{
+	return type;
+}
+
+//! Sets the type string.
+bool Song::set_type(const std::string& key)
+{
+	type = key;
+	return 0;
+}
+

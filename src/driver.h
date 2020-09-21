@@ -38,6 +38,8 @@ class Driver
 		virtual bool is_playing() = 0;
 		//! Get the number of player ticks (playing time).
 		virtual uint32_t get_player_ticks() = 0;
+		//! Get the number of times the song has looped.
+		virtual int get_loop_count() = 0;
 
 	protected:
 		// VGM low-level

@@ -18,6 +18,7 @@ class InputRef;
 class VGM_Writer;
 class VGM_Interface;
 class Player;
+class Driver;
 
 typedef std::vector<std::string> Tag;
 typedef std::map<std::string,Tag> Tag_Map;

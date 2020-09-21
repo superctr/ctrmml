@@ -2,6 +2,7 @@
 #ifndef SONG_H
 #define SONG_H
 #include <stdint.h>
+#include <memory>
 #include "core.h"
 
 //! Song class.
@@ -42,11 +43,16 @@ class Song
 		uint16_t get_ppqn() const;
 		void set_ppqn(uint16_t new_ppqn);
 
+		std::shared_ptr<Driver> get_driver(unsigned int rate, VGM_Interface* vgm_interface) const;
+		bool set_type(const std::string& key);
+		const std::string& get_type() const;
+
 	private:
 		Tag_Map tag_map;
 		Track_Map track_map;
 		uint16_t ppqn;
 		int16_t platform_command_index;
+		std::string type;
 };
 #endif
 
