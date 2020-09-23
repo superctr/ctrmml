@@ -2,10 +2,11 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdexcept>
 #include "song.h"
 #include "track.h"
 #include "stringf.h"
-#include "platform/md.h"
+#include "platform/mdsdrv.h"
 
 //! Constructs a Song.
 Song::Song()
@@ -13,8 +14,15 @@ Song::Song()
 	, track_map()
 	, ppqn(24)
 	, platform_command_index(-32768)
-	, type("mdsdrv")
 {
+	platform = new MDSDRV_Platform();
+}
+
+//! Destructs a Song
+Song::~Song()
+{
+	if(platform)
+		delete platform;
 }
 
 //! Get a reference to the tag map.
@@ -265,23 +273,37 @@ void Song::set_ppqn(uint16_t new_ppqn)
 	ppqn = new_ppqn;
 }
 
-//! Get appropriate playback driver.
-std::shared_ptr<Driver> Song::get_driver(unsigned int rate, VGM_Interface* vgm_interface) const
+//! Gets the platform
+const Platform* Song::get_platform() const
 {
-	// TODO: Currently only one driver type supported.
-	return std::static_pointer_cast<Driver>(std::make_shared<MD_Driver>(rate, vgm_interface));
+	return platform;
 }
 
-//! Gets the type string.
-const std::string& Song::get_type() const
+//! Sets the platform
+/*!
+ *  \return 1 on failure
+ *  \return 0 on success
+ */
+bool Song::set_platform(const std::string& key)
 {
-	return type;
-}
-
-//! Sets the type string.
-bool Song::set_type(const std::string& key)
-{
-	type = key;
+	printf("platform set to '%s'\n", key.c_str());
+	//type = key;
 	return 0;
+}
+
+std::shared_ptr<Driver> Platform::get_driver(unsigned int rate, VGM_Interface* vgm_interface) const
+{
+	throw std::logic_error("No available driver");
+}
+
+const std::vector<std::string>& Platform::get_export_formats() const
+{
+	static const std::vector<std::string> out = {};
+	return out;
+}
+
+std::vector<uint8_t> Platform::get_export_data(Song* song, int format)
+{
+	throw std::logic_error("No available export option");
 }
 

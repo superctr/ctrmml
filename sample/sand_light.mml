@@ -5,7 +5,7 @@
 #programmer ctr
 #comment Mucom88 version by ctr 2019-01-28. ctrmml version 2019-05-08
 
-#format megadrive
+#platform megadrive
 
 @1 fm 3 7 ;namco bass
  27 14 0 7 3 34 0 8 0 0

@@ -6,6 +6,7 @@
 #include <cmath>
 #include <stack>
 
+#include "md.h"
 #include "mdsdrv.h"
 #include "../song.h"
 #include "../input.h"
@@ -1285,4 +1286,35 @@ int MDSDRV_Linker::find_unique_data(const std::vector<uint8_t>& data) const
 		return i;
 	}
 	throw std::out_of_range("MDSDRV_Linker::find_unique_data");
+}
+
+//=====================================================================
+
+MDSDRV_Platform::MDSDRV_Platform()
+	: pcm_mode(0)
+{
+}
+
+std::shared_ptr<Driver> MDSDRV_Platform::get_driver(unsigned int rate, VGM_Interface* vgm_interface) const
+{
+	return std::static_pointer_cast<Driver>(std::make_shared<MD_Driver>(rate, vgm_interface));
+}
+
+const std::vector<std::string>& MDSDRV_Platform::get_export_formats() const
+{
+	static const std::vector<std::string> out = {"mds"};
+	return out;
+}
+
+std::vector<uint8_t> MDSDRV_Platform::get_export_data(Song* song, int format)
+{
+	if(song && format == 0)
+	{
+		MDSDRV_Converter converter(*song);
+		return converter.get_mds().to_bytes();
+	}
+	else
+	{
+		throw std::logic_error("no such exporter");
+	}
 }

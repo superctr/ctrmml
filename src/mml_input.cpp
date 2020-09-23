@@ -4,6 +4,7 @@
 #include "mml_input.h"
 #include "song.h"
 #include "track.h"
+#include "stringf.h"
 
 unsigned int MML_Input::read_duration()
 {
@@ -390,7 +391,12 @@ void MML_Input::parse_tag()
 	if(tag_key[0] == '#')
 	{
 		// Special cases for "include" etc commands go here
-		get_song().set_tag(tag_key, get_line());
+		// #platform = set output format
+		// #format = set MML format. Handle internally
+		if(iequal(tag_key, "#platform"))
+			get_song().set_platform(get_line());
+		else
+			get_song().set_tag(tag_key, get_line());
 		last_cmd = nullptr; // Only read a single line
 	}
 	else

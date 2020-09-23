@@ -2,6 +2,7 @@
 #ifndef PLATFORM_MDSDRV_COMMON_H
 #define PLATFORM_MDSDRV_COMMON_H
 #include "../core.h"
+#include "../song.h"
 #include "../wave.h"
 #include "../track.h"
 #include "../player.h"
@@ -9,12 +10,14 @@
 #include <map>
 #include <vector>
 #include <utility>
+#include <memory>
 
 class MDSDRV_Data;
 struct MDSDRV_Event;
 class MDSDRV_Track_Writer;
 class MDSDRV_Converter;
 class MDSDRV_Linker;
+class MDSDRV_Platform;
 
 // Current sequence version
 #define MDSDRV_SEQ_VERSION_MAJOR 0
@@ -218,6 +221,19 @@ class MDSDRV_Linker
 		std::vector<int> data_offset;
 		std::vector<Seq_Data> seq_bank;
 		Wave_Bank wave_rom;
+};
+
+class MDSDRV_Platform : public Platform
+{
+	public:
+		MDSDRV_Platform();
+
+		std::shared_ptr<Driver> get_driver(unsigned int rate, VGM_Interface* vgm_interface) const;
+		const std::vector<std::string>& get_export_formats() const;
+		std::vector<uint8_t> get_export_data(Song* song, int format);
+
+	private:
+		int pcm_mode;
 };
 
 #endif

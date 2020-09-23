@@ -3,6 +3,7 @@
 #define SONG_H
 #include <stdint.h>
 #include <memory>
+
 #include "core.h"
 
 //! Song class.
@@ -22,6 +23,7 @@ class Song
 {
 	public:
 		Song();
+		virtual ~Song();
 
 		Tag_Map& get_tag_map();
 		void add_tag(const std::string& key, std::string value);
@@ -43,16 +45,34 @@ class Song
 		uint16_t get_ppqn() const;
 		void set_ppqn(uint16_t new_ppqn);
 
-		std::shared_ptr<Driver> get_driver(unsigned int rate, VGM_Interface* vgm_interface) const;
-		bool set_type(const std::string& key);
-		const std::string& get_type() const;
+		bool set_platform(const std::string& key);
+		const Platform* get_platform() const;
 
 	private:
 		Tag_Map tag_map;
 		Track_Map track_map;
 		uint16_t ppqn;
 		int16_t platform_command_index;
-		std::string type;
+
+		Platform* platform;
 };
+
+//! Platform base class
+/*!
+ *  This contains platform-specific functions that can convert or create objects that work with
+ *  Songs.
+ */
+class Platform
+{
+	public:
+		virtual ~Platform()
+		{
+		}
+
+		virtual std::shared_ptr<Driver> get_driver(unsigned int rate, VGM_Interface* vgm_interface) const;
+		virtual const std::vector<std::string>& get_export_formats() const;
+		virtual std::vector<uint8_t> get_export_data(Song* song, int format);
+};
+
 #endif
 
