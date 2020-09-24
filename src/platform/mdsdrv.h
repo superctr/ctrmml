@@ -229,8 +229,8 @@ class MDSDRV_Platform : public Platform
 		MDSDRV_Platform();
 
 		std::shared_ptr<Driver> get_driver(unsigned int rate, VGM_Interface* vgm_interface) const;
-		const std::vector<std::string>& get_export_formats() const;
-		std::vector<uint8_t> get_export_data(Song* song, int format);
+		const Platform::Format_List& get_export_formats() const;
+		std::vector<uint8_t> get_export_data(Song& song, int format) const;
 
 	private:
 		int pcm_mode;

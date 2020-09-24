@@ -820,7 +820,8 @@ void MD_Driver::play_song(Song& song)
 	this->song = &song;
 	channels.clear();
 	data.read_song(song);
-	std::cout << data.message;
+	// Need to expose data.message in a good way later for development...
+	//std::cout << data.message;
 	if(vgm)
 	{
 		const std::vector<uint8_t>& dbdata = data.wave_rom.get_rom_data();

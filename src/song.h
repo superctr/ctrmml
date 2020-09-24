@@ -3,6 +3,7 @@
 #define SONG_H
 #include <stdint.h>
 #include <memory>
+#include <utility>
 
 #include "core.h"
 
@@ -65,13 +66,17 @@ class Song
 class Platform
 {
 	public:
+		typedef std::vector<std::pair<std::string,std::string>> Format_List;
+
 		virtual ~Platform()
 		{
 		}
 
 		virtual std::shared_ptr<Driver> get_driver(unsigned int rate, VGM_Interface* vgm_interface) const;
-		virtual const std::vector<std::string>& get_export_formats() const;
-		virtual std::vector<uint8_t> get_export_data(Song* song, int format);
+		virtual const Format_List& get_export_formats() const;
+		virtual std::vector<uint8_t> get_export_data(Song& song, int format) const;
+	protected:
+		virtual std::vector<uint8_t> vgm_export(Song& song, unsigned int max_seconds = 3600, unsigned int num_loops = 1) const;
 };
 
 #endif

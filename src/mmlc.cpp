@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <stdexcept>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,9 +17,25 @@
 
 void print_usage(const char* exename)
 {
-	std::cout << "mmlc - ctr MML Compiler\n";
-	std::cout << "(C) 2019-2020 ian karlsson\n\n";
-	std::cout << "Usage: " << exename << " <input_file.mml>\n";
+	std::cout << "ctrmml Music Compiler, version " CTRMML_VERSION "\n";
+	std::cout << "(C) 2019-2020 Ian Karlsson.\n";
+	std::cout << "Licensed under GPLv2, see COPYING for details.\n\n";
+	std::cout << "Usage: " << exename << " [options] <input_file.mml>\n";
+	std::cout << "Options:\n";
+	std::cout << "\t--output / -o <filename> : Set output filename\n";
+	std::cout << "\t--format / -f <format> : Set output file format\n";
+}
+
+std::string get_extension(const char* input_filename)
+{
+	static char str[256];
+	char *last_dot;
+	strncpy(str,input_filename, 256);
+	last_dot = strrchr(str, '.');
+	if(last_dot && *last_dot == '.')
+		return last_dot + 1;
+	else
+		return "";
 }
 
 std::string output_filename(const char* input_filename, const char* extension)
@@ -29,6 +46,7 @@ std::string output_filename(const char* input_filename, const char* extension)
 	last_dot = strrchr(str, '.');
 	if(last_dot)
 		*last_dot = 0;
+	strncat(last_dot, ".", 256);
 	strncat(last_dot, extension, 256);
 	return str;
 }
@@ -49,97 +67,23 @@ Song convert_file(const char* filename)
 	return song;
 }
 
-std::string safe_get_tag(Song& song, const std::string& tagname)
-{
-	if(song.get_tag_map()[tagname].size())
-		return song.get_tag_map()[tagname].front();
-	else
-		return "";
-}
-
-VGM_Tag get_tags(Song& song)
-{
-	VGM_Tag tag;
-	Tag_Map tag_map = song.get_tag_map();
-
-	tag.title = safe_get_tag(song,"#title");
-	tag.title_j = safe_get_tag(song,"#titlej");
-	tag.author = safe_get_tag(song,"#composer");
-	tag.author_j = safe_get_tag(song,"#composerj");
-	tag.system = safe_get_tag(song,"#system");
-	tag.system_j = safe_get_tag(song,"#systemj");
-	tag.game = safe_get_tag(song,"#game");
-	tag.game_j = safe_get_tag(song,"#gamej");
-	tag.creator = safe_get_tag(song,"#programmer");
-	tag.notes = safe_get_tag(song,"#comment");
-	tag.date = safe_get_tag(song,"#vgmdate");
-
-	// Fallback tags
-	if(!tag.author.size())
-		tag.creator = safe_get_tag(song,"#author");
-	if(!tag.creator.size())
-		tag.creator = safe_get_tag(song,"#programer");
-	if(!tag.creator.size())
-		tag.creator = tag.author;
-
-	return tag;
-}
-
-void generate_vgm(Song& song, const std::string& filename, int max_seconds)
-{
-	VGM_Writer vgm(filename.c_str(), 0x61, 0x100);
-	auto driver = song.get_platform()->get_driver(44100, &vgm);
-	long max_time = max_seconds * 44100;
-	driver->play_song(song);
-	double elapsed_time = 0;
-	double delta = 0;
-	bool looped_or_finished = 0;
-	while(elapsed_time < max_time)
-	{
-		vgm.delay(delta);
-		delta = driver->play_step();
-		elapsed_time += delta;
-		if(!driver->is_playing() || driver->get_loop_count() > 0)
-		{
-			looped_or_finished = 1;
-			break;
-		}
-	}
-	if(!looped_or_finished)
-		vgm.delay(max_time-elapsed_time);
-	vgm.stop();
-	vgm.write_tag(get_tags(song));
-}
-
-void generate_mds(Song& song, const std::string& filename)
-{
-	MDSDRV_Converter converter(song);
-
-	auto bytes = converter.get_mds().to_bytes();
-
-	std::ofstream out(filename, std::ios::binary);
-	out.write((char*)bytes.data(), bytes.size());
-}
-
 int main(int argc, char* argv[])
 {
-	enum
-	{
-		ACTION_VGM,
-		ACTION_COMPILE,
-	} action = ACTION_VGM;
 	std::string in_filename = "";
 	std::string out_filename = "";
-	uint32_t max_seconds = 300;
+	std::string format = "";
 
-	for(int arg = 1, default_arguments=0; arg < argc; arg++)
+	for(int arg = 1, default_arguments = 0; arg < argc; arg++)
 	{
 		if((!strcmp(argv[arg], "-o") || !strcmp(argv[arg], "--output")) && arg < argc)
 			out_filename = argv[++arg];
-		else if((!strcmp(argv[arg], "-s") || !strcmp(argv[arg], "--max-seconds")) && arg < argc)
-			max_seconds = strtoul(argv[++arg], NULL, 0);
-		else if(!strcmp(argv[arg], "-c") || !strcmp(argv[arg], "--compile"))
-			action = ACTION_COMPILE;
+		else if((!strcmp(argv[arg], "-f") || !strcmp(argv[arg], "--format")) && arg < argc)
+			format = argv[++arg];
+		else if((!strcmp(argv[arg], "-h") || !strcmp(argv[arg], "--help")) && arg < argc)
+		{
+			print_usage(argv[0]);
+			return -1;
+		}
 		else if(default_arguments < 1)
 		{
 			default_arguments++;
@@ -156,22 +100,57 @@ int main(int argc, char* argv[])
 
 	try
 	{
+		// Parse MML
 		Song song = convert_file(in_filename.c_str());
-		switch(action)
+
+		// Get available formats
+		unsigned int format_id = 0;
+		auto format_list = song.get_platform()->get_export_formats();
+
+		// Find matching format
+		for(auto&& i : format_list)
 		{
-			case ACTION_VGM:
-				if(!out_filename.size())
-					out_filename = output_filename(in_filename.c_str(), ".vgm");
-				generate_vgm(song, out_filename, max_seconds);
+			if(format == "")
+				format = i.first;
+			if(iequal(i.first, format))
 				break;
-			case ACTION_COMPILE:
-				if(!out_filename.size())
-					out_filename = output_filename(in_filename.c_str(), ".mds");
-				generate_mds(song, out_filename);
-				break;
+			format_id ++;
+		}
+
+		// No available format
+		if(format_id == format_list.size())
+		{
+			std::cerr << "Format not available!\n";
+			if(format_list.size())
+			{
+				std::cerr << "\nAvailable formats:\n";
+				for(auto&& i : format_list)
+					std::cerr << "\t'" << i.first << "': " << i.second << "\n";
+			}
+			return -1;
+		}
+
+		// Generate output filename if not already specified
+		if(!out_filename.size())
+			out_filename = output_filename(in_filename.c_str(), format.c_str());
+
+		// Export data
+		std::vector<uint8_t> bytes = song.get_platform()->get_export_data(song, format_id);
+
+		// Write to file
+		if(bytes.size())
+		{
+			std::ofstream out(out_filename, std::ios::binary);
+			out.write((char*)bytes.data(), bytes.size());
+			std::cout << "Wrote " << bytes.size() << " bytes to " << out_filename << "\n";
 		}
 	}
 	catch (InputError& error)
+	{
+		std::cerr << error.what() << "\n";
+		return -1;
+	}
+	catch (std::logic_error& error) // in case get_driver is not found
 	{
 		std::cerr << error.what() << "\n";
 		return -1;

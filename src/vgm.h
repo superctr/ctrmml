@@ -2,6 +2,7 @@
 #ifndef VGM_H
 #define VGM_H
 #include "core.h"
+#include <vector>
 #include <string>
 
 //! Structure for song tags
@@ -103,6 +104,9 @@ class VGM_Writer : public VGM_Interface
 		uint32_t peek32(uint32_t offset) const;
 		uint16_t peek16(uint32_t offset) const;
 		uint8_t peek8(uint32_t offset) const;
+
+		// Methods to get the VGM buffer (instead of writing to file)
+		std::vector<uint8_t> get_buffer();
 
 	private:
 		static const uint32_t initial_buffer_alloc = 100000;

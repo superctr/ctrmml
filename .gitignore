@@ -3,4 +3,5 @@
 /lib/*
 doxygen
 *.vgm
+*.mds
 ctrmml

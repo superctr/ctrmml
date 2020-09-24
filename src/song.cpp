@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdexcept>
 #include "song.h"
+#include "vgm.h"
+#include "driver.h"
 #include "track.h"
 #include "stringf.h"
 #include "platform/mdsdrv.h"
@@ -296,14 +298,83 @@ std::shared_ptr<Driver> Platform::get_driver(unsigned int rate, VGM_Interface* v
 	throw std::logic_error("No available driver");
 }
 
-const std::vector<std::string>& Platform::get_export_formats() const
+const Platform::Format_List& Platform::get_export_formats() const
 {
-	static const std::vector<std::string> out = {};
+	static const Platform::Format_List out = {{"vgm", "VGM"}};
 	return out;
 }
 
-std::vector<uint8_t> Platform::get_export_data(Song* song, int format)
+std::vector<uint8_t> Platform::get_export_data(Song& song, int format) const
 {
-	throw std::logic_error("No available export option");
+	if(format == 0)
+	{
+		return vgm_export(song);
+	}
+	else
+	{
+		throw std::logic_error("no such exporter");
+	}
 }
 
+static inline std::string safe_get_tag(Song& song, const std::string& tagname)
+{
+	if(song.get_tag_map()[tagname].size())
+		return song.get_tag_map()[tagname].front();
+	else
+		return "";
+}
+
+static inline VGM_Tag get_tags(Song& song)
+{
+	VGM_Tag tag;
+	Tag_Map tag_map = song.get_tag_map();
+
+	tag.title = safe_get_tag(song,"#title");
+	tag.title_j = safe_get_tag(song,"#titlej");
+	tag.author = safe_get_tag(song,"#composer");
+	tag.author_j = safe_get_tag(song,"#composerj");
+	tag.system = safe_get_tag(song,"#system");
+	tag.system_j = safe_get_tag(song,"#systemj");
+	tag.game = safe_get_tag(song,"#game");
+	tag.game_j = safe_get_tag(song,"#gamej");
+	tag.creator = safe_get_tag(song,"#programmer");
+	tag.notes = safe_get_tag(song,"#comment");
+	tag.date = safe_get_tag(song,"#vgmdate");
+
+	// Fallback tags
+	if(!tag.author.size())
+		tag.creator = safe_get_tag(song,"#author");
+	if(!tag.creator.size())
+		tag.creator = safe_get_tag(song,"#programer");
+	if(!tag.creator.size())
+		tag.creator = tag.author;
+
+	return tag;
+}
+
+std::vector<uint8_t> Platform::vgm_export(Song& song, unsigned int max_seconds, unsigned int num_loops) const
+{
+	VGM_Writer vgm("", 0x61, 0x100);
+	auto driver = song.get_platform()->get_driver(44100, &vgm);
+	unsigned long max_time = max_seconds * 44100;
+	driver->play_song(song);
+	double elapsed_time = 0;
+	double delta = 0;
+	bool looped_or_finished = 0;
+	while(elapsed_time < max_time)
+	{
+		vgm.delay(delta);
+		delta = driver->play_step();
+		elapsed_time += delta;
+		if(!driver->is_playing() || driver->get_loop_count() >= (int)num_loops)
+		{
+			looped_or_finished = 1;
+			break;
+		}
+	}
+	if(!looped_or_finished)
+		vgm.delay(max_time-elapsed_time);
+	vgm.stop();
+	vgm.write_tag(get_tags(song));
+	return vgm.get_buffer();
+}

@@ -346,5 +346,30 @@ public:
 	}
 };
 
+class MDSDRV_Platform_Test : public CppUnit::TestFixture
+{
+	CPPUNIT_TEST_SUITE(MDSDRV_Platform_Test);
+	CPPUNIT_TEST(test_export_list);
+	CPPUNIT_TEST_SUITE_END();
+private:
+	MDSDRV_Platform *platform;
+public:
+	void setUp()
+	{
+		platform = new MDSDRV_Platform;
+	}
+	void tearDown()
+	{
+		delete platform;
+	}
+	void test_export_list()
+	{
+		auto export_list = platform->get_export_formats();
+		CPPUNIT_ASSERT_EQUAL(std::string("vgm"), export_list[0]);
+		CPPUNIT_ASSERT_EQUAL(std::string("mds"), export_list[1]);
+	}
+};
+
 CPPUNIT_TEST_SUITE_REGISTRATION(MDSDRV_Converter_Test);
+CPPUNIT_TEST_SUITE_REGISTRATION(MDSDRV_Platform_Test);
 

@@ -286,6 +286,15 @@ uint8_t VGM_Writer::peek8(uint32_t offset) const
 	return *(uint8_t*)(buffer+offset);
 }
 
+//! Get the VGM buffer.
+std::vector<uint8_t> VGM_Writer::get_buffer()
+{
+	if(completed)
+		poke32(0x04, get_position() - 4);
+
+	return std::vector<uint8_t>(buffer, buffer + get_position());
+}
+
 void VGM_Writer::my_memcpy(void* src, int size)
 {
 	std::memcpy(buffer_pos,src,size);

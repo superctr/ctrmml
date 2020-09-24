@@ -7,6 +7,8 @@
 #ifndef CORE_H
 #define CORE_H
 
+#define CTRMML_VERSION "0.3"
+
 #include <vector>
 #include <map>
 #include <memory>

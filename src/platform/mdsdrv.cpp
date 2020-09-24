@@ -59,7 +59,7 @@ void MDSDRV_Data::read_song(Song& song)
 		else if(std::sscanf(it->c_str(), "@m%hu", &id) == 1)
 		{
 			add_pitch_envelope(id, tag);
-			std::cout << "read pitch envelope " << dump_data(id, pitch_map[id]) << "\n";
+			message += "read pitch envelope " + dump_data(id, pitch_map[id]) + "\n";
 		}
 	}
 }
@@ -1300,17 +1300,21 @@ std::shared_ptr<Driver> MDSDRV_Platform::get_driver(unsigned int rate, VGM_Inter
 	return std::static_pointer_cast<Driver>(std::make_shared<MD_Driver>(rate, vgm_interface));
 }
 
-const std::vector<std::string>& MDSDRV_Platform::get_export_formats() const
+const Platform::Format_List& MDSDRV_Platform::get_export_formats() const
 {
-	static const std::vector<std::string> out = {"mds"};
+	static const Platform::Format_List out = {{"vgm", "VGM"}, {"mds", "MDS song data"}};
 	return out;
 }
 
-std::vector<uint8_t> MDSDRV_Platform::get_export_data(Song* song, int format)
+std::vector<uint8_t> MDSDRV_Platform::get_export_data(Song& song, int format) const
 {
-	if(song && format == 0)
+	if(format == 0)
 	{
-		MDSDRV_Converter converter(*song);
+		return vgm_export(song);
+	}
+	else if(format == 1)
+	{
+		MDSDRV_Converter converter(song);
 		return converter.get_mds().to_bytes();
 	}
 	else
