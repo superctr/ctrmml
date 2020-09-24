@@ -17,7 +17,7 @@ Song::Song()
 	, ppqn(24)
 	, platform_command_index(-32768)
 {
-	platform = new MDSDRV_Platform();
+	platform = new MDSDRV_Platform(0);
 }
 
 //! Destructs a Song
@@ -288,7 +288,16 @@ const Platform* Song::get_platform() const
  */
 bool Song::set_platform(const std::string& key)
 {
-	printf("platform set to '%s'\n", key.c_str());
+	if(iequal(key, "megadrive"))
+	{
+		delete platform;
+		platform = new MDSDRV_Platform(0);
+	}
+	else if(iequal(key, "mdsdrv"))
+	{
+		delete platform;
+		platform = new MDSDRV_Platform(2);
+	}
 	//type = key;
 	return 0;
 }

@@ -8,7 +8,7 @@ comma-separated values. Strings can be enclosed in double quotes if needed.
 
 -	`#title`, `#composer`, `#author`, `#date`, `#comment` - Song metadata.
 -	`#platform` - Sets the MML target platform.
-	- **Note**: Currently only `megadrive` is supported.
+	- **Note**: Currently only `megadrive` and `mdsdrv` is supported.
 -	`@<num>` - Defines an instrument. Parameters are platform-specific.
 -	`@E<num>` - Defines an envelope.
 -	`@M<num>` - Defines a pitch envelope.
@@ -175,11 +175,29 @@ Examples:
 
 ## Platforms
 ### MDSDRV (Mega Drive)
+The `#platform` tag controls the PCM mixing mode when playing back files in
+`mmlgui` or when converting to VGM.
+
+Setting `#platform` to `megadrive` will use VGM datablocks and DAC stream
+commands to play back samples. These files will have a smaller filesize, and
+are suitable for conversion using other sound drivers like XGM. However, only
+sample mixing and volume is not supported.
+
+Setting `#platform` to `mdsdrv` will simulate MDSDRV's PCM driver. 2-3
+PCM channels can be mixed, and 16 levels of volume control is possible.
+The sample rate is however fixed to ~2khz increments up to 17.5 kHz, to match
+the real MDSDRV code. By default, two channel mixing is enabled and the
+output sampling rate is 17.5 Khz.
+
 #### Channel mapping
 -	`ABCDEF` FM channels 1-6.
 -	`GHI` PSG tone channels 1-3.
 -	`J` PSG noise channel.
 -   `KLMNOP` Dummy channels. May be used for FM3 special mode.
+
+Channels `F`, `K` and `L` can play PCM instruments. PCM always takes priority
+over the FM at channel 6 (`F`). If `#platform` is set to `mdsdrv`, software
+mixing and volume control will also be for these PCM channels.
 
 #### Platform-exclusive commands
 -	`mode <0..1>` - For the PSG noise channel (`J`), this will enable the use
@@ -272,7 +290,7 @@ has more than one channel, the first (left) channel is read.
 
 	@30 pcm "path/to/sample.wav"
 
-You can use a PCM sample from any FM or PCM channels. However, the
+You can use a PCM sample from channels `F`, `K` and `L`. However, the
 panning settings from FM channel 6 (`F`) are used and the FM output
 from that channel is muted while PCM samples are playing.
 

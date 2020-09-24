@@ -1290,14 +1290,14 @@ int MDSDRV_Linker::find_unique_data(const std::vector<uint8_t>& data) const
 
 //=====================================================================
 
-MDSDRV_Platform::MDSDRV_Platform()
-	: pcm_mode(0)
+MDSDRV_Platform::MDSDRV_Platform(int pcm_mode)
+	: pcm_mode(pcm_mode)
 {
 }
 
 std::shared_ptr<Driver> MDSDRV_Platform::get_driver(unsigned int rate, VGM_Interface* vgm_interface) const
 {
-	return std::static_pointer_cast<Driver>(std::make_shared<MD_Driver>(rate, vgm_interface));
+	return std::static_pointer_cast<Driver>(std::make_shared<MD_Driver>(rate, vgm_interface, pcm_mode));
 }
 
 const Platform::Format_List& MDSDRV_Platform::get_export_formats() const

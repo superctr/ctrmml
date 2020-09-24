@@ -494,6 +494,19 @@ bool Player::coarse_volume_flag() const
 	return FLAG(VOL_BIT);
 }
 
+//! Set the coarse volume flag.
+void Player::set_coarse_volume_flag(bool state)
+{
+	if(state)
+	{
+		FLAG_SET(VOL_BIT);
+	}
+	else
+	{
+		FLAG_CLR(VOL_BIT);
+	}
+}
+
 //! Return the tempo BPM flag.
 /*!
  *  The tempo BPM flag determines if the event variable Event::TEMPO
@@ -535,6 +548,20 @@ int16_t Player::get_var(Event::Type type) const
 	if(type < Event::CHANNEL_CMD || type >= Event::CMD_COUNT)
 		error("BUG: Unsupported event type");
 	return CH_STATE(type);
+}
+
+
+//! Get event variable.
+/*!
+ *  \param[in] type The event type.
+ *
+ *  \return The event variable corresponding to that type.
+ */
+void Player::set_var(Event::Type type, int16_t val)
+{
+	if(type < Event::CHANNEL_CMD || type >= Event::CMD_COUNT)
+		error("BUG: Unsupported event type");
+	CH_STATE(type) = val;
 }
 
 //! Check if a platform variable has been updated.
@@ -722,9 +749,9 @@ void Player::handle_event()
 				int type = event.type - Event::CHANNEL_CMD;
 				track_state[type] = event.param;
 				track_update_mask |= 1<<type;
-				if(type == Event::VOL_FINE)
+				if(event.type == Event::VOL_FINE)
 					FLAG_CLR(VOL_BIT);
-				if(type == Event::TEMPO)
+				if(event.type == Event::TEMPO)
 					FLAG_CLR(BPM_BIT);
 			}
 			break;

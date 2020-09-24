@@ -20,6 +20,7 @@ MD_Channel::MD_Channel(MD_Driver& driver, int id)
 	: Player(*driver.song, driver.song->get_track(id)),
 	driver(&driver),
 	channel_id(id),
+	pcm_channel_valid(0),
 	slur_flag(0),
 	key_on_flag(0),
 	note_pitch(0xffff),
@@ -33,6 +34,19 @@ MD_Channel::MD_Channel(MD_Driver& driver, int id)
 	con(0),
 	tl()
 {
+	if(channel_id == 5)
+	{
+		pcm_channel_valid = true;
+		pcm_channel_id = 0;
+	}
+	else if(channel_id == 10 || channel_id == 11)
+	{
+		pcm_channel_valid = true;
+		pcm_channel_id = channel_id - 9;
+	}
+
+	set_var(Event::VOL_FINE, 15);
+	set_coarse_volume_flag(true);
 }
 
 //! Update a channel
@@ -440,20 +454,34 @@ void MD_Channel::key_on_pcm()
 	int16_t ins_id = get_var(Event::INS);
 	if(driver->data.ins_type[ins_id] == MDSDRV_Data::INS_PCM)
 	{
-		int wave_header_id = driver->data.wave_map[ins_id];
-		Wave_Bank::Sample sample = driver->data.wave_rom.get_sample_headers().at(wave_header_id);
-		driver->last_pcm_channel = channel_id;
-		driver->ym2612_w(0, 0x2b, 0, 0, 0x80); // DAC enable
-		if(driver->vgm)
+		if(driver->pcm_mode && pcm_channel_valid)
 		{
-			driver->vgm->dac_start(0x00, sample.position + sample.start, sample.size, sample.rate);
+			uint8_t rate = driver->pcm.set_ins(pcm_channel_id, ins_id);
+			driver->pcm.set_pitch(pcm_channel_id, rate);
+			driver->pcm.set_vol(pcm_channel_id, get_var(Event::VOL_FINE));
+			driver->pcm.key_on(pcm_channel_id);
+		}
+		else if(!driver->pcm_mode)
+		{
+			int wave_header_id = driver->data.wave_map[ins_id];
+			Wave_Bank::Sample sample = driver->data.wave_rom.get_sample_headers().at(wave_header_id);
+			driver->last_pcm_channel = channel_id;
+			driver->ym2612_w(0, 0x2b, 0, 0, 0x80); // DAC enable
+			if(driver->vgm)
+			{
+				driver->vgm->dac_start(0x00, sample.position + sample.start, sample.size, sample.rate);
+			}
 		}
 	}
 }
 
 void MD_Channel::key_off_pcm()
 {
-	if(driver->last_pcm_channel == channel_id)
+	if(driver->pcm_mode && pcm_channel_valid)
+	{
+		driver->pcm.key_off(pcm_channel_id);
+	}
+	else if(driver->last_pcm_channel == channel_id)
 	{
 		driver->ym2612_w(0, 0x2b, 0, 0, 0x00); // DAC disable
 		if(driver->vgm)
@@ -779,6 +807,180 @@ void MD_Dummy::v_update_envelope()
 {
 }
 
+bool MD_PCMDriver::tables_initialized;
+int8_t MD_PCMDriver::vol_table[16][256];
+
+const uint8_t MD_PCMDriver::pitch_table[2][8] = {
+	{
+		0b10000000, //2ch mix mode
+		0b10001000,
+		0b10100100,
+		0b10101010,
+		0b11101010,
+		0b11101110,
+		0b11111110,
+		0b11111111
+	},
+	{
+		0b00100000, //3ch mix mode
+		0b00100100,
+		0b00101010,
+		0b00101101,
+		0b00111101,
+		0b00111111,
+		0b01111111,
+		0b11111111
+	},
+};
+
+
+//! constructs MD_PCMDriver.
+MD_PCMDriver::MD_PCMDriver(MD_Driver& driver)
+	: driver(&driver)
+	, mode(0)
+{
+	if(!tables_initialized)
+	{
+		tables_initialized = true;
+
+		static const uint8_t volt[16] = {
+			255, 203, 161, 128, 102, 81, 64, 51, 40, 32, 26, 20, 16, 13, 10, 8
+		};
+		for(int tab = 0; tab < 16; tab++)
+		{
+			uint8_t tvol = volt[tab];
+			for(int i=0; i<256; i++)
+			{
+				int8_t ivol = i ^ 0x80;
+				vol_table[tab][i] = (ivol * tvol) >> 8;
+			}
+		}
+	}
+
+	// init channels
+	for(int i=0; i<3; i++)
+		channels[i] = {false, 0, 0, 0, 0, 0, 0, 0};
+}
+
+//! Set PCM driver mixing mode
+double MD_PCMDriver::set_mode(int data)
+{
+	if(data < 3)
+		mode = data;
+	else
+		mode = 0;
+
+	if(data == 2)
+		return 17500.0;
+	else if(data == 3)
+		return 13000.0;
+	else
+		return 50;
+}
+
+//! Set instrument. Return rate
+uint8_t MD_PCMDriver::set_ins(int channel, int data)
+{
+	if(channel > mode)
+		return 8;
+
+	int wave_header_id = driver->data.wave_map[data];
+	Wave_Bank::Sample sample = driver->data.wave_rom.get_sample_headers().at(wave_header_id);
+	channels[channel].start = sample.position + sample.start;
+	channels[channel].length = sample.size;
+
+	float pitch = sample.rate / (MDSDRV_PCM_RATE / 8.0);
+	uint8_t cp = pitch + 0.5;
+	if(cp < 1)
+		cp = 1;
+	else if(cp > 8)
+		cp = 8;
+	return cp;
+}
+
+void MD_PCMDriver::set_vol(int channel, int data)
+{
+	if(channel > mode)
+		return;
+	channels[channel].volume = (15 - data) & 15;
+}
+
+void MD_PCMDriver::set_pitch(int channel, int data)
+{
+	if(channel > mode)
+		return;
+
+	// Skip counter
+	if(mode == 3)
+		channels[channel].count = 4;
+	else
+		channels[channel].count = 0;
+
+	channels[channel].phase = pitch_table[0][(data - 1) & 7];
+}
+
+void MD_PCMDriver::key_on(int channel)
+{
+	if(channel > mode)
+		return;
+
+	if(!channels[0].enabled && !channels[1].enabled && !channels[2].enabled)
+		driver->ym2612_w(0, 0x2b, 0, 0, 0x80);
+
+	channels[channel].position = 0;
+	channels[channel].enabled = true;
+}
+
+void MD_PCMDriver::key_off(int channel)
+{
+	if(channel > mode)
+		return;
+
+	channels[channel].enabled =  false;
+
+	if(!channels[0].enabled && !channels[1].enabled && !channels[2].enabled)
+		driver->ym2612_w(0, 0x2b, 0, 0, 0x00);
+}
+
+void MD_PCMDriver::update()
+{
+	if(!mode)
+		return;
+
+	int8_t accumulator = 0;
+	for(int i=0; i<mode; i++)
+		accumulator = mix_channel(accumulator, i);
+
+	if(channels[0].enabled || channels[1].enabled || channels[2].enabled)
+		driver->ym2612_w(0, 0x2a, 0, 0, accumulator ^ 0x80);
+}
+
+inline int8_t MD_PCMDriver::mix_channel(int16_t accumulator, int channel)
+{
+	MD_PCMChannel& ch = channels[channel];
+
+	if(!ch.enabled)
+		return accumulator;
+
+	uint8_t sample = driver->data.wave_rom.get_rom_data()[ch.start + ch.position];
+
+	ch.position += ch.update_phase();
+	if(ch.count && !(--ch.count))
+	{
+		ch.position += ch.update_phase();
+		ch.count = 4;
+	}
+
+	if(ch.position > ch.length)
+		key_off(channel);
+
+	accumulator += vol_table[ch.volume][sample];
+	if(accumulator > 127)
+		accumulator = 127;
+	if(accumulator < -128)
+		accumulator = -128;
+	return accumulator;
+}
 
 
 //! constructs a MD_Driver.
@@ -787,9 +989,11 @@ void MD_Dummy::v_update_envelope()
  * \param vgm_interface Optional VGM interface. Set to nullptr to disable VGM.
  * \param is_pal Use 50hz sequence update rate
  */
-MD_Driver::MD_Driver(unsigned int rate, VGM_Interface* vgm_interface, bool is_pal)
+MD_Driver::MD_Driver(unsigned int rate, VGM_Interface* vgm_interface, int pcm_mode, bool is_pal)
 	: Driver(rate, vgm_interface)
+	, pcm(*this)
 	, vgm(vgm_interface)
+	, pcm_mode(pcm_mode)
 	, tempo_delta(255)
 	, tempo_counter(0)
 	, ticks(0)
@@ -810,8 +1014,9 @@ MD_Driver::MD_Driver(unsigned int rate, VGM_Interface* vgm_interface, bool is_pa
 	seq_rate = (is_pal) ? 50.0 : 60.0;
 	seq_counter = 0;
 	seq_delta = rate/seq_rate;
+	pcm_rate = pcm.set_mode(pcm_mode);
 	pcm_counter = 0;
-	pcm_delta = rate/100.0; //not used anyway
+	pcm_delta = rate/pcm_rate; //not used anyway
 }
 
 //! Initiate playback
@@ -822,7 +1027,7 @@ void MD_Driver::play_song(Song& song)
 	data.read_song(song);
 	// Need to expose data.message in a good way later for development...
 	//std::cout << data.message;
-	if(vgm)
+	if(vgm && !pcm_mode)
 	{
 		const std::vector<uint8_t>& dbdata = data.wave_rom.get_rom_data();
 		vgm->datablock(0x00,
@@ -913,6 +1118,7 @@ double MD_Driver::play_step()
 	{
 		// update pcm
 		pcm_counter -= pcm_delta;
+		pcm.update();
 	}
 	if(loop_trigger && get_loop_count() == 0)
 	{

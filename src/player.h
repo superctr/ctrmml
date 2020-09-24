@@ -158,6 +158,9 @@ class Player : public Basic_Player
 		int16_t get_platform_var(int type) const;
 		int16_t get_var(Event::Type type) const;
 
+		void set_var(Event::Type type, int16_t val);
+		void set_coarse_volume_flag(bool state);
+
 	protected:
 		bool get_platform_flag(unsigned int type) const;
 		void clear_platform_flag(unsigned int type);

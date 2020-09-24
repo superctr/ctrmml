@@ -36,6 +36,7 @@ class MDSDRV_Data
 	friend MDSDRV_Track_Writer;
 	friend MDSDRV_Converter;
 	friend MDSDRV_Linker;
+	friend class MD_PCMDriver;
 	friend class MD_Driver;
 	friend class MD_Channel;
 	friend class MD_PSG;
@@ -226,7 +227,7 @@ class MDSDRV_Linker
 class MDSDRV_Platform : public Platform
 {
 	public:
-		MDSDRV_Platform();
+		MDSDRV_Platform(int pcm_mode);
 
 		std::shared_ptr<Driver> get_driver(unsigned int rate, VGM_Interface* vgm_interface) const;
 		const Platform::Format_List& get_export_formats() const;

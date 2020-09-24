@@ -48,6 +48,9 @@ class MD_Channel : public Player
 
 		MD_Driver* driver;
 		int channel_id;
+		bool pcm_channel_valid;
+		int pcm_channel_id;
+
 		bool slur_flag; //!< Flag to disable key on for the next note
 		bool key_on_flag;
 		// Portamento
@@ -189,6 +192,53 @@ class MD_Dummy : public MD_Channel
 		void v_update_envelope() override;
 };
 
+struct MD_PCMChannel
+{
+	bool enabled;
+	int8_t pitch;
+	uint32_t start;
+	uint32_t length;
+	uint32_t position;
+	uint8_t volume;
+	uint8_t phase;
+	uint8_t count;
+
+	inline int update_phase()
+	{
+		int out = phase & 1;
+		phase = (phase >> 1) | (out << 7);
+		return out;
+	}
+};
+
+//! MDSDRV PCM emulator
+class MD_PCMDriver
+{
+	public:
+		MD_PCMDriver(MD_Driver& driver);
+
+		double set_mode(int data); // returns sample rate
+		uint8_t set_ins(int channel, int data);
+		void set_vol(int channel, int data);
+		void set_pitch(int channel, int data);
+		void key_on(int channel);
+		void key_off(int channel);
+
+		void update();
+
+	protected:
+		MD_Driver* driver;
+		MD_PCMChannel channels[3];
+
+		int mode;
+
+		int8_t mix_channel(int16_t accumulator, int channel);
+
+		static bool tables_initialized;
+		static int8_t vol_table[16][256];
+		static const uint8_t pitch_table[2][8];
+};
+
 //! Megadrive sound driver
 class MD_Driver : public Driver
 {
@@ -197,8 +247,9 @@ class MD_Driver : public Driver
 	friend MD_PSG;
 	friend MD_PSGMelody;
 	friend MD_PSGNoise;
+	friend MD_PCMDriver;
 	public:
-		MD_Driver(unsigned int rate, VGM_Interface* vgm_interface, bool is_pal = false);
+		MD_Driver(unsigned int rate, VGM_Interface* vgm_interface, int pcm_mode = 0, bool is_pal = false);
 
 		void play_song(Song& song);
 		void reset();
@@ -214,11 +265,14 @@ class MD_Driver : public Driver
 		void reset_loop_count();
 
 		MDSDRV_Data data;
+		MD_PCMDriver pcm;
 		Song* song;
 		VGM_Interface* vgm;
 
 		std::vector<std::unique_ptr<MD_Channel>> channels;
+		int pcm_mode;
 		double seq_rate;
+		double pcm_rate;
 		double seq_delta;
 		double pcm_delta;
 		double seq_counter;
@@ -231,6 +285,7 @@ class MD_Driver : public Driver
 		uint8_t fm3_mask;
 		uint8_t fm3_con;
 		uint8_t fm3_tl[4];
+
 		int last_pcm_channel;
 
 		bool loop_trigger;
