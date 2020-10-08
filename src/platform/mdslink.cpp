@@ -18,20 +18,36 @@ void print_usage(const char* exename)
 	std::cout << "Usage: " << exename << " [options] <list of input files ...>\n\n";
 	std::cout << "Options:\n";
 	std::cout << "\t-o <mdsseq.bin> <mdsbin.bin> : Specify output filenames\n";
+	std::cout << "\t-i <mdsseq.inc>              : Specify ASM headers\n";
+	std::cout << "\t-h <mdsseq.h>                : Specify C headers\n";
 	std::cout << "Note:\n";
 	std::cout << "\tInput files can be in .mml or .mds format\n";
 }
 
-std::string get_extension(const char* input_filename)
+std::string get_extension(const std::string& input_filename)
 {
-	static char str[256];
-	char *last_dot;
-	strncpy(str,input_filename, 256);
-	last_dot = strrchr(str, '.');
-	if(last_dot)
-		return last_dot;
+	auto pos = input_filename.rfind(".");
+	if(pos != std::string::npos)
+		return input_filename.substr(pos);
 	else
 		return "";
+}
+
+// isolate filename from the path
+std::string get_filename(const std::string& input_filename)
+{
+	auto spos = input_filename.rfind("/");
+#ifdef _WIN32
+	// handle windows backslash
+	auto spos2 = input_filename.rfind("\\");
+	if((spos2 != std::string::npos && spos2 > spos) || spos == std::string::npos)
+		spos = spos2;
+#endif
+	auto epos = input_filename.rfind(".");
+	if(spos != std::string::npos)
+		return input_filename.substr(spos+1, epos-spos-1);
+	else
+		return input_filename.substr(0, epos);
 }
 
 Song convert_file(const char* filename)
@@ -55,6 +71,8 @@ int main(int argc, char* argv[])
 	auto input = std::vector<std::string>();
 	std::string seq_filename = "mdsseq.bin";
 	std::string pcm_filename = "mdspcm.bin";
+	std::string c_header_filename = "";
+	std::string asm_header_filename = "";
 
 	for(int arg = 1; arg < argc; arg++)
 	{
@@ -63,6 +81,10 @@ int main(int argc, char* argv[])
 			seq_filename = argv[++arg];
 			pcm_filename = argv[++arg];
 		}
+		else if((!strcmp(argv[arg], "-h") || !strcmp(argv[arg], "--c-header")) && arg < argc)
+			c_header_filename = argv[++arg];
+		else if((!strcmp(argv[arg], "-i") || !strcmp(argv[arg], "--asm-header")) && arg < argc)
+			asm_header_filename = argv[++arg];
 		else
 			input.push_back(argv[arg]);
 	}
@@ -110,7 +132,7 @@ int main(int argc, char* argv[])
 				mds = converter.get_mds();
 			}
 			// pass to linker
-			linker.add_song(mds);
+			linker.add_song(mds, get_filename(*it));
 		}
 		if(seq_filename.size())
 		{
@@ -126,6 +148,20 @@ int main(int argc, char* argv[])
 			std::ofstream out(pcm_filename, std::ios::binary);
 			out.write((char*)bytes.data(), bytes.size());
 			std::cout << linker.get_statistics();
+		}
+		if(asm_header_filename.size())
+		{
+			printf("writing %s ...\n", asm_header_filename.c_str());
+			auto bytes = linker.get_asm_header();
+			std::ofstream out(asm_header_filename);
+			out.write((char*)bytes.data(), bytes.size());
+		}
+		if(c_header_filename.size())
+		{
+			printf("writing %s ...\n", c_header_filename.c_str());
+			auto bytes = linker.get_c_header();
+			std::ofstream out(c_header_filename);
+			out.write((char*)bytes.data(), bytes.size());
 		}
 		return 0;
 	}

@@ -75,6 +75,18 @@ const std::string& Song::get_tag_front(const std::string& key) const
 	return tag_map.at(key).front();
 }
 
+//! Gets the first value of the tag with the specified key. Should not throw exceptions.
+/*!
+ *  If the tag is not present or empty, an empty string ("") is returned instead.
+ */
+std::string Song::get_tag_front_safe(const std::string& key) const
+{
+	if(tag_map.count(key) && tag_map.at(key).size())
+		return tag_map.at(key).front();
+	else
+		return "";
+}
+
 //! Appends a value to the tag with the specified key.
 /*!
  *  Appends the value as a new item to the tag.

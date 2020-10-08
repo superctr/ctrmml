@@ -7,6 +7,7 @@
 #include "../track.h"
 #include "../player.h"
 #include "../riff.h"
+#include <string>
 #include <map>
 #include <vector>
 #include <utility>
@@ -199,14 +200,25 @@ class MDSDRV_Converter
 //! MDSDRV data linker
 class MDSDRV_Linker
 {
+	typedef std::map<std::string, int> String_Counter;
+	struct Seq_Data {
+		std::string filename;
+		std::vector<uint8_t> data;
+		std::vector<std::pair<uint16_t,uint16_t>> patch_table;
+	};
+
 	public:
 		MDSDRV_Linker();
 
-		void add_song(RIFF& mds);
+		void add_song(RIFF& mds, const std::string& filename = "");
+		unsigned int get_seq_count() const;
 		std::string get_seq_data_asm();
 		std::vector<uint8_t> get_seq_data();
 		std::vector<uint8_t> get_pcm_data();
 		std::string get_statistics();
+
+		std::string get_asm_header() const;
+		std::string get_c_header() const;
 
 	private:
 		int add_unique_data(const std::vector<uint8_t>& data);
@@ -214,13 +226,12 @@ class MDSDRV_Linker
 		std::vector<uint8_t> get_pcm_header(const Wave_Bank::Sample& sample) const;
 		void check_version(uint8_t major, uint8_t minor);
 
-		struct Seq_Data {
-			std::vector<uint8_t> data;
-			std::vector<std::pair<uint16_t,uint16_t>> patch_table;
-		};
+		std::string keyify_string(const std::string& input) const;
+		std::string unique_string(const std::string& input, String_Counter& map) const;
+
 		std::vector<std::vector<uint8_t>> data_bank;
 		std::vector<int> data_offset;
-		std::vector<Seq_Data> seq_bank;
+		std::map<std::string, std::vector<Seq_Data>> seq_bank;
 		Wave_Bank wave_rom;
 };
 

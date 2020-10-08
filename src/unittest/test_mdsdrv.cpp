@@ -356,7 +356,7 @@ private:
 public:
 	void setUp()
 	{
-		platform = new MDSDRV_Platform;
+		platform = new MDSDRV_Platform(0);
 	}
 	void tearDown()
 	{
@@ -365,8 +365,8 @@ public:
 	void test_export_list()
 	{
 		auto export_list = platform->get_export_formats();
-		CPPUNIT_ASSERT_EQUAL(std::string("vgm"), export_list[0]);
-		CPPUNIT_ASSERT_EQUAL(std::string("mds"), export_list[1]);
+		CPPUNIT_ASSERT_EQUAL(std::string("vgm"), export_list[0].first);
+		CPPUNIT_ASSERT_EQUAL(std::string("mds"), export_list[1].first);
 	}
 };
 

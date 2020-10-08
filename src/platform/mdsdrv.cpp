@@ -783,8 +783,13 @@ MDSDRV_Converter::MDSDRV_Converter(Song& song)
 RIFF MDSDRV_Converter::get_mds()
 {
 	std::vector<uint8_t> ver = {MDSDRV_SEQ_VERSION_MAJOR, MDSDRV_SEQ_VERSION_MINOR};
+
+	auto group = song->get_tag_front_safe("#group");
+	std::vector<uint8_t> group_data (group.begin(), group.end());
+
 	RIFF riff(RIFF::TYPE_RIFF, FOURCC("MDS0"));
 	riff.add_chunk(RIFF(FOURCC("ver "), ver)); // version data
+	riff.add_chunk(RIFF(FOURCC("grp "), group_data)); // group id
 	riff.add_chunk(RIFF(FOURCC("seq "), sequence_data));
 	RIFF dblk(RIFF::TYPE_LIST, FOURCC("dblk"));
 	for(auto it = used_data_map.begin(); it != used_data_map.end(); it++)
@@ -1071,11 +1076,12 @@ MDSDRV_Linker::MDSDRV_Linker()
 }
 
 //! Add a song (converted to MDS RIFF format).
-void MDSDRV_Linker::add_song(RIFF& mds)
+void MDSDRV_Linker::add_song(RIFF& mds, const std::string& filename)
 {
 	std::vector<uint8_t> ver = {0, 0};
 	std::vector<uint8_t> pcmd = {};
 	std::vector<uint8_t> seq = {};
+	std::vector<uint8_t> group = {};
 	std::vector<std::pair<uint16_t,uint16_t>> patch_table;
 	RIFF dblk = RIFF(0);
 	mds.rewind();
@@ -1093,6 +1099,8 @@ void MDSDRV_Linker::add_song(RIFF& mds)
 			dblk = chunk;
 		else if(chunk.get_type() == FOURCC("ver "))
 			ver = chunk.get_data();
+		else if(chunk.get_type() == FOURCC("grp "))
+			group = chunk.get_data();
 	}
 
 	check_version(ver[0], ver[1]);
@@ -1134,7 +1142,10 @@ void MDSDRV_Linker::add_song(RIFF& mds)
 			patch_table.push_back({addr, offset});
 		}
 	}
-	seq_bank.push_back({seq, patch_table});
+	auto group_str = keyify_string(std::string(group.begin(), group.end()));
+	if(!group_str.size()) // set default group name
+		group_str = "BGM";
+	seq_bank[group_str].push_back({filename, seq, patch_table});
 }
 
 std::vector<uint8_t> MDSDRV_Linker::get_pcm_header(const Wave_Bank::Sample& sample) const
@@ -1174,10 +1185,19 @@ void MDSDRV_Linker::check_version(uint8_t major, uint8_t minor)
 
 }
 
+//! Get the number of sequences
+unsigned int MDSDRV_Linker::get_seq_count() const
+{
+	unsigned int count = 0;
+	for(auto&& i : seq_bank)
+		count += i.second.size();
+	return count;
+}
+
 //! Get the output mdsseq.bin
 std::vector<uint8_t> MDSDRV_Linker::get_seq_data()
 {
-	int header_size = 12 + seq_bank.size() * 4;
+	int header_size = 12 + get_seq_count() * 4;
 	auto data = std::vector<uint8_t>(header_size);
 
 	// sdtop - 0
@@ -1201,22 +1221,25 @@ std::vector<uint8_t> MDSDRV_Linker::get_seq_data()
 	}
 
 	id = 1;
-	for(auto&& i : seq_bank)
+	for(auto&& group : seq_bank)
 	{
-		printf("put seq %02x at %04x\n", id, offset);
-		for(auto&& j : i.patch_table)
+		for(auto&& seq : group.second)
 		{
-			write_be16(i.data, j.first, data_offset[j.second]);
+			printf("put seq %02x (%s.%s) at %04x\n", id, group.first.c_str(), seq.filename.c_str(), offset);
+			for(auto&& j : seq.patch_table)
+			{
+				write_be16(seq.data, j.first, data_offset[j.second]);
+			}
+			data.insert(data.end(), seq.data.begin(), seq.data.end());
+			write_be32(data, 8 + (id * 4), offset);
+			offset += seq.data.size();
+			if(offset & 1)
+			{
+				data.push_back(0);
+				offset++;
+			}
+			id++;
 		}
-		data.insert(data.end(), i.data.begin(), i.data.end());
-		write_be32(data, 8 + (id * 4), offset);
-		offset += i.data.size();
-		if(offset & 1)
-		{
-			data.push_back(0);
-			offset++;
-		}
-		id++;
 	}
 
 	// write header
@@ -1256,6 +1279,77 @@ std::string MDSDRV_Linker::get_statistics()
 		wave_rom.get_rom_data().size());
 	str += stringf("Gaps: %d bytes, largest %d\n",
 		wave_rom.get_total_gap(), wave_rom.get_largest_gap());
+	return str;
+}
+
+static inline const std::string asm_define(std::string key, uint16_t value)
+{
+	return key + " = " + std::to_string(value) + "\n";
+}
+
+//! Get an assembly header file
+std::string MDSDRV_Linker::get_asm_header() const
+{
+	uint16_t song_id = 0;
+	std::string buf = "";
+	String_Counter define_count;
+	for(auto&& group : seq_bank)
+	{
+		buf += asm_define(unique_string(group.first + "_MIN", define_count), song_id + 1);
+		for(auto&& seq : group.second)
+		{
+			song_id++;
+			buf += asm_define(unique_string(group.first + "_" + seq.filename, define_count), song_id);
+		}
+		buf += asm_define(unique_string(group.first + "_MAX", define_count), song_id);
+	}
+	return buf;
+}
+
+static inline const std::string c_define(std::string key, uint16_t value)
+{
+	return "#define " + key + " " + std::to_string(value) + "\n";
+}
+
+std::string MDSDRV_Linker::get_c_header() const
+{
+	uint16_t song_id = 0;
+	std::string buf = "";
+	String_Counter define_count;
+	for(auto&& group : seq_bank)
+	{
+		buf += c_define(unique_string(group.first + "_MIN", define_count), song_id + 1);
+		for(auto&& seq : group.second)
+		{
+			song_id++;
+			buf += c_define(unique_string(group.first + "_" + seq.filename, define_count), song_id);
+		}
+		buf += c_define(unique_string(group.first + "_MAX", define_count), song_id);
+	}
+	return buf;
+}
+
+//! Get a keyified string (all characters that would be illegal C or ASM defines stripped)
+std::string MDSDRV_Linker::keyify_string(const std::string& input) const
+{
+	std::string out;
+	for(auto && i : input)
+	{
+		if(std::isspace(i))
+			out.push_back('_');
+		else if(std::isalnum(i) || i == '_')
+			out.push_back(std::toupper(i));
+	}
+	return out;
+}
+
+//! Get a unique keyified string
+std::string MDSDRV_Linker::unique_string(const std::string& input, MDSDRV_Linker::String_Counter& map) const
+{
+	auto str = keyify_string(input);
+	map[str]++;
+	if(map[str] != 1)
+		str = unique_string(str + "_" + std::to_string(map[str] - 1), map);
 	return str;
 }
 

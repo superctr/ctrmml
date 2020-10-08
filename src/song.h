@@ -33,6 +33,7 @@ class Song
 		Tag& get_tag(const std::string& key);
 		Tag& get_or_make_tag(const std::string& key);
 		const std::string& get_tag_front(const std::string& key) const;
+		std::string get_tag_front_safe(const std::string& key) const;
 
 		int16_t register_platform_command(int16_t param, const std::string& value);
 		Tag& get_platform_command(int16_t param);
