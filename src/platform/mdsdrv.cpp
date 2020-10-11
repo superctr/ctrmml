@@ -763,9 +763,18 @@ MDSDRV_Converter::MDSDRV_Converter(Song& song)
 		sequence_data.insert(sequence_data.end(), bytes.begin(), bytes.end());
 	}
 
+	auto vol_str = song.get_tag_front_safe("#volume");
+	auto vol = 0;
+	if(vol_str.size())
+	{
+		std::strtoul(vol_str.c_str(), NULL, 0);
+		if(vol > 127)
+			vol = 127;
+	}
+
 	sequence_data[0] = data_base >> 8;
 	sequence_data[1] = data_base;
-	sequence_data[2] = 0;				// global volume (currently unsupported)
+	sequence_data[2] = vol;
 	sequence_data[3] = track_count;
 
 	for(auto it = subroutine_list.begin(); it != subroutine_list.end(); it++)

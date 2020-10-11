@@ -13,7 +13,7 @@
 
 void print_usage(const char* exename)
 {
-	std::cout << "mdslink - MDSDRV Linker and MML Compiler\n";
+	std::cout << "mdslink - MDSDRV MML Compiler and Linker\n";
 	std::cout << "(C) 2019-2020 ian karlsson\n\n";
 	std::cout << "Usage: " << exename << " [options] <list of input files ...>\n\n";
 	std::cout << "Options:\n";
@@ -21,7 +21,9 @@ void print_usage(const char* exename)
 	std::cout << "\t-i <mdsseq.inc>              : Specify ASM headers\n";
 	std::cout << "\t-h <mdsseq.h>                : Specify C headers\n";
 	std::cout << "Note:\n";
-	std::cout << "\tInput files can be in .mml or .mds format\n";
+	std::cout << "\tInput files can be in .mml or .mds format\n\n";
+	std::cout << "MDSDRV version " << MDSDRV_SEQ_VERSION_MAJOR << "." << MDSDRV_SEQ_VERSION_MINOR << " ";
+	std::cout << "(minimum compatible version " << MDSDRV_MIN_SEQ_VERSION_MAJOR << "." << MDSDRV_MIN_SEQ_VERSION_MINOR << ")\n\n";
 }
 
 std::string get_extension(const std::string& input_filename)

@@ -22,7 +22,7 @@ class MDSDRV_Platform;
 
 // Current sequence version
 #define MDSDRV_SEQ_VERSION_MAJOR 0
-#define MDSDRV_SEQ_VERSION_MINOR 3
+#define MDSDRV_SEQ_VERSION_MINOR 4
 
 // Minimum compatible sequence version
 #define MDSDRV_MIN_SEQ_VERSION_MAJOR 0
