@@ -31,6 +31,9 @@ class MDSDRV_Platform;
 // PCM sampling rate
 #define MDSDRV_PCM_RATE 17500
 
+//! helper functions for MDSDRV
+uint8_t MDSDRV_get_register(const std::string& str);
+
 //! MDSDRV data bank
 class MDSDRV_Data
 {

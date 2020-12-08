@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
@@ -13,6 +14,28 @@
 #include "../stringf.h"
 #include "../riff.h"
 #include "../util.h"
+
+//! Lookup register name in str and return the address, or 0 if invalid
+uint8_t MDSDRV_get_register(const std::string& str)
+{
+	std::string s(str);
+	std::transform(str.begin(), str.end(), s.begin(), [](uint8_t c){return std::tolower(c);});
+	static const std::map<std::string, uint8_t> lookup = {
+		{"dtml1",0x30}, {"dtml2",0x38}, {"dtml3",0x34}, {"dtml4",0x3c},
+		{"tl1",0xfc}, {"tl2",0xfe}, {"tl3",0xfd}, {"tl4",0xff},
+		{"ksar1",0x50}, {"ksar2",0x58}, {"ksar3",0x54}, {"ksar4",0x5c},
+		{"amdr1",0x60}, {"amdr2",0x68}, {"amdr3",0x64}, {"amdr4",0x6c},
+		{"sr1",0x70}, {"sr2",0x78}, {"sr3",0x74}, {"sr4",0x7c},
+		{"slrr1",0x80}, {"slrr2",0x88}, {"slrr3",0x84}, {"slrr4",0x8c},
+		{"ssg1",0x90}, {"ssg2",0x98}, {"ssg3",0x94}, {"ssg4",0x9c},
+		{"fbal",0xb0}
+	};
+	auto search = lookup.find(s);
+	//printf("s = '%s', match=%d\n", s.c_str(), search != lookup.end());
+	if(search != lookup.end())
+		return search->second;
+	return 0;
+}
 
 MDSDRV_Data::MDSDRV_Data()
 	: data_bank()
@@ -665,7 +688,7 @@ void MDSDRV_Track_Writer::parse_platform_event(const Tag& tag)
 		if(tag.size() < 3)
 			error("not enough parameters for 'lfo' command");
 		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LFO,
-					(std::strtol(tag[1].c_str(), 0, 0) << 4) | (std::strtol(tag[2].c_str(), 0, 0))));
+					((std::strtol(tag[1].c_str(), 0, 0) << 4) | (std::strtol(tag[2].c_str(), 0, 0) & 0x3f))));
 	}
 	else if(iequal(tag[0], "lforate")) // LFO rate
 	{
@@ -688,11 +711,11 @@ void MDSDRV_Track_Writer::parse_platform_event(const Tag& tag)
 		if(tag.size() < 3)
 			error("not enough parameters for 'write' command");
 		uint8_t write_addr = std::strtol(tag[1].c_str(), 0, 0);
-		uint8_t write_data = std::strtol(tag[2].c_str(), 0, 0);
+		uint16_t write_data = (write_addr << 8) | (std::strtol(tag[2].c_str(), 0, 0) & 0xff);
 		if(write_addr >= 0x30)
-			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMCREG, (write_addr << 8) | write_data));
+			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMCREG, write_data));
 		else
-			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMREG, (write_addr << 8) | write_data));
+			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMREG, write_data));
 	}
 	else if(iequal(tag[0], "pcmrate")) // PCM channel sample rate
 	{
@@ -721,6 +744,28 @@ void MDSDRV_Track_Writer::parse_platform_event(const Tag& tag)
 		if(tag.size() > 2)
 			data = std::strtol(tag[2].c_str(), 0, 0);
 		converted_events.push_back(MDSDRV_Event(type, data));
+	}
+	else if(MDSDRV_get_register(tag[0]))
+	{
+		if(tag.size() < 2)
+			error("not enough parameters for 'write' command");
+
+		uint8_t reg = MDSDRV_get_register(tag[0]);
+		uint16_t data = (reg << 8) | (std::strtol(tag[1].c_str(), 0, 0) & 0xff);
+
+		if(reg > 0xfc && tag[1].size() > 0)
+		{
+			data -= 0xfc00;
+			uint8_t sign = tag[1][0];
+			if(sign == '+' || sign == '-')
+				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMTLM, data));
+			else
+				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMTL, data));
+		}
+		else if(reg >= 0x30)
+			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMCREG, data));
+		else
+			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMREG, data));
 	}
 }
 

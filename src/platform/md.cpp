@@ -187,7 +187,8 @@ uint32_t MD_Channel::parse_platform_event(const Tag& tag, int16_t* platform_stat
 			error("not enough parameters for 'write' command");
 		platform_state[EVENT_WRITE_ADDR] = std::strtol(tag[1].c_str(), 0, 0);
 		platform_state[EVENT_WRITE_DATA] = std::strtol(tag[2].c_str(), 0, 0);
-		return (1 << EVENT_WRITE_ADDR);
+		platform_state[EVENT_TL_MODIFY] = 0;
+		return (1 << EVENT_WRITE_DATA);
 	}
 	else if(iequal(tag[0], "pcmrate"))
 	{
@@ -204,6 +205,27 @@ uint32_t MD_Channel::parse_platform_event(const Tag& tag, int16_t* platform_stat
 		uint8_t data = std::strtol(tag[1].c_str(), 0, 0);
 		if(data < 2 || data > 3)
 			error("pcmmode argument must be between 2 or 3");
+	}
+	else if(MDSDRV_get_register(tag[0]))
+	{
+		if(tag.size() < 2)
+			error("not enough parameters for 'write' command");
+
+		uint8_t reg = MDSDRV_get_register(tag[0]);
+		int16_t val = std::strtol(tag[1].c_str(), 0, 0);
+
+		if(tag[1].size() > 0)
+		{
+			uint8_t sign = tag[1][0];
+			if(sign == '+' || sign == '-')
+				platform_state[EVENT_TL_MODIFY] = 1;
+			else
+				platform_state[EVENT_TL_MODIFY] = 0;
+		}
+
+		platform_state[EVENT_WRITE_ADDR] = reg;
+		platform_state[EVENT_WRITE_DATA] = val;
+		return (1 << EVENT_WRITE_DATA);
 	}
 	return 0;
 }
@@ -288,7 +310,29 @@ void MD_Channel::update_state()
 	}
 	if(get_platform_flag(EVENT_WRITE_DATA))
 	{
-		driver->ym2612_w(channel_id / 3, get_platform_var(EVENT_WRITE_ADDR), channel_id % 3, 0, get_platform_var(EVENT_WRITE_DATA));
+		int16_t data = get_platform_var(EVENT_WRITE_DATA);
+		uint8_t addr = get_platform_var(EVENT_WRITE_ADDR);
+		//printf("handle write data  =%02x,%02x\n", data,addr);
+		if(addr >= 0xfc)
+		{
+			// handle TL
+			addr -= 0xfc;
+			if(get_platform_var(EVENT_TL_MODIFY))
+			{
+				data += tl[addr];
+				if(data < 0)
+					data = 0;
+				else if(data > 0x7f)
+					data = 0x7f;
+			}
+			tl[addr] = data;
+			set_vol();
+		}
+		else
+		{
+			// everything else
+			driver->ym2612_w(channel_id / 3, addr, channel_id % 3, 0, data);
+		}
 		clear_platform_flag(EVENT_WRITE_DATA);
 	}
 	if(get_platform_flag(EVENT_LFO))
