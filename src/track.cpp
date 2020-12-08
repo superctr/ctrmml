@@ -274,7 +274,7 @@ int Track::set_quantize(uint16_t param, uint16_t parts)
 	if(param > parts || parts == 0)
 		return -1;
 	if(param == 0)
-		param = -1;
+		param = parts;
 	quantize = param;
 	quantize_parts = parts;
 	early_release = 0;
@@ -290,6 +290,7 @@ int Track::set_quantize(uint16_t param, uint16_t parts)
  */
 void Track::set_early_release(uint16_t param)
 {
+	quantize = quantize_parts;
 	early_release = param;
 }
 
