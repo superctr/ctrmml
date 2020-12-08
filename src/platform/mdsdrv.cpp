@@ -665,17 +665,15 @@ void MDSDRV_Track_Writer::parse_platform_event(const Tag& tag)
 		if(tag.size() < 3)
 			error("not enough parameters for 'lfo' command");
 		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LFO,
-					(std::strtol(tag[1].c_str(), 0, 0) << 3) | (std::strtol(tag[2].c_str(), 0, 0))));
+					(std::strtol(tag[1].c_str(), 0, 0) << 4) | (std::strtol(tag[2].c_str(), 0, 0))));
 	}
 	else if(iequal(tag[0], "lforate")) // LFO rate
 	{
 		if(tag.size() < 2)
 			error("not enough parameters for 'lforate' command");
 		uint8_t param = std::strtol(tag[1].c_str(), 0, 0);
-		if(!param)
-			param = 0;
-		else
-			param = (param-1) | 0x8;
+		if(param)
+			param += 7;
 		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::FMREG, 0x2200 | param));
 	}
 	else if(iequal(tag[0], "fm3")) // FM3 mode

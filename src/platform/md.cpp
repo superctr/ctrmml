@@ -46,6 +46,7 @@ MD_Channel::MD_Channel(MD_Driver& driver, int id)
 	}
 
 	set_var(Event::VOL_FINE, 15);
+	set_var(Event::PAN, 3);
 	set_coarse_volume_flag(true);
 }
 
@@ -156,7 +157,7 @@ uint32_t MD_Channel::parse_platform_event(const Tag& tag, int16_t* platform_stat
 	{
 		if(tag.size() < 3)
 			error("not enough parameters for 'lfo' command");
-		platform_state[EVENT_LFO] = (std::strtol(tag[1].c_str(), 0, 0) << 3) | (std::strtol(tag[2].c_str(), 0, 0));
+		platform_state[EVENT_LFO] = (std::strtol(tag[1].c_str(), 0, 0) << 4) | (std::strtol(tag[2].c_str(), 0, 0));
 		return (1 << EVENT_LFO);
 	}
 	else if(iequal(tag[0], "lfodelay"))
@@ -289,6 +290,17 @@ void MD_Channel::update_state()
 	{
 		driver->ym2612_w(channel_id / 3, get_platform_var(EVENT_WRITE_ADDR), channel_id % 3, 0, get_platform_var(EVENT_WRITE_DATA));
 		clear_platform_flag(EVENT_WRITE_DATA);
+	}
+	if(get_platform_flag(EVENT_LFO))
+	{
+		v_set_pan();
+	}
+	if(get_platform_flag(EVENT_LFO_CONFIG))
+	{
+		uint8_t data = get_platform_var(EVENT_LFO_CONFIG);
+		if(data)
+			data += 7;
+		driver->ym2612_w(0, 0x22, 0, 0, data);
 	}
 	v_set_type();
 }
@@ -520,7 +532,7 @@ void MD_FM::v_set_ins()
 
 void MD_FM::v_set_pan()
 {
-	pan_lfo &= 0x0f; // mask out panning
+	pan_lfo = get_platform_var(EVENT_LFO) & 0x3f; // mask out panning
 	int8_t mml_pan = get_var(Event::PAN);
 	if(mml_pan >= 0 && mml_pan < 4)
 		pan_lfo |= mml_pan << 6; // 1=right, 2=left, 3=both
