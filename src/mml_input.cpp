@@ -449,9 +449,9 @@ MML_Input::Track_Position_Map MML_Input::get_track_map()
 			{
 				out[i] = get_song().get_track(i).get_event_count();
 			}
-			catch(std::exception &)
+			catch(std::out_of_range& except)
 			{
-				out[i] = 0; // track doesn't exist; no events added
+				// track doesn't exist; no events added
 			}
 		}
 	}
