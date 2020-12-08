@@ -19,6 +19,7 @@ class MML_Input_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST(test_mml_platform_command);
 	CPPUNIT_TEST(test_mml_error_duration);
 	CPPUNIT_TEST(test_mml_key_signature);
+	CPPUNIT_TEST(test_mml_track_map);
 	CPPUNIT_TEST_SUITE_END();
 private:
 	Song *song;
@@ -213,6 +214,13 @@ public:
 		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(23).type);
 		CPPUNIT_ASSERT_EQUAL((int16_t)48, song->get_track(0).get_event(23).param); // c
 	}
+	void test_mml_track_map()
+	{
+		mml_input->read_line("A "); // empty
+		mml_input->read_line("B"); // also empty
+		mml_input->get_track_map();
+	}
+
 };
 
 CPPUNIT_TEST_SUITE_REGISTRATION(MML_Input_Test);

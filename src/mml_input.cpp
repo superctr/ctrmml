@@ -444,7 +444,16 @@ MML_Input::Track_Position_Map MML_Input::get_track_map()
 	if(last_cmd == &MML_Input::parse_mml)
 	{
 		for(auto && i : track_list)
-			out[i] = get_song().get_track(i).get_event_count();
+		{
+			try
+			{
+				out[i] = get_song().get_track(i).get_event_count();
+			}
+			catch(std::exception &)
+			{
+				out[i] = 0; // track doesn't exist; no events added
+			}
+		}
 	}
 	return out;
 }
