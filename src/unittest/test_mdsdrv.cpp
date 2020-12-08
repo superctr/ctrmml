@@ -37,10 +37,11 @@ public:
 	{
 		mml_input->read_line("A l4o4v5cdef");
 		mml_input->read_line("B l8o4V5 L ga");
+		mml_input->read_line("C 'cmd 0xf6 0x2287'");
 		auto converter = MDSDRV_Converter(*song);
 
 		// check that we have two tracks
-		CPPUNIT_ASSERT_EQUAL((int)2, (int)converter.track_list.size());
+		CPPUNIT_ASSERT_EQUAL((int)3, (int)converter.track_list.size());
 
 		// check first tracks. we cast to uint16 to make sure cppunit display asserts as integers
 		CPPUNIT_ASSERT_EQUAL((int)6, (int)converter.track_list[0].size());
@@ -68,19 +69,27 @@ public:
 		CPPUNIT_ASSERT_EQUAL((uint16_t)12, converter.track_list[1][3].arg);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::JUMP, (uint16_t)converter.track_list[1][4].type);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0x00, converter.track_list[1][4].arg);
+
+		// Check third track
+		CPPUNIT_ASSERT_EQUAL((int)2, (int)converter.track_list[2].size());
+		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::FMREG, (uint16_t)converter.track_list[2][0].type);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)0x2287, converter.track_list[2][0].arg);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::FINISH, (uint16_t)converter.track_list[2][1].type);
 	}
 	//! test basic functionality of the track writer.
 	void test_track_writer_sequence_output()
 	{
 		mml_input->read_line("A l4o4v5cdef");
 		mml_input->read_line("B l8o4V5 L ga");
+		mml_input->read_line("C 'cmd 0xf6 0x2287' 'cmd 0xe0'");
 		auto converter = MDSDRV_Converter(*song);
 
 		// check that we have two tracks
-		CPPUNIT_ASSERT_EQUAL((int)2, (int)converter.track_list.size());
+		CPPUNIT_ASSERT_EQUAL((int)3, (int)converter.track_list.size());
 
 		auto trk1 = converter.convert_track(converter.track_list[0]);
 		auto trk2 = converter.convert_track(converter.track_list[1]);
+		auto trk3 = converter.convert_track(converter.track_list[2]);
 
 		// check first tracks. we cast to uint16 to make sure cppunit display asserts as integers
 		CPPUNIT_ASSERT_EQUAL((int)8, (int)trk1.size());
@@ -103,6 +112,14 @@ public:
 		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::JUMP, (uint16_t)trk2.at(5));
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0xff, (uint16_t)trk2.at(6));
 		CPPUNIT_ASSERT_EQUAL((uint16_t)0xfa, (uint16_t)trk2.at(7)); // 2-8 (loop_pos-next_inst)
+
+		// check third track.
+		CPPUNIT_ASSERT_EQUAL((int)5, (int)trk3.size());
+		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::FMREG, (uint16_t)trk3.at(0));
+		CPPUNIT_ASSERT_EQUAL((uint16_t)0x22, (uint16_t)trk3.at(1));
+		CPPUNIT_ASSERT_EQUAL((uint16_t)0x87, (uint16_t)trk3.at(2));
+		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::SLR, (uint16_t)trk3.at(3));
+		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::FINISH, (uint16_t)trk3.at(4));
 	}
 	void test_subroutine_handling()
 	{

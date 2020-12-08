@@ -134,16 +134,19 @@ void MDSDRV_Data::add_ins_fm_4op(uint16_t id, const Tag& tag)
 		fm_data[0 + i] = (tag_data[op + 8] << 4) | (tag_data[op + 7] & 15);
 		// KS/AR
 		fm_data[4 + i] = (tag_data[op + 6] << 6) | (tag_data[op + 0] & 31);
-		// AM/DR (AM sensitivity not supported yet)
+		// AM/DR
 		fm_data[8 + i] = (tag_data[op + 1] & 31);
 		// SR
 		fm_data[12 + i] = (tag_data[op + 2] & 31);
 		// SL/RR
 		fm_data[16 + i] = (tag_data[op + 4] << 4) | (tag_data[op + 3] & 15);
 		// SSG-EG
-		fm_data[20 + i] = tag_data[op + 9] & 15;
+		fm_data[20 + i] = (tag_data[op + 9] % 100) & 15;
 		// TL
 		fm_data[24 + i] = tag_data[op + 5];
+		// AM sensitivity = set SSG-EG to 100
+		if(tag_data[op + 9] >= 100)
+			fm_data[8 + i] |= 0x80;
 	}
 	// FB/ALG
 	fm_data[28] = (tag_data[0] & 7) | (tag_data[1] << 3);
@@ -710,6 +713,16 @@ void MDSDRV_Track_Writer::parse_platform_event(const Tag& tag)
 		if(data < 2 || data > 3)
 			error("pcmmode argument must be between 2 and 3");
 		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PCMMODE, data));
+	}
+	else if(iequal(tag[0], "cmd")) // Direct command
+	{
+		if(tag.size() < 2)
+			error("not enough parameters for 'cmd' command");
+		MDSDRV_Event::Type type = (MDSDRV_Event::Type)std::strtol(tag[1].c_str(), 0, 0);
+		uint16_t data = 0;
+		if(tag.size() > 2)
+			data = std::strtol(tag[2].c_str(), 0, 0);
+		converted_events.push_back(MDSDRV_Event(type, data));
 	}
 }
 
