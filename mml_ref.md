@@ -1,4 +1,4 @@
-MML reference for ctrmml (2020-01-13)
+MML reference for ctrmml (2020-12-10)
 ========================
 
 ## Meta commands
@@ -13,10 +13,6 @@ comma-separated values. Strings can be enclosed in double quotes if needed.
 -	`@E<num>` - Defines an envelope.
 -	`@M<num>` - Defines a pitch envelope.
 -	`@P<num>` - Defines a pan envelope.
--	`%<num>` - Defines a platform-exclusive command. This is roughly
-	equivalent to MIDI sysex messages, and it is executed by the MML tracks
-	with the `%` command. Alternatively a command can be defined from within
-	MML tracks with ``'...'``.
 
 ## Addressing tracks
 A span of characters at the beginning of a line selects tracks. There must be
@@ -124,10 +120,7 @@ depends on the platform. They may be ignored or the accepted range may differ.
 	track is used instead.
 -	`t<0..255>` - Set tempo in BPM.
 -	`T<0..255>` - Set tempo using the platform's native timer values.
--	`%<0..32767>` - Platform-exclusive command. This command executes a
-	platform-exclusive meta-command (see previous section) with the specified
-	number.
--	``'<key> <value> ...'`` - Inline definition of platform-specific commands.
+-	``'<key> <value> ...'`` - Platform-specific commands.
 
 #### Using key signatures
 The `_{}` command can be used to set or modify a key signature. It's possible
@@ -200,15 +193,34 @@ over the FM at channel 6 (`F`). If `#platform` is set to `mdsdrv`, software
 mixing and volume control will also be for these PCM channels.
 
 #### Platform-exclusive commands
--	`mode <0..1>` - For the PSG noise channel (`J`), this will enable the use
-	of the third tone channel (`I`) as the noise frequency source. There will
-	be a conflict if you try to control the frequency from both channels while
-	this is active.
 -	`fm3 <mask>` - Enables FM3 special mode. Mask defines the operators that
 	are affected by this channel. Example: `fm3 0011` to use operators 1 and 2.
 	Set the mask to `1111` to disable the special mode. You can use this on PSG
 	channel 3 (`I`) or the dummy channels (`KLMNOP`) to temporarily use this
 	MML track for FM3.
+-	`lfo <0..3> <0..7>` - Set hardware LFO parameters for a channel. The first
+	parameter sets the AM sensitivity (tremolo depth) and the second parameter
+	sets the PM sensitivity (vibrato depth).
+-	`lforate <0..9>` - Sets the hardware LFO rate. 0 disables LFO, while `1..9`
+	gradually increases the LFO speed. The last two settings are much faster.
+-	`mode <0..1>` - For the PSG noise channel (`J`), this will enable the use
+	of the third tone channel (`I`) as the noise frequency source. There will
+	be a conflict if you try to control the frequency from both channels while
+	this is active.
+-	`pcmmode <2..3>` - Sets the PCM mixing mode. (`#platform mdsdrv` only).
+	`pcmmode 2` supports 2 channel PCM mixing at up to 17.5 kHz, while
+	`pcmmode 3` supports 3 channel PCM mixing at up to 13 kHz.
+-	`pcmrate <1..8>` - Change the PCM pitch. The sample rate can be set in
+	~2.2 kHz steps. This value is temporary and lasts until the next instrument
+	change.
+-	`write <register> <data>` - Write bytes directly to FM registers. Instead of
+	specifying the register directly, the following aliases can also be used:
+	`dtml*`, `ksar*`, `amdr*`, `sr*`, `slrr*`, `ssg*`, `fbal`, where `*`
+	is replaced with the operator number. The effect of this command is
+	temporary and lasts until the next instrument change.
+-	`tl<1..4> <value>` - Change the base operator volume (total level). If a
+	sign (`+` or `-`) is specified, the value is added or subtracted from the
+	current level.
 
 #### Limitations
 Pan envelopes not supported.
@@ -228,6 +240,8 @@ FM instruments are defined as below: (Commas between values are optional)
 		 31  15   0   5   4  38   0   4   0   0 ; OP3 (M2)
 		 31  27   0  11   1   0   0   1   0   0 ; OP4 (C2)
 		  0 ; TRS (optional)
+
+To enable AM for an operator, add 100 to the SSG-EG value.
 
 ##### 2op chord macro
 Instrument type `2op` is used to duplicate FM instruments, modifying the
