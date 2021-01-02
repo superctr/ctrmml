@@ -690,6 +690,11 @@ void MD_PSG::v_update_envelope()
 	// faster decay if key off
 	if(env_delay < 0x20 || env_keyoff)
 	{
+		// dummy
+		if(env_pos == 0xff)
+		{
+			return;
+		}
 		// sustain command
 		if(env_data->at(env_pos) == 0x01 && env_keyoff)
 		{
@@ -709,10 +714,11 @@ void MD_PSG::v_update_envelope()
 			env_pos++;
 		}
 		// unknown command or stop command
-		else if(event.type == env_keyoff)
+		else if(event.type == Event::REST && env_keyoff)
 		{
 			driver->sn76489_w(1, id, 15); // mute
 			env_keyoff = false; // remove keyoff flag to optimize writes
+			env_pos = 0xff;
 		}
 	}
 	else
