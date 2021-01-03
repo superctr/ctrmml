@@ -20,6 +20,7 @@ MD_Channel::MD_Channel(MD_Driver& driver, int id)
 	: Player(*driver.song, driver.song->get_track(id)),
 	driver(&driver),
 	channel_id(id),
+	pcm_channel_enable(0),
 	pcm_channel_valid(0),
 	slur_flag(0),
 	key_on_flag(0),
@@ -197,6 +198,11 @@ uint32_t MD_Channel::parse_platform_event(const Tag& tag, int16_t* platform_stat
 		uint8_t data = std::strtol(tag[1].c_str(), 0, 0);
 		if(data < 1 || data > 8)
 			error("pcmrate argument must be between 1 and 8");
+		if(driver->pcm_mode && pcm_channel_valid)
+		{
+			driver->pcm.set_pitch(pcm_channel_id, data);
+			pcm_channel_enable = true;
+		}
 	}
 	else if(iequal(tag[0], "pcmmode"))
 	{
@@ -205,6 +211,10 @@ uint32_t MD_Channel::parse_platform_event(const Tag& tag, int16_t* platform_stat
 		uint8_t data = std::strtol(tag[1].c_str(), 0, 0);
 		if(data < 2 || data > 3)
 			error("pcmmode argument must be between 2 or 3");
+		driver->pcm_rate = driver->pcm.set_mode(data);
+		driver->pcm_counter = 0;
+		driver->pcm_delta = driver->get_rate()/driver->pcm_rate;
+		printf("set rate to %f", driver->pcm_delta);
 	}
 	else if(MDSDRV_get_register(tag[0]))
 	{
@@ -250,16 +260,12 @@ void MD_Channel::write_event()
 		case Event::TIE:
 			if(get_update_flag(Event::INS))
 			{
-				v_set_ins();
-				set_vol();
-				clear_update_flag(Event::INS);
-				clear_update_flag(Event::VOL_FINE);
+				set_ins();
 				key_on_flag = true; //ok to retrigger envelopes
 			}
 			else if(get_update_flag(Event::VOL_FINE))
 			{
 				set_vol();
-				clear_update_flag(Event::VOL_FINE);
 			}
 			break;
 		case Event::END:
@@ -452,17 +458,48 @@ void MD_Channel::key_off()
 void MD_Channel::set_pitch()
 {
 	if(get_platform_var(EVENT_FM3))
+	{
 		set_pitch_fm3();
+	}
 	else
+	{
 		v_set_pitch();
+	}
 }
 
 void MD_Channel::set_vol()
 {
 	if(get_platform_var(EVENT_FM3))
+	{
 		set_vol_fm3();
+	}
 	else
+	{
+		if(pcm_channel_enable)
+			driver->pcm.set_vol(pcm_channel_id, get_var(Event::VOL_FINE));
 		v_set_vol();
+	}
+	clear_update_flag(Event::VOL_FINE);
+}
+
+void MD_Channel::set_ins()
+{
+	int16_t ins_id = get_var(Event::INS);
+	if(driver->data.ins_type[ins_id] == MDSDRV_Data::INS_PCM && driver->pcm_mode && pcm_channel_valid)
+	{
+		uint8_t rate = driver->pcm.set_ins(pcm_channel_id, ins_id);
+		driver->pcm.set_pitch(pcm_channel_id, rate);
+		pcm_channel_enable = true;
+	}
+	else
+	{
+		if(pcm_channel_enable)
+			driver->pcm.key_off(pcm_channel_id);
+		v_set_ins();
+		pcm_channel_enable = false;
+	}
+	set_vol();
+	clear_update_flag(Event::INS);
 }
 
 void MD_Channel::set_pitch_fm3()
@@ -512,9 +549,6 @@ void MD_Channel::key_on_pcm()
 	{
 		if(driver->pcm_mode && pcm_channel_valid)
 		{
-			uint8_t rate = driver->pcm.set_ins(pcm_channel_id, ins_id);
-			driver->pcm.set_pitch(pcm_channel_id, rate);
-			driver->pcm.set_vol(pcm_channel_id, get_var(Event::VOL_FINE));
 			driver->pcm.key_on(pcm_channel_id);
 		}
 		else if(!driver->pcm_mode)
@@ -927,7 +961,7 @@ MD_PCMDriver::MD_PCMDriver(MD_Driver& driver)
 //! Set PCM driver mixing mode
 double MD_PCMDriver::set_mode(int data)
 {
-	if(data < 3)
+	if(data < 4)
 		mode = data;
 	else
 		mode = 0;
@@ -1078,7 +1112,7 @@ MD_Driver::MD_Driver(unsigned int rate, VGM_Interface* vgm_interface, int pcm_mo
 	seq_delta = rate/seq_rate;
 	pcm_rate = pcm.set_mode(pcm_mode);
 	pcm_counter = 0;
-	pcm_delta = rate/pcm_rate; //not used anyway
+	pcm_delta = rate/pcm_rate;
 }
 
 //! Initiate playback

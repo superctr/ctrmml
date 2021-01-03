@@ -49,6 +49,7 @@ class MD_Channel : public Player
 
 		MD_Driver* driver;
 		int channel_id;
+		bool pcm_channel_enable;
 		bool pcm_channel_valid;
 		int pcm_channel_id;
 
@@ -81,6 +82,7 @@ class MD_Channel : public Player
 		void key_off();
 		void set_pitch();
 		void set_vol();
+		void set_ins();
 
 		void set_pitch_fm3();
 		void set_vol_fm3();

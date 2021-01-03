@@ -41,6 +41,8 @@ class Driver
 		//! Get the number of times the song has looped.
 		virtual int get_loop_count() = 0;
 
+		unsigned int get_rate();
+
 	protected:
 		// VGM low-level
 		void write(uint8_t command, uint16_t port, uint16_t reg, uint16_t data);

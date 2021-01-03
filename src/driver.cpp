@@ -13,6 +13,11 @@ Driver::Driver(unsigned int rate, VGM_Interface* vgm)
 {
 }
 
+unsigned int Driver::get_rate()
+{
+	return rate;
+}
+
 void Driver::write(uint8_t command, uint16_t port, uint16_t reg, uint16_t data)
 {
 	if(vgm)
