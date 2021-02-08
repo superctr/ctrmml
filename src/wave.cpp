@@ -249,6 +249,25 @@ unsigned int Wave_Bank::add_sample(const Tag& tag)
 		wf.transpose,
 		0};
 
+	// Allow overriding the sample rate and setting start offset
+	int i = 1;
+	uint32_t param;
+	while(tag.size() > i)
+	{
+		if(std::sscanf(tag[i].c_str(), "rate = %u", &param) == 1)
+		{
+			header.rate = param;
+		}
+		else if(std::sscanf(tag[i].c_str(), "offset = %u", &param) == 1)
+		{
+			if(param > header.size)
+				throw InputError(nullptr, "Sample offset cannot be greater than total length");
+			header.start += param;
+			header.size -= param;
+		}
+		i++;
+	}
+
 	return add_sample(header, sample);
 };
 

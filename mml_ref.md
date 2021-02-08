@@ -184,9 +184,10 @@ output sampling rate is 17.5 Khz.
 
 #### Channel mapping
 -	`ABCDEF` FM channels 1-6.
--	`GHI` PSG tone channels 1-3.
+-	`GHI` PSG tone channels 1-3. Channel `I` may be used for FM3 special mode.
 -	`J` PSG noise channel.
--   `KLMNOP` Dummy channels. May be used for FM3 special mode.
+-	`KL` PCM channels 2-3.
+-   `MNOP` Dummy channels. May be used for FM3 special mode.
 
 Channels `F`, `K` and `L` can play PCM instruments. PCM always takes priority
 over the FM at channel 6 (`F`). If `#platform` is set to `mdsdrv`, software
@@ -307,6 +308,16 @@ has more than one channel, the first (left) channel is read.
 You can use a PCM sample from channels `F`, `K` and `L`. However, the
 panning settings from FM channel 6 (`F`) are used and the FM output
 from that channel is muted while PCM samples are playing.
+
+It is possible to override the sample rate by adding the `rate` parameter:
+
+	@30 pcm "path/to/sample.wav" rate=8000
+
+(Note that it might pick the closest possible sample rate in `mdsdrv` mode)
+
+It is possible to adjust the start position with the `offset` parameter:
+
+	@30 pcm "path/to/sample.wav" offset=4000
 
 #### Pitch envelopes
 Pitch envelopes are specified with `@M<number>` and are used in MML
