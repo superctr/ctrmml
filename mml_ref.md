@@ -1,4 +1,4 @@
-MML reference for ctrmml (2020-12-10)
+MML reference for ctrmml (2021-04-06)
 ========================
 
 ## Meta commands
@@ -173,8 +173,8 @@ The `#platform` tag controls the PCM mixing mode when playing back files in
 
 Setting `#platform` to `megadrive` will use VGM datablocks and DAC stream
 commands to play back samples. These files will have a smaller filesize, and
-are suitable for conversion using other sound drivers like XGM. However, only
-sample mixing and volume is not supported.
+are suitable for conversion using other sound drivers like XGM. However, in
+the VGM files, sample mixing and volume will not be supported.
 
 Setting `#platform` to `mdsdrv` will simulate MDSDRV's PCM driver. 2-3
 PCM channels can be mixed, and 16 levels of volume control is possible.
@@ -294,12 +294,26 @@ Set the sustain position with `/` or the loop position with `|`
 	@14 psg
 		0>14:7 | 15 10 5 0 5 10
 
-When specifying envelopes, there must be no space between the
-parameters in a node, as the space itself separates nodes.
+Note that there must be no space between values and the `>` and `:`
+commands.
+
+	@15 psg
+		0 > 14 : 7 ; Wrong, causes error
+
+	@15 psg
+		0>14:7     ; Correct
+
+A space is however necessary between values and the `|` or `/` commands.
+
+	@16 psg
+		7|15 10 5   ; Wrong, causes error
+
+	@16 psg
+		7 | 15 10 5 ; Correct
 
 #### PCM samples
-PCM samples are defined as instruments. The first (and currently only)
-parameter is the path to the sample (relative to that of the MML file).
+PCM samples are defined as instruments. The first parameter is the path
+to the sample (relative to that of the MML file).
 The sample rate specified in the WAV file is used, and if the WAV file
 has more than one channel, the first (left) channel is read.
 
@@ -349,6 +363,9 @@ decimals, although they will be truncated to 8.8 bits fixed point.
 	- `depth` sets the depth of the vibrato in semitones.
 	- `Rate` defines the duration of 1/4 of the vibrato waveform.
 	Lower value = faster.
+
+Note that there should be no space between values and the `>` or `:`
+commands.
 
 ##### Examples
 Simple arpeggio:
