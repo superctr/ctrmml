@@ -286,11 +286,13 @@ around the `>`)
 	@11 psg
 		15>10
 
-Use `:` set the length of each value (in frames).
+Use `:` set the length of each value (in frames). The default length can
+be set with `l`
 
 	@12 psg
 		15:10     ; vol 15 for 10 frames
 		15>0:100  ; from 15 to 0 in 100 frames
+		l:40 15 14 13  ; total 120 frames
 
 Set the sustain position with `/` or the loop position with `|`
 

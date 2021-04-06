@@ -227,6 +227,7 @@ void MDSDRV_Data::add_ins_fm_2op(uint16_t id, const Tag& tag)
  *   Value>Target:Length - slide
  *   | - set loop position
  *   / - wait until keyoff
+ *   l:Length - default length
  * Output format:
  *   00 - end
  *   01 - sustain
@@ -237,6 +238,7 @@ void MDSDRV_Data::add_ins_psg(uint16_t id, const Tag& tag)
 {
 	std::vector<uint8_t> env_data;
 	int loop_pos = -1, last_pos = 0, last = -1;
+	unsigned int default_len = 1;
 	if(!tag.size())
 	{
 		message += stringf("warning: empty psg instrument @%d\n", id);
@@ -258,12 +260,16 @@ void MDSDRV_Data::add_ins_psg(uint16_t id, const Tag& tag)
 			env_data.push_back(0x01);
 			last = -1;
 		}
+		else if(*s == 'l' && *++s == ':' && std::isdigit(*++s))
+		{
+			default_len = std::strtol(s, (char**)&s, 10);
+		}
 		else if(std::isdigit(*s))
 		{
 			// TODO: make my own strtol...
 			uint8_t initial = std::strtol(s, (char**)&s, 10);
 			uint8_t target = initial;
-			uint8_t length = 0;
+			uint8_t length = default_len;
 			double delta = 0, counter = 0;
 
 			if(*s == '>' && *++s)
