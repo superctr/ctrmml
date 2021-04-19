@@ -1008,7 +1008,7 @@ void MD_PCMDriver::set_pitch(int channel, int data)
 
 	// Skip counter
 	if(mode == 3)
-		channels[channel].count = 4;
+		channels[channel].count = 3;
 	else
 		channels[channel].count = 0;
 
@@ -1064,7 +1064,7 @@ inline int8_t MD_PCMDriver::mix_channel(int16_t accumulator, int channel)
 	if(ch.count && !(--ch.count))
 	{
 		ch.position += ch.update_phase();
-		ch.count = 4;
+		ch.count = 3;
 	}
 
 	if(ch.position > ch.length)
@@ -1228,8 +1228,7 @@ double MD_Driver::play_step()
 		next_delta -= seq_counter + next_delta;
 	if((pcm_counter + next_delta) > 0)
 		next_delta -= pcm_counter + next_delta;
-	if(std::abs(next_delta) < 1/10000.0)
-		next_delta += 1/10000.0;
+	next_delta = std::max(next_delta, 1/44100.0);
 	seq_counter += next_delta;
 	pcm_counter += next_delta;
 	return next_delta;

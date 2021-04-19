@@ -208,8 +208,8 @@ struct MD_PCMChannel
 
 	inline int update_phase()
 	{
-		int out = phase & 1;
-		phase = (phase >> 1) | (out << 7);
+		int out = phase >> 7;
+		phase = (phase << 1) | out;
 		return out;
 	}
 };
