@@ -1228,7 +1228,8 @@ double MD_Driver::play_step()
 		next_delta -= seq_counter + next_delta;
 	if((pcm_counter + next_delta) > 0)
 		next_delta -= pcm_counter + next_delta;
-	next_delta = std::max(next_delta, 1/44100.0);
+	if(std::abs(next_delta) < 1/10000.0)
+		next_delta += 1/10000.0;
 	seq_counter += next_delta;
 	pcm_counter += next_delta;
 	return next_delta;
