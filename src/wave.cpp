@@ -78,8 +78,6 @@ int Wave_File::read(const std::string& filename)
 	while(pos < wavesize)
 	{
 		uint32_t chunksize, ret;
-		if(pos & 1)
-			pos++;
 
 		chunksize = *(uint32_t*)(filebuf+pos+4) + 8;
 		if(pos+chunksize > filesize)
@@ -94,6 +92,9 @@ int Wave_File::read(const std::string& filename)
 			return -1;
 		}
 		pos += chunksize;
+
+		if(pos & 1)
+			pos++;
 	}
 	free(filebuf);
 	return 0;
