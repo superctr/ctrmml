@@ -10,7 +10,7 @@
 #if defined(_WIN32)
 #include <windows.h>
 #else
-#include <cuchar>
+#include <codecvt>
 #endif
 
 #include <clocale>
@@ -361,22 +361,16 @@ void VGM_Writer::add_gd3(const char* s)
 			buffer_pos += 2;
 	}
 #else
-	std::setlocale(LC_ALL, "en_US.utf8");
-	static std::mbstate_t mbstate;
-	while((l = std::mbrtoc16((char16_t*)buffer_pos,s,max,&mbstate)))
-	{
-		if(l == -1 || l == -2)
-			break;
-		else if(l == -3)
-			buffer_pos += 2;
-		else
-		{
-			s += l;
-			buffer_pos += 2;
-			max --;
-		}
+	std::u16string u16_conv =
+		std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.from_bytes(s);
+	const char16_t* source = u16_conv.data();
+	while(*source != 0 && max != 0) {
+		*(char16_t*)buffer_pos = *source;
+		buffer_pos += 2;
+		source++;
+		max--;
 	}
-	buffer_pos += 2;
+	buffer_pos += 2; // 0x00, 0x00 double null-terminator
 #endif
 }
 
