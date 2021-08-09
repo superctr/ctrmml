@@ -142,6 +142,7 @@ class Track
 		unsigned long get_event_count() const;
 
 		// Methods that set Track state
+		void set_measure_len(uint16_t param);
 		void set_key_signature(const char* key);
 		void modify_key_signature(char note, int8_t modifier);
 

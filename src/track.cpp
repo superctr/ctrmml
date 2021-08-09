@@ -364,6 +364,16 @@ uint16_t Track::get_duration(uint16_t duration) const
 		return duration;
 }
 
+//! Set the length of a whole note.
+/*!
+ *  The measure length is not internally used by the track writer, but it
+ *  is stored with the track state as a convenience to MIDI or MML parsers.
+ */
+void Track::set_measure_len(uint16_t param)
+{
+	measure_len = param;
+}
+
 //! Get the length of a whole note.
 /*!
  *  This is actually not used internally by the track methods, rather it is

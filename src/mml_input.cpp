@@ -230,6 +230,8 @@ bool MML_Input::mml_basic()
 		mml_reverse_rest(read_duration());
 	else if(c == '~')
 		mml_grace();
+	else if(c == 'C')
+		track->set_measure_len(expect_parameter());
 	else
 	{
 		unget(c);

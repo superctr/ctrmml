@@ -11,6 +11,7 @@ class MML_Input_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST(test_mml_note_octave);
 	CPPUNIT_TEST(test_mml_note_flat_sharp);
 	CPPUNIT_TEST(test_mml_note_duration);
+	CPPUNIT_TEST(test_mml_track_measure_len);
 	CPPUNIT_TEST(test_mml_loop);
 	CPPUNIT_TEST(test_mml_tag_replace);
 	CPPUNIT_TEST(test_mml_tag_append);
@@ -76,6 +77,19 @@ public:
 		CPPUNIT_ASSERT_EQUAL((uint16_t)12, song->get_track(0).get_event(1).on_time);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)9, song->get_track(0).get_event(2).on_time);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)18, song->get_track(0).get_event(3).on_time);
+	}
+	void test_mml_track_measure_len()
+	{
+		mml_input->read_line("A C96 c1 c2 c4 C128 c1 c2 c4 C192 c1 c2 c4");
+		CPPUNIT_ASSERT_EQUAL((uint16_t)96, song->get_track(0).get_event(0).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)48, song->get_track(0).get_event(1).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)24, song->get_track(0).get_event(2).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)128, song->get_track(0).get_event(3).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)64, song->get_track(0).get_event(4).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)32, song->get_track(0).get_event(5).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)192, song->get_track(0).get_event(6).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)96, song->get_track(0).get_event(7).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)48, song->get_track(0).get_event(8).on_time);
 	}
 	void test_mml_loop()
 	{

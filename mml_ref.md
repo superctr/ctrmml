@@ -71,6 +71,9 @@ the previously specified channels will be used.
 	cannot exceed note length, in that case it will be note length - 1.
 -	`l<duration>` - Set default duration, used if not specified by notes,
 	rests, `R` or `~` commands.
+-	`C<ticks>` - Set the length of a measure (or a whole note) in ticks. The
+	default is 96. Notice that other values are currently not compatible with
+	the tempo BPM calculation.
 -	`R<duration>` - Reverse rest. This subtracts the value from the previous
 	note or rest.
 	- This can be used to bring back tracks in sync after a delayed echo
