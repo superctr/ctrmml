@@ -232,6 +232,8 @@ bool MML_Input::mml_basic()
 		mml_grace();
 	else if(c == 'C')
 		track->set_measure_len(expect_parameter());
+	else if(c == 's')
+		track->set_shuffle(expect_signed());
 	else
 	{
 		unget(c);

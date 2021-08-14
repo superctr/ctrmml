@@ -143,6 +143,7 @@ class Track
 
 		// Methods that set Track state
 		void set_measure_len(uint16_t param);
+		void set_shuffle(int16_t param);
 		void set_key_signature(const char* key);
 		void modify_key_signature(char note, int8_t modifier);
 
@@ -151,12 +152,14 @@ class Track
 		bool in_drum_mode() const;
 		uint16_t get_duration(uint16_t duration = 0) const;
 		uint16_t get_measure_len() const;
+		int16_t get_shuffle() const;
 		int8_t get_key_signature(char note);
 
 	private:
 		void enable();
 		uint16_t on_time(uint16_t duration) const;
 		uint16_t off_time(uint16_t duration) const;
+		uint16_t add_shuffle(uint16_t duration) const;
 
 		uint8_t flag;
 		uint8_t ch;
@@ -168,6 +171,7 @@ class Track
 		uint16_t quantize;
 		uint16_t quantize_parts;
 		uint16_t early_release;
+		int16_t shuffle;
 		uint8_t sharp_mask;
 		uint8_t flat_mask;
 		std::shared_ptr<InputRef> reference;

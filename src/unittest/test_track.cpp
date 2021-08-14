@@ -24,6 +24,7 @@ class Track_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST_EXCEPTION(test_reverse_rest_impossible, std::domain_error);
 	CPPUNIT_TEST(test_get_event_count);
 	CPPUNIT_TEST(test_key_signature);
+	CPPUNIT_TEST(test_shuffle);
 	CPPUNIT_TEST_SUITE_END();
 private:
 	Track *track;
@@ -311,7 +312,22 @@ public:
 		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('a'));
 		CPPUNIT_ASSERT_EQUAL((int8_t)-1, track->get_key_signature('b'));
 	}
-
+	// Test a shuffle rhythm
+	void test_shuffle()
+	{
+		track->set_shuffle(4);
+		track->add_note(0,24);
+		track->add_note(0,24);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)28, track->get_event(0).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)20, track->get_event(1).on_time);
+		track->add_note(0,24);
+		track->add_rest(24);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)28, track->get_event(2).on_time);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)20, track->get_event(3).off_time);
+		track->add_note(0,24);
+		track->add_tie(24);
+		CPPUNIT_ASSERT_EQUAL((uint16_t)48, track->get_event(4).on_time);
+	}
 };
 
 CPPUNIT_TEST_SUITE_REGISTRATION(Track_Test);

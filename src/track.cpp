@@ -22,6 +22,7 @@ Track::Track(uint16_t ppqn)
 	, quantize(DEFAULT_QUANTIZE)
 	, quantize_parts(DEFAULT_QUANTIZE_PARTS)
 	, early_release(0)
+	, shuffle(0)
 	, sharp_mask(0)
 	, flat_mask(0)
 {
@@ -58,7 +59,9 @@ void Track::add_event(Event::Type type, int16_t param, uint16_t on_time, uint16_
  */
 void Track::add_note(int note, uint16_t duration)
 {
-	duration = get_duration(duration);
+	duration = add_shuffle(get_duration(duration));
+	shuffle = -shuffle;
+
 	if(!in_drum_mode())
 		note += octave * 12;
 	last_note_pos = events.size();
@@ -78,7 +81,9 @@ void Track::add_note(int note, uint16_t duration)
  */
 int Track::add_tie(uint16_t duration)
 {
-	duration = get_duration(duration);
+	duration = add_shuffle(get_duration(duration));
+	shuffle = -shuffle;
+
 	if(last_note_pos >= 0)
 	{
 		Event& last_note = get_event(last_note_pos);
@@ -130,7 +135,9 @@ int Track::add_tie(uint16_t duration)
  */
 void Track::add_rest(uint16_t duration)
 {
-	duration = get_duration(duration);
+	duration = add_shuffle(get_duration(duration));
+	shuffle = -shuffle;
+
 	add_event(Event::REST, 0, 0, duration);
 }
 
@@ -184,6 +191,9 @@ int Track::add_slur()
  */
 void Track::reverse_rest(uint16_t duration)
 {
+	// Undo shuffle (I guess this is the best behavior?)
+	shuffle = -shuffle;
+
 	// backtrack to disable the articulation of the previous note.
 	std::vector<Event>::reverse_iterator it;
 	for(it=events.rbegin(); it != events.rend(); ++it)
@@ -384,6 +394,18 @@ uint16_t Track::get_measure_len() const
 	return measure_len;
 }
 
+//! Set the shuffle modifier.
+void Track::set_shuffle(int16_t param)
+{
+	shuffle = param;
+}
+
+//! Get the current shuffle modifier.
+int16_t Track::get_shuffle() const
+{
+	return shuffle;
+}
+
 //! Enables the track.
 /*!
  *  This sets bit 7 of the track flag. It is to be used as a convenience
@@ -528,4 +550,13 @@ uint16_t Track::on_time(uint16_t duration) const
 uint16_t Track::off_time(uint16_t duration) const
 {
 	return duration - on_time(duration);
+}
+
+//! Add shuffle, with underflow clamping
+uint16_t Track::add_shuffle(uint16_t duration) const
+{
+	if((duration + shuffle) < 0)
+		return 0;
+	else
+		return duration + shuffle;
 }
