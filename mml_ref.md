@@ -71,6 +71,10 @@ the previously specified channels will be used.
 	cannot exceed note length, in that case it will be note length - 1.
 -	`l<duration>` - Set default duration, used if not specified by notes,
 	rests, `R` or `~` commands.
+-	`s<ticks>` - Set shuffle. The specified number of ticks will be added to
+	the the next note, rest or tie, then subtracted from the next, and so on.
+	Make sure to use this command with notes of the same duration, using ties
+	to extend them if necessary.
 -	`C<ticks>` - Set the length of a measure (or a whole note) in ticks. The
 	default is 96. Notice that other values are currently not compatible with
 	the tempo BPM calculation.
