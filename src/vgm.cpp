@@ -10,6 +10,7 @@
 #if defined(_WIN32)
 #include <windows.h>
 #else
+#include <locale>
 #include <codecvt>
 #endif
 
