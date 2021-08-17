@@ -142,6 +142,8 @@ void Track::add_rest(uint16_t duration)
 	duration = add_shuffle(get_duration(duration));
 	shuffle = -shuffle;
 
+	push_echo_note(0);
+
 	add_event(Event::REST, 0, 0, duration);
 }
 
@@ -203,8 +205,15 @@ void Track::add_echo(uint16_t duration)
 	else
 	{
 		uint16_t note = echo_buffer[echo_delay - 1];
-		last_note_pos = events.size();
-		add_event(Event::NOTE, note, on_time(duration), off_time(duration));
+		if(note == 0)
+		{
+			add_event(Event::REST, 0, 0, duration);
+		}
+		else
+		{
+			last_note_pos = events.size();
+			add_event(Event::NOTE, note, on_time(duration), off_time(duration));
+		}
 	}
 
 	if(echo_volume)

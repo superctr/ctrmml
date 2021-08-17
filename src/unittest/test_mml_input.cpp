@@ -237,7 +237,7 @@ public:
 	}
 	void test_mml_echo()
 	{
-		mml_input->read_line("A \\=2,3 l4 o4c4\\8 \\=1,3d\\ \\=3,0>e\\< \\=2,2f\\");
+		mml_input->read_line("A \\=2,3 l4 o4c4\\8 \\=1,3d\\r\\ \\=4,0>e\\< \\=2,2f\\");
 		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(0).type);
 		CPPUNIT_ASSERT_EQUAL((int16_t)36, song->get_track(0).get_event(0).param);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)24, song->get_track(0).get_event(0).on_time);
@@ -259,19 +259,27 @@ public:
 		CPPUNIT_ASSERT_EQUAL(Event::VOL_REL, song->get_track(0).get_event(7).type);
 		CPPUNIT_ASSERT_EQUAL((int16_t)3, song->get_track(0).get_event(7).param);
 
-		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(8).type);
-		CPPUNIT_ASSERT_EQUAL((int16_t)52, song->get_track(0).get_event(8).param);
-		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(9).type); // No vol rel because volume parameter is 0
-		CPPUNIT_ASSERT_EQUAL((int16_t)36, song->get_track(0).get_event(9).param);
+		CPPUNIT_ASSERT_EQUAL(Event::REST, song->get_track(0).get_event(8).type);
 
-		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(10).type);
-		CPPUNIT_ASSERT_EQUAL((int16_t)41, song->get_track(0).get_event(10).param);
+		CPPUNIT_ASSERT_EQUAL(Event::VOL_REL, song->get_track(0).get_event(9).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)-3, song->get_track(0).get_event(9).param);
+		CPPUNIT_ASSERT_EQUAL(Event::REST, song->get_track(0).get_event(10).type); // rest in echo buffer
 		CPPUNIT_ASSERT_EQUAL(Event::VOL_REL, song->get_track(0).get_event(11).type);
-		CPPUNIT_ASSERT_EQUAL((int16_t)-2, song->get_track(0).get_event(11).param);
+		CPPUNIT_ASSERT_EQUAL((int16_t)3, song->get_track(0).get_event(11).param);
+
 		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(12).type);
 		CPPUNIT_ASSERT_EQUAL((int16_t)52, song->get_track(0).get_event(12).param);
-		CPPUNIT_ASSERT_EQUAL(Event::VOL_REL, song->get_track(0).get_event(13).type);
-		CPPUNIT_ASSERT_EQUAL((int16_t)2, song->get_track(0).get_event(13).param);
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(13).type); // No vol rel because volume parameter is 0
+		CPPUNIT_ASSERT_EQUAL((int16_t)36, song->get_track(0).get_event(13).param);
+
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(14).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)41, song->get_track(0).get_event(14).param);
+		CPPUNIT_ASSERT_EQUAL(Event::VOL_REL, song->get_track(0).get_event(15).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)-2, song->get_track(0).get_event(15).param);
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(16).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)52, song->get_track(0).get_event(16).param);
+		CPPUNIT_ASSERT_EQUAL(Event::VOL_REL, song->get_track(0).get_event(17).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)2, song->get_track(0).get_event(17).param);
 	}
 
 };
