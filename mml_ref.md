@@ -96,6 +96,15 @@ the previously specified channels will be used.
 -	`{/}` - Conditional block. Using this block you can specify commands to
 	run on each	individual track, when multiple tracks are specified. Example:
 	`ABC {c/d+/g} {d/f/a}`
+-	`\=<delay>,<volume>` - Set the parameters for the echo macro. The first
+	number specifies how many notes or rests to backtrack. A value of 1 would
+	be the previous note, 2 would be the note after that, and so on. The
+	second number specifies the volume reduction. Note that it should be a
+	positive value if you use "fine" volume, and negative if you use "coarse"
+	volume.
+-	`\<duration>` - Inserts an echo note. The parameters should have been set
+	using `\=` beforehand. Example:
+	`\=2,3 c4d\e\` generates an identical output to `c4d(3c)3e(3d)3`
 -	`;` - Comment. The rest of the line is skipped.
 -	`|` - Divider. This has no effect and can be used to divide measures or
 	bars, for aesthetic reasons.
