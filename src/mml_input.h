@@ -46,6 +46,7 @@ class MML_Input: public Line_Input
 		void mml_reverse_rest(int duration);
 		void mml_grace();
 		void mml_transpose();
+		void mml_echo();
 		void event_relative(Event::Type type, Event::Type subtype);
 		void conditional_block_begin();
 		void conditional_block_end(int c);

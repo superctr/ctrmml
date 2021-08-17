@@ -25,6 +25,8 @@ Track::Track(uint16_t ppqn)
 	, shuffle(0)
 	, sharp_mask(0)
 	, flat_mask(0)
+	, echo_delay(0)
+	, echo_volume(0)
 {
 }
 
@@ -64,6 +66,8 @@ void Track::add_note(int note, uint16_t duration)
 
 	if(!in_drum_mode())
 		note += octave * 12;
+	push_echo_note(note);
+
 	last_note_pos = events.size();
 	add_event(Event::NOTE, note, on_time(duration), off_time(duration));
 }
@@ -175,6 +179,36 @@ int Track::add_slur()
 		}
 	}
 	return -1;
+}
+
+//! Add a note from the echo buffer.
+/*!
+ *  Set the parameters with set_echo() before calling this.
+ *
+ *  Adds a rest if the echo delay parameter is 0 or larger
+ *  than the echo buffer.
+ */
+void Track::add_echo(uint16_t duration)
+{
+	duration = add_shuffle(get_duration(duration));
+	shuffle = -shuffle;
+
+	if(echo_volume)
+		add_event(Event::VOL_REL, -echo_volume, 0, 0);
+
+	if(echo_delay == 0 || echo_buffer.size() < echo_delay)
+	{
+		add_event(Event::REST, 0, 0, duration);
+	}
+	else
+	{
+		uint16_t note = echo_buffer[echo_delay - 1];
+		last_note_pos = events.size();
+		add_event(Event::NOTE, note, on_time(duration), off_time(duration));
+	}
+
+	if(echo_volume)
+		add_event(Event::VOL_REL, echo_volume, 0, 0);
 }
 
 //! Backtrack in order to shorten previous event.
@@ -316,6 +350,20 @@ void Track::set_drum_mode(uint16_t param)
 	else
 		flag |= 0x01;
 	add_event(Event::DRUM_MODE, param);
+}
+
+//! Set the echo parameters.
+/*!
+ *  \param[in] delay Note offset in the buffer
+ *  \param[in] volume Volume reduction.
+ */
+void Track::set_echo(uint16_t delay, int16_t volume)
+{
+	if(delay > ECHO_BUFFER_SIZE)
+		delay = ECHO_BUFFER_SIZE;
+
+	echo_delay = delay;
+	echo_volume = volume;
 }
 
 //! Get the events list.
@@ -559,4 +607,12 @@ uint16_t Track::add_shuffle(uint16_t duration) const
 		return 0;
 	else
 		return duration + shuffle;
+}
+
+//! Push notes to the echo buffer
+void Track::push_echo_note(uint16_t note)
+{
+	echo_buffer.push_front(note);
+	if(echo_buffer.size() > ECHO_BUFFER_SIZE)
+		echo_buffer.pop_back();
 }

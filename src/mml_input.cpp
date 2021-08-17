@@ -184,6 +184,25 @@ void MML_Input::mml_transpose()
 	}
 }
 
+//! mucom88 style echo command
+void MML_Input::mml_echo()
+{
+	int c = get_token();
+	if(c == '=')
+	{
+		uint16_t delay = expect_parameter();
+		if(get_token() != ',')
+			parse_error("expected ','");
+		uint16_t volume = expect_parameter();
+		track->set_echo(delay, volume);
+	}
+	else
+	{
+		unget();
+		track->add_echo(read_duration());
+	}
+}
+
 //! combination command that allows for two Event::Type depending on
 //! if a sign prefix is found.
 void MML_Input::event_relative(Event::Type type, Event::Type subtype)
@@ -234,6 +253,8 @@ bool MML_Input::mml_basic()
 		track->set_measure_len(expect_parameter());
 	else if(c == 's')
 		track->set_shuffle(expect_signed());
+	else if(c == '\\')
+		mml_echo();
 	else
 	{
 		unget(c);
