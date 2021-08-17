@@ -726,17 +726,17 @@ void Player::handle_event()
 			FLAG_SET(Event::TRANSPOSE);
 			break;
 		case Event::VOL:
-		case Event::VOL_REL:
-			if(event.type != Event::VOL_REL)
-				CH_STATE(Event::VOL_FINE) = 0;
-			CH_STATE(Event::VOL_FINE) += event.param;
+			CH_STATE(Event::VOL_FINE) = event.param;
 			FLAG_SET(Event::VOL_FINE);
 			FLAG_SET(VOL_BIT);
 			break;
+		// Previous behavior was to clear the VOL_BIT after VOL_FINE_REL
+		// and set it after VOL_REL. It has now been changed so VOL_REL
+		// and VOL_FINE_REL neither sets it or clears it.
+		case Event::VOL_REL:
 		case Event::VOL_FINE_REL:
 			CH_STATE(Event::VOL_FINE) += event.param;
 			FLAG_SET(Event::VOL_FINE);
-			FLAG_CLR(VOL_BIT);
 			break;
 		case Event::TEMPO_BPM:
 			CH_STATE(Event::TEMPO) = event.param;
