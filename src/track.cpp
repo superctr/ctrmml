@@ -375,6 +375,12 @@ void Track::set_echo(uint16_t delay, int16_t volume)
 	echo_volume = volume;
 }
 
+//! Clear the contents of the echo buffer.
+void Track::clear_echo_buffer()
+{
+	echo_buffer.clear();
+}
+
 //! Get the events list.
 std::vector<Event>& Track::get_events()
 {

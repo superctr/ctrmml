@@ -126,7 +126,7 @@ class Track
 		int  add_tie(uint16_t duration = 0);
 		void add_rest(uint16_t duration = 0);
 		int  add_slur();
-		void add_echo(uint16_t duration); //!
+		void add_echo(uint16_t duration);
 
 		// Methods that modify previous Events
 		void reverse_rest(uint16_t duration = 0);
@@ -139,7 +139,8 @@ class Track
 		int  set_quantize(uint16_t param, uint16_t parts = 8);
 		void set_early_release(uint16_t param);
 		void set_drum_mode(uint16_t param);
-		void set_echo(uint16_t delay, int16_t volume); //!
+		void set_echo(uint16_t delay, int16_t volume);
+		void clear_echo_buffer();
 
 		// Methods to retrieve Events
 		std::vector<Event>& get_events();
@@ -159,15 +160,15 @@ class Track
 		uint16_t get_measure_len() const;
 		int16_t get_shuffle() const;
 		int8_t get_key_signature(char note);
-		uint16_t get_echo_delay() const; //!
-		int16_t get_echo_volume() const; //!
+		uint16_t get_echo_delay() const;
+		int16_t get_echo_volume() const;
 
 	private:
 		void enable();
 		uint16_t on_time(uint16_t duration) const;
 		uint16_t off_time(uint16_t duration) const;
 		uint16_t add_shuffle(uint16_t duration) const;
-		void push_echo_note(uint16_t note); //!
+		void push_echo_note(uint16_t note);
 
 		uint8_t flag;
 		uint8_t ch;
