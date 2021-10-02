@@ -37,6 +37,7 @@ class MD_Channel : public Player
 		void write_fm_4op(int bank, int id);
 		uint16_t get_fm_pitch(uint16_t pitch) const;
 		uint16_t get_psg_pitch(uint16_t pitch) const;
+		uint8_t get_psg_volume(uint16_t volume) const;
 
 		virtual void v_set_ins() = 0;
 		virtual void v_set_vol() = 0;

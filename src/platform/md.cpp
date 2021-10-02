@@ -144,6 +144,19 @@ uint16_t MD_Channel::get_psg_pitch(uint16_t pitch) const
 	return set_pitch;
 }
 
+// Convert fine to coarse volume for PSG and PCM
+uint8_t MD_Channel::get_psg_volume(uint16_t volume) const
+{
+	if(volume < 2)
+		return 0;
+	else if(volume >= 64)
+		return 15;
+	else if(volume >= 42)
+		return 14;
+	else
+		return (volume-2)*3/8;
+}
+
 //! Platform-exclusive command parser
 uint32_t MD_Channel::parse_platform_event(const Tag& tag, int16_t* platform_state)
 {
@@ -476,7 +489,14 @@ void MD_Channel::set_vol()
 	else
 	{
 		if(pcm_channel_enable)
-			driver->pcm.set_vol(pcm_channel_id, get_var(Event::VOL_FINE));
+		{
+			uint8_t vol = get_var(Event::VOL_FINE);
+			if(coarse_volume_flag())
+				vol = 15-vol;
+			else
+				vol = get_psg_volume(vol);
+			driver->pcm.set_vol(pcm_channel_id, vol);
+		}
 		v_set_vol();
 	}
 	clear_update_flag(Event::VOL_FINE);
@@ -784,7 +804,11 @@ void MD_PSGMelody::v_set_ins()
 
 void MD_PSGMelody::v_set_vol()
 {
-	uint8_t vol = 15 - get_var(Event::VOL_FINE);
+	uint8_t vol = get_var(Event::VOL_FINE);
+	if(coarse_volume_flag())
+		vol = 15-vol;
+	else
+		vol = get_psg_volume(vol);
 	vol += env_delay & 0x0f;
 	if(vol > 15)
 		vol = 15;
@@ -819,7 +843,11 @@ void MD_PSGNoise::v_set_ins()
 
 void MD_PSGNoise::v_set_vol()
 {
-	uint8_t vol = 15 - get_var(Event::VOL_FINE);
+	uint8_t vol = get_var(Event::VOL_FINE);
+	if(coarse_volume_flag())
+		vol = 15-vol;
+	else
+		vol = get_psg_volume(vol);
 	vol += env_delay & 0x0f;
 	if(vol > 15)
 		vol = 15;
@@ -998,7 +1026,8 @@ void MD_PCMDriver::set_vol(int channel, int data)
 {
 	if(channel > mode)
 		return;
-	channels[channel].volume = (15 - data) & 15;
+
+	channels[channel].volume = data & 15;
 }
 
 void MD_PCMDriver::set_pitch(int channel, int data)
