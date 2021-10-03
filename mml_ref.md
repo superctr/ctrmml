@@ -98,10 +98,11 @@ the previously specified channels will be used.
 	`ABC {c/d+/g} {d/f/a}`
 -	`\=<delay>,<volume>` - Set the parameters for the echo macro. The first
 	number specifies how many notes or rests to backtrack. A value of 1 would
-	be the previous note, 2 would be the note after that, and so on. A negative
-	number will clear the contents of the echo buffer. The second number
-	specifies the volume reduction. Note that it should be a positive value if
-	you use "fine" volume, and negative if you use "coarse" volume.
+	be the previous note, 2 would be the note after that, and so on. The echo
+	buffer (of previous notes) is cleared after issuing this command, use a
+	negative value to retain the buffer. The second number specifies the
+	volume reduction. Note that it should be a positive value if you use
+	"fine" volume, and negative if you use "coarse" volume.
 -	`\<duration>` - Inserts an echo note. The parameters should have been set
 	using `\=` beforehand. Example:
 	`\=2,3 c4d\e\` generates an identical output to `c4d(3c)3e(3d)3`

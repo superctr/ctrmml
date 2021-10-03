@@ -237,7 +237,7 @@ public:
 	}
 	void test_mml_echo()
 	{
-		mml_input->read_line("A \\=2,3 l4 o4c4\\8 \\=1,3d\\r\\ \\=4,0>e\\< \\=2,2f\\");
+		mml_input->read_line("A \\=2,3 l4 o4c4\\8 \\=-1,3d\\r\\ \\=-4,0>e\\< \\=-2,2f\\ \\=2,2f\\");
 		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(0).type);
 		CPPUNIT_ASSERT_EQUAL((int16_t)36, song->get_track(0).get_event(0).param);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)24, song->get_track(0).get_event(0).on_time);
@@ -280,6 +280,14 @@ public:
 		CPPUNIT_ASSERT_EQUAL((int16_t)52, song->get_track(0).get_event(16).param);
 		CPPUNIT_ASSERT_EQUAL(Event::VOL_REL, song->get_track(0).get_event(17).type);
 		CPPUNIT_ASSERT_EQUAL((int16_t)2, song->get_track(0).get_event(17).param);
+
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, song->get_track(0).get_event(18).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)41, song->get_track(0).get_event(18).param);
+		CPPUNIT_ASSERT_EQUAL(Event::VOL_REL, song->get_track(0).get_event(19).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)-2, song->get_track(0).get_event(19).param);
+		CPPUNIT_ASSERT_EQUAL(Event::REST, song->get_track(0).get_event(20).type); // Echo buffer was cleared
+		CPPUNIT_ASSERT_EQUAL(Event::VOL_REL, song->get_track(0).get_event(21).type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)2, song->get_track(0).get_event(21).param);
 	}
 
 };

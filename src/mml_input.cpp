@@ -192,7 +192,9 @@ void MML_Input::mml_echo()
 	{
 		int16_t delay = expect_parameter();
 		if(delay < 0)
-			delay = -delay, track->clear_echo_buffer();
+			delay = -delay;
+		else
+			track->clear_echo_buffer();
 		if(get_token() != ',')
 			parse_error("expected ','");
 		uint16_t volume = expect_parameter();
