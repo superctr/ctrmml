@@ -759,7 +759,7 @@ void MDSDRV_Track_Writer::parse_platform_event(const Tag& tag)
 		uint8_t reg = MDSDRV_get_register(tag[0]);
 		uint16_t data = (reg << 8) | (std::strtol(tag[1].c_str(), 0, 0) & 0xff);
 
-		if(reg > 0xfc && tag[1].size() > 0)
+		if(reg >= 0xfc && tag[1].size() > 0)
 		{
 			data -= 0xfc00;
 			uint8_t sign = tag[1][0];
