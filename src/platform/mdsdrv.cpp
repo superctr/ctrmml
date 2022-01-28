@@ -614,12 +614,19 @@ void MDSDRV_Track_Writer::event_hook()
 			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::TEMPO,bpm_to_delta(param)));
 			break;
 		case Event::INS:
-			if(mdsdrv.data.ins_type.at(param) != MDSDRV_Data::INS_PCM)
-				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::INS,
-							mdsdrv.get_envelope(mdsdrv.data.envelope_map.at(param))));
-			else
-				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PCM,
-							mdsdrv.get_envelope(0x10000 + mdsdrv.data.envelope_map.at(param))));
+			try
+			{
+				if(mdsdrv.data.ins_type.at(param) != MDSDRV_Data::INS_PCM)
+					converted_events.push_back(MDSDRV_Event(MDSDRV_Event::INS,
+								mdsdrv.get_envelope(mdsdrv.data.envelope_map.at(param))));
+				else
+					converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PCM,
+								mdsdrv.get_envelope(0x10000 + mdsdrv.data.envelope_map.at(param))));
+			}
+			catch (std::out_of_range &)
+			{
+				error(stringf("MDSDRV: Instrument @%d doesn't exist", event.param).c_str());
+			}
 			break;
 		case Event::TRANSPOSE:
 			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::TRS,param));
@@ -634,9 +641,16 @@ void MDSDRV_Track_Writer::event_hook()
 			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PAN,param << 6));
 			break;
 		case Event::PITCH_ENVELOPE:
-			if(param)
-				param = mdsdrv.get_envelope(mdsdrv.data.pitch_map.at(param)) + 1;
-			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PEG,param));
+			try
+			{
+				if(param)
+					param = mdsdrv.get_envelope(mdsdrv.data.pitch_map.at(param)) + 1;
+				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PEG,param));
+			}
+			catch (std::out_of_range &)
+			{
+				error(stringf("MDSDRV: Pitch envelope @M%d doesn't exist", event.param).c_str());
+			}
 			break;
 		case Event::PORTAMENTO:
 			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PTA,param));
