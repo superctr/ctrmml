@@ -432,17 +432,28 @@ std::vector<uint8_t> Wave_Bank::encode_sample(const std::string& encoding_type, 
 //! Returns the next possible aligned start address for the rom.
 /*!
  *  Given a sample header, a proposed start address and end address,
- *  return the appropriate end address of the sample. If the sample
+ *  return the appropriate start address of the sample. If the sample
  *  cannot fit within the boundaries. return NO_FIT.
+ *
+ *  TODO: This code is optimized for MDSDRV with mid playback bank
+ *  switches only supported for 17.5khz sample rate for now.
+ *  When adding more sound drivers, this will have to be a generic
+ *  function that will reject samples crossing banks, with bank
+ *  crossing behavior determined on a per-driver basis.
  */
 uint32_t Wave_Bank::fit_sample(const Wave_Bank::Sample& header, uint32_t start, uint32_t end) const
 {
 	uint32_t sample_end = start + header.size;
 	uint32_t start_bank = start / bank_size;
 	uint32_t end_bank = sample_end / bank_size;
-	// Sample must fit in the same bank
-	if (start_bank != end_bank)
-		start = end_bank * bank_size;
+	// Adjust start address for bank crossing.
+	// Smarter method if sample is only to be played at the same sample rate.
+	// I will use this by default if the sample is too big to fit in a Z80 bank anyway.
+	if (start_bank != end_bank && header.size > bank_size)
+		start = (start + 0x1f) & 0xffffffe0;
+	// Alternate behavior for MDSDRV. More ROM space but will handle sample rate switches.
+	else if (start_bank != end_bank && (start % bank_size) != 0)
+		start = (start_bank + 1) * bank_size;
 	// Crossed end boundary?
 	if ((start + header.size) > end)
 		return NO_FIT;
