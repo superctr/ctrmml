@@ -10,11 +10,14 @@
 #include <vector>
 
 class MD_Channel;
+class MD_MacroTrack;
 class MD_Driver;
 
 //! Megadrive abstract channel
 class MD_Channel : public Player
 {
+	friend MD_MacroTrack;
+
 	public:
 		MD_Channel(MD_Driver& driver, int id);
 		void update(int seq_ticks);
@@ -30,7 +33,7 @@ class MD_Channel : public Player
 			EVENT_FM3 = 4,
 			EVENT_WRITE_ADDR = 5,
 			EVENT_WRITE_DATA = 6,
-			EVENT_TL_MODIFY = 7
+			EVENT_TL_MODIFY = 7,
 		};
 
 		uint8_t write_fm_operator(int idx, int bank, int id, const std::vector<uint8_t>& idata);
@@ -70,6 +73,9 @@ class MD_Channel : public Player
 		int8_t ins_transpose; //!< Instrument transpose (for FM 2op). compiled files should have this already 'cooked'
 		uint8_t con; //!< FM connection
 		uint8_t tl[4]; // also used for Ch3 mode
+		// Macro track
+		std::unique_ptr<MD_MacroTrack> macro_track;
+		bool macro_carry;
 
 	private:
 		uint32_t parse_platform_event(const Tag& tag, int16_t* platform_state) override;
@@ -90,6 +96,26 @@ class MD_Channel : public Player
 
 		void key_on_pcm();
 		void key_off_pcm();
+
+		void reset_macro_track();
+};
+
+//! Megadrive macro track
+class MD_MacroTrack : public Basic_Player
+{
+	public:
+		MD_MacroTrack(MD_Channel& channel, Song& song, Track& track);
+		void update();
+		inline void set_key_on() { key_on_flag = true; }
+
+	private:
+		void event_hook() override;
+		bool loop_hook() override;
+		void end_hook() override;
+
+		MD_Channel& channel;
+		bool key_on_flag;
+		int loop_count;
 };
 
 //! Megadrive FM channel

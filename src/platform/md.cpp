@@ -33,7 +33,8 @@ MD_Channel::MD_Channel(MD_Driver& driver, int id)
 	pitch(0),
 	ins_transpose(0),
 	con(0),
-	tl()
+	tl(),
+	macro_carry(0)
 {
 	if(channel_id == 5)
 	{
@@ -55,7 +56,12 @@ MD_Channel::MD_Channel(MD_Driver& driver, int id)
 void MD_Channel::update(int seq_ticks)
 {
 	while(seq_ticks--)
+	{
 		play_tick();
+		if(macro_track)
+			macro_track->update();
+	}
+
 	v_update_envelope();
 	update_pitch();
 
@@ -229,6 +235,10 @@ uint32_t MD_Channel::parse_platform_event(const Tag& tag, int16_t* platform_stat
 		driver->pcm_delta = driver->get_rate()/driver->pcm_rate;
 		printf("set rate to %f", driver->pcm_delta);
 	}
+	else if(iequal(tag[0], "carry"))
+	{
+		macro_carry = true;
+	}
 	else if(MDSDRV_get_register(tag[0]))
 	{
 		if(tag.size() < 2)
@@ -268,6 +278,8 @@ void MD_Channel::write_event()
 			if(!slur_flag)
 			{
 				key_off();
+				if(macro_track && !macro_carry)
+					reset_macro_track();
 			}
 			//continue
 		case Event::TIE:
@@ -299,6 +311,9 @@ void MD_Channel::write_event()
 		case Event::PAN:
 			v_set_pan();
 			break;
+		case Event::PAN_ENVELOPE:
+			macro_carry = false;
+			reset_macro_track();
 		default:
 			break;
 	}
@@ -599,6 +614,129 @@ void MD_Channel::key_off_pcm()
 			driver->vgm->dac_stop(0x00);
 		}
 		driver->last_pcm_channel = -1;
+	}
+}
+
+void MD_Channel::reset_macro_track()
+{
+	if(get_var(Event::PAN_ENVELOPE))
+	{
+		try
+		{
+			macro_track = std::make_unique<MD_MacroTrack>(*this,
+					*driver->song,
+					driver->song->get_track(get_var(Event::PAN_ENVELOPE)));
+		}
+		catch(std::exception& ex)
+		{
+			error(stringf("Macro track *%d is not defined", get_var(Event::PAN_ENVELOPE)).c_str());
+		}
+	}
+	else
+	{
+		macro_track = nullptr;
+	}
+}
+
+//! Initialize a macro track.
+MD_MacroTrack::MD_MacroTrack(MD_Channel& channel, Song& song, Track& track)
+	: Basic_Player(song, track)
+	, channel(channel)
+{
+}
+
+void MD_MacroTrack::event_hook()
+{
+	switch(event.type)
+	{
+		case Event::NOTE:
+			break;
+		case Event::PLATFORM:
+			try
+			{
+				const Tag& tag = get_song()->get_platform_command(event.param);
+				channel.platform_update(tag);
+				channel.update_state();
+			}
+			catch (std::out_of_range &)
+			{
+				error(stringf("Platform command %d is not defined", event.param).c_str());
+			}
+			break;
+		case Event::TRANSPOSE_REL:
+			channel.set_var(Event::TRANSPOSE, channel.get_var(Event::TRANSPOSE) + event.param);
+			channel.set_update_flag(Event::TRANSPOSE);
+			break;
+		case Event::VOL:
+			channel.set_var(Event::VOL_FINE, event.param);
+			channel.set_update_flag(Event::VOL_FINE);
+			channel.set_coarse_volume_flag(true);
+			break;
+		// Previous behavior was to clear the VOL_BIT after VOL_FINE_REL
+		// and set it after VOL_REL. It has now been changed so VOL_REL
+		// and VOL_FINE_REL neither sets it or clears it.
+		case Event::VOL_REL:
+		case Event::VOL_FINE_REL:
+			channel.set_var(Event::VOL_FINE, channel.get_var(Event::VOL_FINE) + event.param);
+			channel.set_update_flag(Event::VOL_FINE);
+			break;
+		case Event::TEMPO_BPM: // not supported in MDSDRV
+		case Event::TEMPO: // not supported in MDSDRV
+		case Event::INS: // not supported in MDSDRV
+			break;
+		default:
+			if(event.type >= Event::CHANNEL_CMD && event.type < Event::CMD_COUNT)
+			{
+				channel.set_var(event.type, event.param);
+				channel.set_update_flag(event.type);
+				if(event.type == Event::VOL_FINE)
+					channel.set_coarse_volume_flag(false);
+				if(event.type == Event::PAN)
+					channel.v_set_pan();
+			}
+			break;
+	}
+	if(channel.get_update_flag(Event::VOL_FINE))
+	{
+		channel.set_vol();
+	}
+}
+
+bool MD_MacroTrack::loop_hook()
+{
+	loop_count++;
+	return 1;
+}
+
+void MD_MacroTrack::end_hook()
+{
+}
+
+//! Update a macro track
+void MD_MacroTrack::update()
+{
+	// If a note event is found, wait until we get a key on sync flag
+	if(on_time)
+	{
+		if(key_on_flag)
+		{
+			on_time = 0;
+			key_on_flag = false;
+		}
+	}
+	// If a rest is found, wait the specified # of ticks
+	else if(off_time)
+	{
+		off_time--;
+		play_time++;
+	}
+
+	loop_count = 0;
+	while(is_enabled() && !on_time && !off_time)
+	{
+		step_event();
+		if(loop_count > 1)
+			error("Infinite loop detected");
 	}
 }
 

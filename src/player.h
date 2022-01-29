@@ -79,6 +79,8 @@ class Basic_Player
 		Player_Stack::Type get_stack_type();
 		unsigned int get_stack_depth(Player_Stack::Type type);
 
+		Song* get_song();
+
 		void error(const char* message) const;
 
 		//! Called at every event.
@@ -161,10 +163,13 @@ class Player : public Basic_Player
 		void set_var(Event::Type type, int16_t val);
 		void set_coarse_volume_flag(bool state);
 
+		void platform_update(const Tag& tag);
+
 	protected:
 		bool get_platform_flag(unsigned int type) const;
 		void clear_platform_flag(unsigned int type);
 		bool get_update_flag(Event::Type type) const;
+		void set_update_flag(Event::Type type);
 		void clear_update_flag(Event::Type type);
 		virtual uint32_t parse_platform_event(const Tag& tag, int16_t* platform_state);
 		virtual void write_event();

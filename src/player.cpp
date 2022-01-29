@@ -336,6 +336,14 @@ unsigned int Basic_Player::get_stack_depth(Player_Stack::Type type)
 	return stack_depth[type];
 }
 
+//! Get a reference to the Song.
+/*!
+ *  \return The Song used by the player
+ */
+Song* Basic_Player::get_song()
+{
+	return song;
+}
 
 //! Throws an InputError.
 /*!
@@ -346,7 +354,6 @@ void Basic_Player::error(const char* message) const
 {
 	throw InputError(reference, message);
 }
-
 
 //! Throw an error with appropriate message for a stack underflow.
 void Basic_Player::stack_underflow(int type)
@@ -551,7 +558,7 @@ int16_t Player::get_var(Event::Type type) const
 }
 
 
-//! Get event variable.
+//! Set event variable.
 /*!
  *  \param[in] type The event type.
  *
@@ -603,6 +610,17 @@ bool Player::get_update_flag(Event::Type type) const
 	return FLAG(type);
 }
 
+//! Set the update flag for a channel variable
+/*!
+ *  \param[in] type Specify the variable to set.
+ */
+void Player::set_update_flag(Event::Type type)
+{
+	if(type < Event::CHANNEL_CMD || type >= Event::CMD_COUNT)
+		error("BUG: Unsupported event type");
+	FLAG_SET(type);
+}
+
 //! Clear the update flag for a channel variable
 /*!
  *  \param[in] type Specify the variable to clear.
@@ -633,6 +651,18 @@ void Player::clear_update_flag(Event::Type type)
 uint32_t Player::parse_platform_event(const Tag& tag, int16_t* platform_state)
 {
 	return 0;
+}
+
+
+//! Custom platform update
+/*!
+ *  Call parse_platform_event() manually with the specified Tag
+ *
+ *  \param tag parameter passed to parse_platform_event()
+ */
+void Player::platform_update(const Tag& tag)
+{
+	platform_update_mask |= parse_platform_event(tag, platform_state);
 }
 
 //! Event handler.
