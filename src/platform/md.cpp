@@ -87,6 +87,9 @@ void MD_Channel::seek(int ticks)
 		v_set_pan();
 	clear_update_flag(Event::PAN);
 	update_state();
+
+	note_pitch = ((int16_t) get_last_note() + (int16_t) get_var(Event::TRANSPOSE))<<8;
+	note_pitch += get_var(Event::DETUNE);
 }
 
 //! Write a single FM operator
@@ -1332,7 +1335,7 @@ void MD_Driver::skip_ticks(unsigned int ticks)
 	for(auto it = channels.begin(); it != channels.end(); it++)
 	{
 		MD_Channel* ch = it->get();
-		if(ch->is_enabled())
+		if(ch->is_enabled() && ticks)
 			ch->seek(ticks);
 	}
 }

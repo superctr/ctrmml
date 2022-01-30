@@ -377,6 +377,7 @@ void Basic_Player::stack_underflow(int type)
  */
 Player::Player(Song& song, Track& track)
 	: Basic_Player(song, track),
+	last_note(0),
 	skip_flag(false),
 	note_count(0),
 	rest_count(0),
@@ -632,6 +633,16 @@ void Player::clear_update_flag(Event::Type type)
 	FLAG_CLR(type);
 }
 
+//! Get the last note parsed by handle_event()
+/*!
+ *  Useful in player drivers in order to correctly set the note frequency
+ *  after seeking.
+ */
+int16_t Player::get_last_note() const
+{
+	return last_note;
+}
+
 //! Custom platform event parser.
 /*!
  *  The override function should modify the \p platform_state as appropriate
@@ -737,6 +748,7 @@ void Player::handle_event()
 	switch(event.type)
 	{
 		case Event::NOTE:
+			last_note = event.param;
 			if(CH_STATE(Event::DRUM_MODE))
 				handle_drum_mode();
 			break;

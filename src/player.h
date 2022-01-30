@@ -171,6 +171,7 @@ class Player : public Basic_Player
 		bool get_update_flag(Event::Type type) const;
 		void set_update_flag(Event::Type type);
 		void clear_update_flag(Event::Type type);
+		int16_t get_last_note() const;
 		virtual uint32_t parse_platform_event(const Tag& tag, int16_t* platform_state);
 		virtual void write_event();
 
@@ -181,6 +182,7 @@ class Player : public Basic_Player
 		virtual bool loop_hook() override;
 		virtual void end_hook() override;
 
+		int16_t last_note;
 		bool skip_flag;
 		int note_count;
 		int rest_count;
