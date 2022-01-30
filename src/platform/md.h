@@ -106,7 +106,6 @@ class MD_MacroTrack : public Basic_Player
 	public:
 		MD_MacroTrack(MD_Channel& channel, Song& song, Track& track);
 		void update();
-		inline void set_key_on() { key_on_flag = true; }
 
 	private:
 		void event_hook() override;
@@ -114,7 +113,6 @@ class MD_MacroTrack : public Basic_Player
 		void end_hook() override;
 
 		MD_Channel& channel;
-		bool key_on_flag;
 		int loop_count;
 };
 

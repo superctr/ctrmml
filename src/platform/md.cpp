@@ -653,6 +653,9 @@ void MD_MacroTrack::event_hook()
 	switch(event.type)
 	{
 		case Event::NOTE:
+			// Retrigger note
+			channel.key_off();
+			channel.key_on_flag = true;
 			break;
 		case Event::PLATFORM:
 			try
@@ -721,11 +724,8 @@ void MD_MacroTrack::update()
 	// If a note event is found, wait until we get a key on sync flag
 	if(on_time)
 	{
-		if(key_on_flag)
-		{
-			on_time = 0;
-			key_on_flag = false;
-		}
+		on_time--;
+		play_time++;
 	}
 	// If a rest is found, wait the specified # of ticks
 	else if(off_time)
