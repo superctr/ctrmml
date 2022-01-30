@@ -22,7 +22,7 @@ class MDSDRV_Platform;
 
 // Current sequence version
 #define MDSDRV_SEQ_VERSION_MAJOR 0
-#define MDSDRV_SEQ_VERSION_MINOR 4
+#define MDSDRV_SEQ_VERSION_MINOR 5
 
 // Minimum compatible sequence version
 #define MDSDRV_MIN_SEQ_VERSION_MAJOR 0
@@ -98,6 +98,7 @@ class MDSDRV_Data
 struct MDSDRV_Event
 {
 	enum Type {
+		CARRY = 0x7e,   // carry event for macro track
 		SEGNO = 0x7f,	// virtual "segno" event
 
 		REST = 0x80,
@@ -183,17 +184,21 @@ class MDSDRV_Converter
 	private:
 		void parse_track(int track_id);
 		std::vector<uint8_t> convert_track(const std::vector<MDSDRV_Event>& event_list);
+		std::vector<uint8_t> convert_macro_track(const std::vector<MDSDRV_Event>& event_list);
 		int get_subroutine(int track_id, bool in_drum_mode);
+		int get_macro_track(int track_id);
 		int get_envelope(int mapped_id);
 
-		inline uint32_t get_data_id(int envelope_id) { return subroutine_list.size() + envelope_id; }
+		inline uint32_t get_data_id(int envelope_id) { return subroutine_list.size() + macro_track_list.size() + envelope_id; }
 
 		Song* song;
 		MDSDRV_Data data;
 		//! Map of used data from the data bank.
 		std::map<int, int> used_data_map;  // Maps event parameter to envelope_id
 		std::map<int, int> subroutine_map; // Maps event parameter to track_id
+		std::map<int, int> macro_track_map; // Maps event parameter to track_id
 		std::vector<std::vector<MDSDRV_Event>> subroutine_list;
+		std::vector<std::vector<MDSDRV_Event>> macro_track_list;
 		std::map<int, std::vector<MDSDRV_Event>> track_list;
 		std::vector<uint8_t> sequence_data;
 		uint16_t sequence_base;

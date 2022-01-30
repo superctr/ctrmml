@@ -323,7 +323,7 @@ public:
 		mml_input->read_line("  31 27 0 11 1 0 0 1 0 0");
 		mml_input->read_line("*20 o4l4 cdefgab>c");
 		mml_input->read_line("A @1v15 o4l4 p2 *20 p1 *20");
-		mml_input->read_line("G @2v15 o4l1 [r]8 *20");
+		mml_input->read_line("G @2v15 o4l1 [r]8 *20 r:129 c:129");
 
 		auto converter = MDSDRV_Converter(*song);
 
@@ -338,15 +338,15 @@ public:
 			0x00,0x02, // 02  tcount
 			0x00,0x00,0x00,0x12-0x0c, // 04 t0 - sdtop
 			0x06,0x00,0x00,0x1f-0x0c, // 08 t1 - sdtop
-			0x00,0x2a-0x0c,  // 0c sub 0
+			0x00,0x30-0x0c,  // 0c sub 0
 			0x00,0x00,  // 0e env 1 (placeholder, overwritten by linker)
 			0x00,0x00,  // 10 env 2 (placeholder, overwritten by linker)
 			MDSDRV_Event::INS,0x01,MDSDRV_Event::VOL,0x8f,MDSDRV_Event::PAN,0x80, // 12 trk1
 			MDSDRV_Event::PAT,0x00,MDSDRV_Event::PAN,0x40,MDSDRV_Event::PAT,0x00, // 18
 			MDSDRV_Event::FINISH, // 1e
 			MDSDRV_Event::INS,0x02,MDSDRV_Event::VOL,0x8f,MDSDRV_Event::LP,95, // 1f trk1
-			MDSDRV_Event::LPF,8,MDSDRV_Event::PAT,0x00,MDSDRV_Event::FINISH,  // 25
-			0xa6,23,0xa8,0xaa,0xab,0xad,0xaf,0xb1,0xb2,MDSDRV_Event::FINISH // 2a
+			MDSDRV_Event::LPF,8,MDSDRV_Event::PAT,0x00,0x7f,0x00,0xa6,0x7f,0x81,0x00,MDSDRV_Event::FINISH,  // 25
+			0xa6,23,0xa8,0xaa,0xab,0xad,0xaf,0xb1,0xb2,MDSDRV_Event::FINISH // 30
 		};
 
 		CPPUNIT_ASSERT_EQUAL(expected_data.size(), converter.sequence_data.size());

@@ -640,6 +640,18 @@ void MDSDRV_Track_Writer::event_hook()
 		case Event::PAN:
 			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PAN,param << 6));
 			break;
+		case Event::PAN_ENVELOPE:
+			try
+			{
+				if(param)
+					param = mdsdrv.get_macro_track(param) + 1;
+				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::MTAB,param));
+			}
+			catch (std::out_of_range &)
+			{
+				error(stringf("MDSDRV: Macro track *%d doesn't exist", event.param).c_str());
+			}
+			break;
 		case Event::PITCH_ENVELOPE:
 			try
 			{
@@ -700,7 +712,7 @@ void MDSDRV_Track_Writer::parse_platform_event(const Tag& tag)
 		else if(param == 2)
 			param = 0xe3;
 		else
-			param = 0x00;
+			param = 0x100; // Should be replaced with 00 in the actual file
 		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::LFO, param));
 	}
 	else if(iequal(tag[0], "lfo")) // LFO depth
@@ -765,6 +777,10 @@ void MDSDRV_Track_Writer::parse_platform_event(const Tag& tag)
 			data = std::strtol(tag[2].c_str(), 0, 0);
 		converted_events.push_back(MDSDRV_Event(type, data));
 	}
+	else if(iequal(tag[0], "carry"))
+	{
+		converted_events.push_back(MDSDRV_Event(MDSDRV_Event::CARRY, 0));
+	}
 	else if(MDSDRV_get_register(tag[0]))
 	{
 		if(tag.size() < 2)
@@ -806,7 +822,9 @@ MDSDRV_Converter::MDSDRV_Converter(Song& song)
 	, data()
 	, used_data_map()
 	, subroutine_map()
+	, macro_track_map()
 	, subroutine_list()
+	, macro_track_list()
 	, track_list()
 	, sequence_data()
 {
@@ -822,7 +840,7 @@ MDSDRV_Converter::MDSDRV_Converter(Song& song)
 	uint16_t track_header_offset = 4;
 	uint16_t track_count = 0;
 	uint16_t data_base = 4 + (4 * track_list.size());
-	uint16_t header_size = data_base + (subroutine_list.size() + used_data_map.size()) * 2;
+	uint16_t header_size = data_base + (subroutine_list.size() + macro_track_list.size() + used_data_map.size()) * 2;
 	sequence_data.insert(sequence_data.begin(), header_size, 0x00);
 
 	// we should use something else to define the track list, i think...
@@ -860,6 +878,16 @@ MDSDRV_Converter::MDSDRV_Converter(Song& song)
 		sequence_data[track_header_offset++] = offset;
 
 		std::vector<uint8_t> bytes = convert_track(*it);
+		sequence_data.insert(sequence_data.end(), bytes.begin(), bytes.end());
+	}
+
+	for(auto it = macro_track_list.begin(); it != macro_track_list.end(); it++)
+	{
+		uint16_t offset = sequence_data.size() - data_base;
+		sequence_data[track_header_offset++] = offset >> 8;
+		sequence_data[track_header_offset++] = offset;
+
+		std::vector<uint8_t> bytes = convert_macro_track(*it);
 		sequence_data.insert(sequence_data.end(), bytes.begin(), bytes.end());
 	}
 }
@@ -927,7 +955,7 @@ std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Ev
 		if(type == MDSDRV_Event::REST && arg)
 		{
 			arg -= 1;
-			while(arg > 128)
+			while(arg >= 128)
 			{
 				// If last event was a note or tie and no length was specified
 				// we must add the length parameter of that event before adding any
@@ -965,16 +993,13 @@ std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Ev
 			// could save some space for "shuffle" notes.
 			arg -= 1;
 			track_data.push_back(type);
-			while(arg > 128)
+			while(arg >= 128)
 			{
 				if(last_note != 0x7f)
 					track_data.push_back(0x7f);
 				last_note = 0x7f;
 				arg -= 128;
-				if(arg != 0)
-				{
-					track_data.push_back(MDSDRV_Event::TIE);
-				}
+				track_data.push_back(MDSDRV_Event::TIE);
 			}
 			if(arg != last_note)
 			{
@@ -1001,7 +1026,6 @@ std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Ev
 				case MDSDRV_Event::PTA:
 				case MDSDRV_Event::PAN:
 				case MDSDRV_Event::LFO:
-				case MDSDRV_Event::MTAB:
 				case MDSDRV_Event::FLG:
 				case MDSDRV_Event::DMFINISH:
 				case MDSDRV_Event::COMM:
@@ -1009,7 +1033,20 @@ std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Ev
 				case MDSDRV_Event::PCMRATE:
 				case MDSDRV_Event::PCMMODE:
 					track_data.push_back(type);
-					track_data.push_back(arg);
+					track_data.push_back(arg & 0xff);
+					break;
+					track_data.push_back(type);
+					if(arg == 0xff)
+						track_data.push_back(0);
+					else
+						track_data.push_back(arg);
+					break;
+				case MDSDRV_Event::MTAB: // 8-bit arg with offset
+					track_data.push_back(type);
+					if(arg)
+						track_data.push_back(arg + subroutine_list.size());
+					else
+						track_data.push_back(0);
 					break;
 				case MDSDRV_Event::INS: // 8-bit arg with offset
 				case MDSDRV_Event::PCM:
@@ -1096,6 +1133,170 @@ std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Ev
 	return track_data;
 }
 
+//! Convert an event stream (track or subroutine) to a MDSDRV macro track byte stream.
+/*!
+ * This is essentially the final pass of the MML sequence data.
+ *
+ * TODO: Not all features of this have been tested. Some commands are not supported and might
+ * not be for the foreseeable future.
+ */
+std::vector<uint8_t> MDSDRV_Converter::convert_macro_track(const std::vector<MDSDRV_Event>& event_list)
+{
+	uint16_t segno_pos = 0x0000;
+	auto track_data = std::vector<uint8_t>();
+	std::stack<uint16_t> loop_break_address;
+	std::stack<uint16_t> loop_start_address;
+
+	for(auto it = event_list.begin(); it != event_list.end(); it++)
+	{
+		uint8_t type = it->type;
+		uint16_t arg = it->arg;
+		if(type == MDSDRV_Event::REST && arg)
+		{
+			arg -= 1;
+			while(arg >= 256)
+			{
+				track_data.push_back(0x81);
+				track_data.push_back(0xff);
+				arg -= 256;
+			}
+			track_data.push_back(0x81);
+			track_data.push_back(arg);
+		}
+		else if(type < MDSDRV_Event::SLR && arg)
+		{
+			uint8_t command = 0x82;
+			arg -= 1;
+			while(arg >= 256)
+			{
+				track_data.push_back(command);
+				track_data.push_back(0xff);
+				command = 0x81;
+				arg -= 256;
+			}
+			track_data.push_back(command);
+			track_data.push_back(arg);
+		}
+		else
+		{
+			switch(type)
+			{
+				case MDSDRV_Event::SLR: // Not supported by macro track
+				case MDSDRV_Event::PCMMODE:
+				case MDSDRV_Event::TEMPO:
+				case MDSDRV_Event::MTAB:
+				case MDSDRV_Event::DMFINISH:
+				case MDSDRV_Event::PAT:
+					printf("MDSDRV: ignoring event type %d not supported in macro track\n", type);
+					break;
+				case MDSDRV_Event::COMM: // May support in the future
+				case MDSDRV_Event::FLG:
+				case MDSDRV_Event::INS:
+				case MDSDRV_Event::PCM:
+				case MDSDRV_Event::PCMRATE:
+				case MDSDRV_Event::PEG:
+				case MDSDRV_Event::FMREG:
+					printf("MDSDRV: ignoring event type %d not supported in macro track\n", type);
+					break;
+				case MDSDRV_Event::SEGNO:
+					segno_pos = track_data.size();
+					break;
+				case MDSDRV_Event::CARRY:
+					track_data.push_back(0x83);
+					track_data.push_back(0x00);
+					break;
+				case MDSDRV_Event::FINISH:
+					track_data.push_back(0x80);
+					track_data.push_back(0x00);
+					break;
+				case MDSDRV_Event::VOL: // 8-bit argument
+					track_data.push_back(0x00 + 0x18);
+					track_data.push_back(arg);
+					break;
+				case MDSDRV_Event::VOLM:
+					track_data.push_back(0x40 + 0x18);
+					track_data.push_back(arg);
+					break;
+				case MDSDRV_Event::TRS:
+					track_data.push_back(0x00 + 0x16);
+					track_data.push_back(arg);
+					break;
+				case MDSDRV_Event::TRSM:
+					track_data.push_back(0x40 + 0x16);
+					track_data.push_back(arg);
+					break;
+				case MDSDRV_Event::DTN:
+					track_data.push_back(0x00 + 0x11);
+					track_data.push_back(arg);
+					break;
+				case MDSDRV_Event::PTA:
+					track_data.push_back(0x00 + 0x17);
+					track_data.push_back(arg);
+					break;
+				case MDSDRV_Event::PAN:
+					track_data.push_back(0x87);
+					track_data.push_back(arg);
+					break;
+				case MDSDRV_Event::LFO:
+					if(arg < 0xc0)
+					{
+						track_data.push_back(0x88);
+						track_data.push_back(arg);
+					}
+					else
+					{
+						track_data.push_back(0x89); // PSG noise mode
+						track_data.push_back(arg & 0xff);
+					}
+					break;
+				case MDSDRV_Event::FMCREG:
+					track_data.push_back(0xc0 + (arg >> 10));
+					track_data.push_back(arg & 0xff);
+					break;
+				case MDSDRV_Event::FMTL:
+					track_data.push_back(0x00 + 0x36 + (arg >> 8));
+					track_data.push_back(arg);
+					break;
+				case MDSDRV_Event::FMTLM:
+					track_data.push_back(0x40 + 0x36 + (arg >> 8));
+					track_data.push_back(arg);
+					break;
+				case MDSDRV_Event::JUMP:
+					segno_pos = (segno_pos - (track_data.size() + 2));
+					track_data.push_back(0x80);
+					track_data.push_back(segno_pos/2);
+					break;
+				case MDSDRV_Event::LP: // loop start
+					loop_break_address.push(0x0000);
+					track_data.push_back(0x84);
+					track_data.push_back(0); //to be filled in
+					loop_start_address.push(track_data.size());
+					break;
+				case MDSDRV_Event::LPB: // loop break
+					track_data.push_back(0x85);
+					track_data.push_back(0); //to be filled in
+					loop_break_address.top() = track_data.size();
+					break;
+				case MDSDRV_Event::LPF: // loop finish
+					track_data.push_back(0x86);
+					track_data.push_back((loop_start_address.top() - (track_data.size() + 1))/2);
+					// insert loop break command
+					if(loop_break_address.top())
+					{
+						uint16_t offset = track_data.size() - loop_break_address.top();
+						track_data[loop_break_address.top() - 1] = offset / 2;
+					}
+					track_data[loop_start_address.top() - 1] = arg - 1;
+					loop_break_address.pop();
+					loop_start_address.pop();
+					break;
+				default:
+					break;
+			}
+		}
+	}
+	return track_data;
+}
 //! Get the subroutine ID.
 /*!
  * Note: if a subroutine is called from a drum mode jump, the drum mode offset
@@ -1121,6 +1322,38 @@ int MDSDRV_Converter::get_subroutine(int track_id, bool in_drum_mode)
 			writer.step_event();
 		}
 		subroutine_list[sub_id] = event_list;
+		return sub_id;
+	}
+	else
+	{
+		return search->second;
+	}
+}
+
+//! Get the macro track ID.
+/*!
+ * Note: if a subroutine is called from a drum mode jump, the drum mode offset
+ * is not kept.
+ */
+int MDSDRV_Converter::get_macro_track(int track_id)
+{
+	auto search = macro_track_map.find(track_id);
+	if(search == macro_track_map.end())
+	{
+		int sub_id = macro_track_list.size();
+		macro_track_map[track_id] = sub_id;
+		macro_track_list.push_back({});
+		// I tried using a pointer or reference to subroutine_list[sub_id] here, but
+		// it turned out to be a terrible idea because the pointers move when this
+		// function is recursively called (probably the push_back above this comment
+		// is to blame)
+		auto event_list = std::vector<MDSDRV_Event>();
+		auto writer = MDSDRV_Track_Writer(*this, track_id, 0, event_list);
+		while(writer.is_enabled())
+		{
+			writer.step_event();
+		}
+		macro_track_list[sub_id] = event_list;
 		return sub_id;
 	}
 	else
