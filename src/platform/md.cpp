@@ -281,7 +281,7 @@ void MD_Channel::write_event()
 			if(!slur_flag)
 			{
 				key_off();
-				if(macro_track && !macro_carry)
+				if(get_var(Event::PAN_ENVELOPE) && !macro_carry)
 					reset_macro_track();
 			}
 			//continue
