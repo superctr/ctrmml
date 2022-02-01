@@ -14,7 +14,7 @@
 void print_usage(const char* exename)
 {
 	std::cout << "mdslink - MDSDRV MML Compiler and Linker\n";
-	std::cout << "(C) 2019-2020 ian karlsson\n\n";
+	std::cout << "(C) 2019-2022 ian karlsson\n\n";
 	std::cout << "Usage: " << exename << " [options] <list of input files ...>\n\n";
 	std::cout << "Options:\n";
 	std::cout << "\t-o <mdsseq.bin> <mdsbin.bin> : Specify output filenames\n";

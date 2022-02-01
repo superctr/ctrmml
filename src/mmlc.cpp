@@ -18,7 +18,7 @@
 void print_usage(const char* exename)
 {
 	std::cout << "ctrmml Music Compiler, version " CTRMML_VERSION "\n";
-	std::cout << "(C) 2019-2020 Ian Karlsson.\n";
+	std::cout << "(C) 2019-2022 Ian Karlsson.\n";
 	std::cout << "Licensed under GPLv2, see COPYING for details.\n\n";
 	std::cout << "Usage: " << exename << " [options] <input_file.mml>\n";
 	std::cout << "Options:\n";

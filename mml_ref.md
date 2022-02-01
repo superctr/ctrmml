@@ -131,7 +131,7 @@ depends on the platform. They may be ignored or the accepted range may differ.
 -	`K<-128..127>` - Set detune.
 -	`E<0..255>` - Set envelope. 0 to disable.
 -	`M<0..255>` - Set pitch envelope. 0 to disable.
--	`P<0..255>` - Set pan envelope. 0 to disable.
+-	`P<0..255>` - Set pan envelope or macro track. 0 to disable.
 -	`G<0..255>` - Set portamento. 0 to disable.
 -	`D<0..255>` - Drum mode. If set to a non-zero value, enable drum mode and
 	set the drum mode index to the parameter value.
@@ -216,6 +216,9 @@ over the FM at channel 6 (`F`). If `#platform` is set to `mdsdrv`, software
 mixing and volume control will also be for these PCM channels.
 
 #### Platform-exclusive commands
+Note that these have to be enclosed with apostrophes in the MML source, for
+example `'fm3 0001'`.
+
 -	`fm3 <mask>` - Enables FM3 special mode. Mask defines the operators that
 	are affected by this channel. Example: `fm3 0011` to use operators 1 and 2.
 	Set the mask to `1111` to disable the special mode. You can use this on PSG
@@ -246,8 +249,6 @@ mixing and volume control will also be for these PCM channels.
 	current level.
 
 #### Limitations
-Pan envelopes not supported.
-
 Panning using the `p` command is only allowed for FM channels and the accepted
 range is 0-3. Bit 1 enables the right channel, bit 2 enables the left channel.
 
@@ -407,3 +408,37 @@ Vibrato with 20 frame delay at the beginning
 Using the `V` macro to do the same thing as above
 
 	@M1 0:20 | V0:1:5
+
+#### Macro tracks
+Macro tracks allow you to overlay commands from a subroutine track.
+
+To use macro tracks, create a subroutine track just as you normally
+would:
+
+	*100 V0 [V+5 r32]15 [V-5 r32]15
+
+To enable the macro track, use the `P` command.
+
+	A P100 l4 o4cdef
+
+Notice that there are no notes in this track. In a macro tracks, rests
+will simply advance time and do nothing. A note in the macro track
+will retrigger the currently playing note; The note value in the macro
+track is ignored.
+
+By default, the macro track position will reset after a new note.
+By adding the `'carry'` command to the beginning of the macro track,
+you can prevent this.
+
+	*101 'carry' l4 L p3 r p1 r p3 r p2 r
+
+	A P101 l4 o4[c]16
+
+Many commands are supported, however instrument, pitch envelopes and
+PCM mode commands are not. Please refer to the source code for further
+details ([mdsdrv.cpp](src/platform/mdsdrv.cpp)).
+
+When exporting to MDSDRV format either by creating an `mds` or by using
+`mdslink`, make sure not to have any nested subroutines or loops in the
+macro track, since MDSDRV does not allocate any stack memory for macro
+tracks.
