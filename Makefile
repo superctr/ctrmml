@@ -11,6 +11,11 @@ ifeq ($(ASAN),1)
 CFLAGS += -fsanitize=address -O1 -fno-omit-frame-pointer
 LDFLAGS += -fsanitize=address
 endif
+ifeq ($(COVERAGE),1)
+CFLAGS += --coverage
+LDFLAGS += --coverage
+OBJ := $(OBJ)/coverage
+endif
 CFLAGS += -g
 LIBCTRMML := $(LIBCTRMML)_debug.a
 else

@@ -5,6 +5,7 @@
 #date 2019-05-17~18
 
 #platform megadrive
+#option noextpitch
 
 ;==== Instrument section =====
 @3 fm 3 5 ;distgtr2
