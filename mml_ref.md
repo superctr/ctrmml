@@ -1,4 +1,4 @@
-MML reference for ctrmml (2021-04-06)
+MML reference for ctrmml (2022-05-21)
 ========================
 
 ## Meta commands
@@ -9,6 +9,7 @@ comma-separated values. Strings can be enclosed in double quotes if needed.
 -	`#title`, `#composer`, `#author`, `#date`, `#comment` - Song metadata.
 -	`#platform` - Sets the MML target platform.
 	- **Note**: Currently only `megadrive` and `mdsdrv` is supported.
+-	`#option` - Sets platform options.
 -	`@<num>` - Defines an instrument. Parameters are platform-specific.
 -	`@E<num>` - Defines an envelope.
 -	`@M<num>` - Defines a pitch envelope.
@@ -203,6 +204,9 @@ PCM channels can be mixed, and 16 levels of volume control is possible.
 The sample rate is however fixed to ~2khz increments up to 17.5 kHz, to match
 the real MDSDRV code. By default, two channel mixing is enabled and the
 output sampling rate is 17.5 Khz.
+
+Use `#option noextpitch` to disable extended pitch envelopes for compatibility
+with older MML files.
 
 #### Channel mapping
 -	`ABCDEF` FM channels 1-6.

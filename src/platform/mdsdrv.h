@@ -78,6 +78,9 @@ class MDSDRV_Data
 		int add_unique_data(const std::vector<uint8_t>& data);
 		std::string dump_data(uint16_t id, uint16_t mapped_id); // debug function
 
+		//! Allow extended pitch envelopes
+		bool use_extended_pitch;
+
 		//! Data bank, holds all instrument and envelope data
 		std::vector<std::vector<uint8_t>> data_bank;
 		//! Waverom bank, holds PCM samples.

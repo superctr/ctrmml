@@ -33,6 +33,15 @@ Tag_Map& Song::get_tag_map()
 	return tag_map;
 }
 
+//! Check if the tag with the specified key is present
+/*!
+ * \exception std::out_of_range if not found
+ */
+bool Song::check_tag(const std::string& key) const
+{
+	return tag_map.find(key) != tag_map.end();
+}
+
 //! Gets the tag with the specified key.
 /*!
  * \exception std::out_of_range if not found

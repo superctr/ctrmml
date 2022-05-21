@@ -38,7 +38,8 @@ uint8_t MDSDRV_get_register(const std::string& str)
 }
 
 MDSDRV_Data::MDSDRV_Data()
-	: data_bank()
+	: use_extended_pitch(true)
+	, data_bank()
 	, wave_rom(0x200000)
 	, envelope_map()
 	, wave_map()
@@ -72,6 +73,16 @@ void MDSDRV_Data::read_song(Song& song)
 	ins_transpose[0] = 0;
 	ins_type[0] = MDSDRV_Data::INS_UNDEFINED;
 	Tag& tag_order = song.get_tag_order_list();
+
+	if(song.check_tag("#option"))
+	{
+		Tag& tag = song.get_tag("#option");
+		if(std::find(tag.begin(), tag.end(), "noextpitch") != tag.end())
+		{
+			use_extended_pitch = false;
+		}
+	}
+
 	for(auto it = tag_order.begin(); it != tag_order.end(); it++)
 	{
 		uint16_t id;
@@ -472,9 +483,11 @@ void MDSDRV_Data::add_pitch_node(const char* s, bool extend, std::vector<uint8_t
 		else
 		{
 			//TODO:make it possible to disable extended pitch envelopes and use the below commented code instead
-			if(env_delta > 127 || env_delta < -128)
+			if(!use_extended_pitch)
+				env_delta = (env_delta > 127) ? 127 : (env_delta < -128) ? -128 : env_delta;
+			else if(env_delta > 127 || env_delta < -128)
 				throw std::invalid_argument("add_pitch_node");
-			//env_delta = (env_delta > 127) ? 127 : (env_delta < -128) ? -128: env_delta;
+
 			env_data->push_back(env_initial >> 8);
 			env_data->push_back(env_initial & 0xff);
 			env_data->push_back(env_delta);

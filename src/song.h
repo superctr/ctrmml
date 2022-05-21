@@ -30,6 +30,7 @@ class Song
 		void add_tag(const std::string& key, std::string value);
 		void add_tag_list(const std::string &key, const std::string &value);
 		void set_tag(const std::string& key, std::string value);
+		bool check_tag(const std::string& key) const;
 		Tag& get_tag(const std::string& key);
 		Tag& get_or_make_tag(const std::string& key);
 		const std::string& get_tag_front(const std::string& key) const;
