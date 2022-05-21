@@ -28,6 +28,7 @@ MD_Channel::MD_Channel(MD_Driver& driver, int id)
 	porta_value(0),
 	last_pitch(0),
 	pitch_env_data(0),
+	pitch_env_extend(0),
 	pitch_env_delay(0),
 	pitch_env_pos(0),
 	pitch(0),
@@ -419,32 +420,56 @@ void MD_Channel::update_pitch()
 				pitch_env_data = &driver->data.data_bank.at(pitch_id);
 				pitch_env_pos = 0;
 				pitch_env_delay = 0;
+				pitch_env_extend = driver->data.pitch_extend.find(get_var(Event::PITCH_ENVELOPE)) != driver->data.pitch_extend.end();
 				clear_update_flag(Event::PITCH_ENVELOPE);
 			}
 		}
-		uint16_t pos = pitch_env_pos << 2;
-		uint16_t command = (pitch_env_data->at(pos) << 8) | (pitch_env_data->at(pos+1));
-		int8_t delta = pitch_env_data->at(pos+2);
-		uint8_t length = pitch_env_data->at(pos+3);
-		//std::cout << stringf("pos=%d, time=%d/%d, delta=%d, ", pos, pitch_env_delay, length, delta);
-		if(pitch_env_delay == 0)
-			pitch_env_value = command;
-
-		if(pitch_env_delay == length)
+		if(!pitch_env_extend)
 		{
-			int16_t next_command = (pitch_env_data->at(pos+4) << 8) | (pitch_env_data->at(pos+5));
-			if(next_command >= 0x7f00)
-				pitch_env_pos = next_command & 0xff;
-			else
-				pitch_env_pos++;
-			pitch_env_delay = 0;
-		}
-		else if(pitch_env_delay < 0xfe)
-			pitch_env_delay++;
+			uint16_t pos = pitch_env_pos << 2;
+			uint16_t command = (pitch_env_data->at(pos) << 8) | (pitch_env_data->at(pos+1));
+			int8_t delta = pitch_env_data->at(pos+2);
+			uint8_t length = pitch_env_data->at(pos+3);
+			//std::cout << stringf("pos=%d, time=%d/%d, delta=%d, ", pos, pitch_env_delay, length, delta);
+			if(pitch_env_delay == 0)
+				pitch_env_value = command;
 
-		pitch_env_value += delta;
-		//std::cout << stringf("val=%04x, next_pos=%d\n", pitch_env_value, pitch_env_pos);
-		pitch += pitch_env_value;
+			if(pitch_env_delay == length)
+			{
+				int16_t next_command = (pitch_env_data->at(pos+4) << 8) | (pitch_env_data->at(pos+5));
+				if(next_command >= 0x7f00)
+					pitch_env_pos = next_command & 0xff;
+				else
+					pitch_env_pos++;
+				pitch_env_delay = 0;
+			}
+			else if(pitch_env_delay < 0xfe)
+				pitch_env_delay++;
+
+			pitch_env_value += delta;
+			//std::cout << stringf("val=%04x, next_pos=%d\n", pitch_env_value, pitch_env_pos);
+			pitch += pitch_env_value;
+		}
+		else
+		{
+			uint16_t pos = pitch_env_pos * 6;
+			int16_t delta = (pitch_env_data->at(pos+2) << 8) | (pitch_env_data->at(pos+3));
+			uint8_t length = pitch_env_data->at(pos+4);
+
+			if(pitch_env_delay == 0)
+				pitch_env_value = (pitch_env_data->at(pos) << 8) | (pitch_env_data->at(pos+1));
+
+			if(pitch_env_delay == length)
+			{
+				pitch_env_pos = pitch_env_data->at(pos+5);
+				pitch_env_delay = 0;
+			}
+			else if(pitch_env_delay < 0xfe)
+				pitch_env_delay++;
+
+			pitch_env_value += delta;
+			pitch += pitch_env_value;
+		}
 	}
 }
 

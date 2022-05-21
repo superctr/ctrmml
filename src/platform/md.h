@@ -65,6 +65,7 @@ class MD_Channel : public Player
 		uint16_t last_pitch; //!< Last pitch, used to optimize register writes
 		// Pitch envelopes
 		const std::vector<uint8_t>* pitch_env_data;
+		bool pitch_env_extend;
 		uint16_t pitch_env_value; //!< Pitch envelope value
 		uint8_t pitch_env_delay;
 		uint8_t pitch_env_pos;

@@ -43,8 +43,9 @@ MDSDRV_Data::MDSDRV_Data()
 	, envelope_map()
 	, wave_map()
 	, ins_transpose()
-	, pitch_map()
 	, ins_type()
+	, pitch_map()
+	, pitch_extend()
 	, message("")
 {
 }
@@ -81,8 +82,16 @@ void MDSDRV_Data::read_song(Song& song)
 		}
 		else if(std::sscanf(it->c_str(), "@m%hu", &id) == 1)
 		{
-			add_pitch_envelope(id, tag);
-			message += "read pitch envelope " + dump_data(id, pitch_map[id]) + "\n";
+			try
+			{
+				add_pitch_envelope(id, tag);
+				message += "read pitch envelope " + dump_data(id, pitch_map[id]) + "\n";
+			}
+			catch(std::invalid_argument &)
+			{
+				add_extended_pitch_envelope(id, tag);
+				message += "read extended pitch envelope " + dump_data(id, pitch_map[id]) + "\n";
+			}
 		}
 	}
 }
@@ -366,11 +375,11 @@ void MDSDRV_Data::add_pitch_envelope(uint16_t id, const Tag& tag)
 		if(*s == '|')
 			loop_pos = env_data.size() / 4;
 		else if(std::isdigit(*s) || *s == '-')
-			add_pitch_node(s, &env_data);
+			add_pitch_node(s, false, &env_data);
 		else if(*s == 'V')
 		{
 			loop_pos = env_data.size() / 4;
-			add_pitch_vibrato(s, &env_data);
+			add_pitch_vibrato(s, false, &env_data);
 		}
 		else
 			throw InputError(nullptr,stringf("undefined envelope value '%s'", s).c_str());
@@ -388,8 +397,45 @@ void MDSDRV_Data::add_pitch_envelope(uint16_t id, const Tag& tag)
 	pitch_map[id] = add_unique_data(env_data);
 }
 
+void MDSDRV_Data::add_extended_pitch_envelope(uint16_t id, const Tag& tag)
+{
+	std::vector<uint8_t> env_data;
+	int loop_pos = -1;
+	if(!tag.size())
+	{
+		message += stringf("warning: empty pitch envelope @M%d\n", id);
+		return;
+	}
+	for(auto it = tag.begin(); it != tag.end(); it++)
+	{
+		const char* s = it->c_str();
+		if(*s == '|')
+			loop_pos = env_data.size() / 6;
+		else if(std::isdigit(*s) || *s == '-')
+			add_pitch_node(s, true, &env_data);
+		else if(*s == 'V')
+		{
+			loop_pos = env_data.size() / 6;
+			add_pitch_vibrato(s, true, &env_data);
+		}
+		else
+			throw InputError(nullptr,stringf("undefined envelope value '%s'", s).c_str());
+	}
+	// end command
+	if(loop_pos == -1)
+	{
+		env_data[env_data.size() - 2] = 0xff;
+		env_data[env_data.size() - 1] -= 1;
+	}
+	else
+	{
+		env_data.back() = loop_pos;
+	}
+	pitch_map[id] = add_unique_data(env_data);
+	pitch_extend.insert(id);
+}
 //! Adds a node to the pitch envelope.
-void MDSDRV_Data::add_pitch_node(const char* s, std::vector<uint8_t>* env_data)
+void MDSDRV_Data::add_pitch_node(const char* s, bool extend, std::vector<uint8_t>* env_data)
 {
 	double initial = std::strtod(s, (char**)&s);
 	double target = initial;
@@ -407,7 +453,6 @@ void MDSDRV_Data::add_pitch_node(const char* s, std::vector<uint8_t>* env_data)
 		length += 1;
 
 	counter = initial;
-	//message += stringf("initial:%.2f, target=%.2f, len=%d", initial, target, length) + "\n";
 	while(length > 0)
 	{
 		double delta = (target-counter)/length;
@@ -415,12 +460,26 @@ void MDSDRV_Data::add_pitch_node(const char* s, std::vector<uint8_t>* env_data)
 		int16_t env_initial = counter * 256;
 		int16_t env_delta = std::trunc(delta * 256);
 		env_initial = (env_initial > 0x7eff) ? 0x7eff : env_initial;
-		env_delta = (env_delta > 127) ? 127 : (env_delta < -128) ? -128: env_delta;
-		//message += stringf("len:%d, from:%04x, chg:%d", env_len, env_initial, env_delta) + "\n";
-		env_data->push_back(env_initial >> 8);
-		env_data->push_back(env_initial & 0xff);
-		env_data->push_back(env_delta);
-		env_data->push_back(env_len - 1);
+		if(extend)
+		{
+			env_data->push_back(env_initial >> 8);
+			env_data->push_back(env_initial & 0xff);
+			env_data->push_back(env_delta >> 8);
+			env_data->push_back(env_delta & 0xff);
+			env_data->push_back(env_len - 1);
+			env_data->push_back((env_data->size() + 1) / 6);
+		}
+		else
+		{
+			//TODO:make it possible to disable extended pitch envelopes and use the below commented code instead
+			if(env_delta > 127 || env_delta < -128)
+				throw std::invalid_argument("add_pitch_node");
+			//env_delta = (env_delta > 127) ? 127 : (env_delta < -128) ? -128: env_delta;
+			env_data->push_back(env_initial >> 8);
+			env_data->push_back(env_initial & 0xff);
+			env_data->push_back(env_delta);
+			env_data->push_back(env_len - 1);
+		}
 		// apply delta and decrease length counter
 		counter += (env_delta * env_len) / 256;
 		length -= env_len;
@@ -428,7 +487,7 @@ void MDSDRV_Data::add_pitch_node(const char* s, std::vector<uint8_t>* env_data)
 }
 
 //! Adds a node to the pitch envelope.
-void MDSDRV_Data::add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_data)
+void MDSDRV_Data::add_pitch_vibrato(const char* s, bool extend, std::vector<uint8_t>* env_data)
 {
 	// Vibrato macro
 	double vibrato_base = 0;
@@ -446,9 +505,9 @@ void MDSDRV_Data::add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_dat
 		message += stringf("Invalid vibrato definition: '%s'\n", s);
 
 	vibrato_depth += vibrato_base;
-	add_pitch_node(stringf("%f>%f:%d", vibrato_base, vibrato_depth, vibrato_rate).c_str(), env_data);
-	add_pitch_node(stringf("%f>%f:%d", vibrato_depth, -vibrato_depth, vibrato_rate*2).c_str(), env_data);
-	add_pitch_node(stringf("%f>%f:%d", -vibrato_depth, vibrato_base, vibrato_rate).c_str(), env_data);
+	add_pitch_node(stringf("%f>%f:%d", vibrato_base, vibrato_depth, vibrato_rate).c_str(), extend, env_data);
+	add_pitch_node(stringf("%f>%f:%d", vibrato_depth, -vibrato_depth, vibrato_rate*2).c_str(), extend, env_data);
+	add_pitch_node(stringf("%f>%f:%d", -vibrato_depth, vibrato_base, vibrato_rate).c_str(), extend, env_data);
 }
 
 //! Add unique data to the data bank and return the index.
@@ -621,7 +680,7 @@ void MDSDRV_Track_Writer::event_hook()
 								mdsdrv.get_envelope(mdsdrv.data.envelope_map.at(param))));
 				else
 					converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PCM,
-								mdsdrv.get_envelope(0x10000 + mdsdrv.data.envelope_map.at(param))));
+								mdsdrv.get_envelope(0x20000 + mdsdrv.data.envelope_map.at(param))));
 			}
 			catch (std::out_of_range &)
 			{
@@ -656,7 +715,12 @@ void MDSDRV_Track_Writer::event_hook()
 			try
 			{
 				if(param)
-					param = mdsdrv.get_envelope(mdsdrv.data.pitch_map.at(param)) + 1;
+				{
+					if(mdsdrv.data.pitch_extend.find(param) != mdsdrv.data.pitch_extend.end())
+						param = mdsdrv.get_envelope(0x10000 + mdsdrv.data.pitch_map.at(param)) + 1;
+					else
+						param = mdsdrv.get_envelope(mdsdrv.data.pitch_map.at(param)) + 1;
+				}
 				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PEG,param));
 			}
 			catch (std::out_of_range &)
@@ -908,11 +972,11 @@ RIFF MDSDRV_Converter::get_mds()
 	for(auto it = used_data_map.begin(); it != used_data_map.end(); it++)
 	{
 		std::vector<uint8_t> d(4);
-		*(uint32_t*)d.data() = get_data_id(it->second);
+		*(uint32_t*)d.data() = get_data_id(it->second) + ((it->first & 0x10000) ? (1<<31) : 0);
 		d.insert(d.end(),
 				data.data_bank[it->first & 0x7fff].begin(),
 				data.data_bank[it->first & 0x7fff].end());
-		if(it->first < 0x10000)
+		if(it->first < 0x20000)
 			dblk.add_chunk(RIFF(FOURCC("glob"), d));
 		else
 			dblk.add_chunk(RIFF(FOURCC("pcmh"), d));
@@ -1435,10 +1499,14 @@ void MDSDRV_Linker::add_song(RIFF& mds, const std::string& filename)
 		{
 			// Envelope data
 			auto data = chunk.get_data();
-			uint32_t addr = seq_sdata + read_le32(data, 0)*2;
+			uint32_t id = read_le32(data, 0);
+			uint32_t addr = seq_sdata + id * 2;
 			uint16_t offset = add_unique_data(std::vector<uint8_t>(data.begin()+4, data.end()));
 			printf("replace seq+%04x with %04x (Envelope)\n", addr, offset);
-			patch_table.push_back({addr, offset});
+			if(id & 0x80000000)
+				patch_table.push_back({addr, offset | 0x8000});
+			else
+				patch_table.push_back({addr, offset});
 		}
 		else if(chunk.get_type() == FOURCC("pcmh"))
 		{
@@ -1546,7 +1614,7 @@ std::vector<uint8_t> MDSDRV_Linker::get_seq_data()
 			printf("put seq %02x (%s.%s) at %04x\n", id, group.first.c_str(), seq.filename.c_str(), offset);
 			for(auto&& j : seq.patch_table)
 			{
-				write_be16(seq.data, j.first, data_offset[j.second]);
+				write_be16(seq.data, j.first, data_offset[j.second & 0x7fff] | (j.second & 0x8000));
 			}
 			data.insert(data.end(), seq.data.begin(), seq.data.end());
 			write_be32(data, 8 + (id * 4), offset);

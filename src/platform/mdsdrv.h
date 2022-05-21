@@ -9,6 +9,7 @@
 #include "../riff.h"
 #include <string>
 #include <map>
+#include <set>
 #include <vector>
 #include <utility>
 #include <memory>
@@ -22,7 +23,7 @@ class MDSDRV_Platform;
 
 // Current sequence version
 #define MDSDRV_SEQ_VERSION_MAJOR 0
-#define MDSDRV_SEQ_VERSION_MINOR 5
+#define MDSDRV_SEQ_VERSION_MINOR 6
 
 // Minimum compatible sequence version
 #define MDSDRV_MIN_SEQ_VERSION_MAJOR 0
@@ -61,6 +62,7 @@ class MDSDRV_Data
 		void read_song(Song& song);
 		void add_instrument(uint16_t id, const Tag& tag);
 		void add_pitch_envelope(uint16_t id, const Tag& tag);
+		void add_extended_pitch_envelope(uint16_t id, const Tag& tag);
 
 	private:
 		static const int data_count_max = 256;
@@ -70,8 +72,8 @@ class MDSDRV_Data
 		void add_ins_psg(uint16_t id, const Tag& tag);
 		void add_ins_pcm(uint16_t id, const Tag& tag);
 
-		void add_pitch_node(const char* s, std::vector<uint8_t>* env_data);
-		void add_pitch_vibrato(const char* s, std::vector<uint8_t>* env_data);
+		void add_pitch_node(const char* s, bool extend, std::vector<uint8_t>* env_data);
+		void add_pitch_vibrato(const char* s, bool extend, std::vector<uint8_t>* env_data);
 
 		int add_unique_data(const std::vector<uint8_t>& data);
 		std::string dump_data(uint16_t id, uint16_t mapped_id); // debug function
@@ -86,10 +88,12 @@ class MDSDRV_Data
 		std::map<uint16_t, int> wave_map;
 		//! Maps the current song instrument to transpose settings (for FM 2op only)
 		std::map<uint16_t, int> ins_transpose;
-		//! Maps the current song pitch envelopes to data_bank entries.
-		std::map<uint16_t, int> pitch_map;
 		//! Specify the instrument types of the defined song instruments.
 		std::map<uint16_t, InstrumentType> ins_type;
+		//! Maps the current song pitch envelopes to data_bank entries.
+		std::map<uint16_t, int> pitch_map;
+		//! Specify the instrument types of the defined pitch envelopes.
+		std::set<uint16_t> pitch_extend;
 		//! Diagnostic message
 		std::string message;
 };
