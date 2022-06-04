@@ -170,7 +170,8 @@ class Track
 		uint16_t add_shuffle(uint16_t duration) const;
 		void push_echo_note(uint16_t note);
 
-		uint8_t flag;
+		bool enabled;
+		uint16_t drum_mode;
 		uint8_t ch;
 		std::vector<Event> events;
 		int last_note_pos; // last event id that was a note

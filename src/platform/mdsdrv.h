@@ -160,6 +160,7 @@ class MDSDRV_Track_Writer : public Basic_Player
 		MDSDRV_Track_Writer(MDSDRV_Converter& mdsdrv,
 				int id,
 				bool in_drum_mode,
+				bool drum_mode_enabled,
 				std::vector<MDSDRV_Event>& converted_events);
 
 	private:
@@ -173,7 +174,7 @@ class MDSDRV_Track_Writer : public Basic_Player
 		MDSDRV_Converter& mdsdrv;
 		std::vector<MDSDRV_Event>& converted_events;
 		bool in_drum_mode; //! set while executing a drum mode routine
-		uint16_t drum_mode_offset; //! set to >0 to make note events call drum mode routines
+		bool drum_mode_enabled; //! set to >0 to make note events call drum mode routines
 		bool in_loop;
 		uint16_t rest_time;
 };
@@ -192,7 +193,7 @@ class MDSDRV_Converter
 		void parse_track(int track_id);
 		std::vector<uint8_t> convert_track(const std::vector<MDSDRV_Event>& event_list);
 		std::vector<uint8_t> convert_macro_track(const std::vector<MDSDRV_Event>& event_list);
-		int get_subroutine(int track_id, bool in_drum_mode);
+		int get_subroutine(int track_id, bool in_drum_mode, bool drum_mode_enabled);
 		int get_macro_track(int track_id);
 		int get_envelope(int mapped_id);
 

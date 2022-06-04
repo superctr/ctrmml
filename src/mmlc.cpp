@@ -6,6 +6,7 @@
 #include "platform/md.h"
 #include "platform/mdsdrv.h"
 #include "stringf.h"
+#include "optimizer.h"
 
 #include <iostream>
 #include <fstream>
@@ -24,6 +25,7 @@ void print_usage(const char* exename)
 	std::cout << "Options:\n";
 	std::cout << "\t--output / -o <filename> : Set output filename\n";
 	std::cout << "\t--format / -f <format> : Set output file format\n";
+	std::cout << "\t--optimize / -O : Optimize music data (Experimental!)\n";
 }
 
 std::string get_extension(const char* input_filename)
@@ -51,11 +53,8 @@ std::string output_filename(const char* input_filename, const char* extension)
 	return str;
 }
 
-Song convert_file(const char* filename)
+void validate_song(Song& song)
 {
-	Song song;
-	MML_Input input = MML_Input(&song);
-	input.open_file(filename);
 	auto validator = Song_Validator(song);
 	for(auto it = validator.get_track_map().begin(); it != validator.get_track_map().end(); it++)
 	{
@@ -64,6 +63,14 @@ Song convert_file(const char* filename)
 			std::cout << stringf(" (loop %7d)", length);
 		std::cout << "\n";
 	}
+}
+
+Song convert_file(const char* filename)
+{
+	Song song;
+	MML_Input input = MML_Input(&song);
+	input.open_file(filename);
+	validate_song(song);
 	return song;
 }
 
@@ -72,6 +79,8 @@ int main(int argc, char* argv[])
 	std::string in_filename = "";
 	std::string out_filename = "";
 	std::string format = "";
+	bool optimize = false;
+	bool verbose = false;
 
 	for(int arg = 1, default_arguments = 0; arg < argc; arg++)
 	{
@@ -79,7 +88,11 @@ int main(int argc, char* argv[])
 			out_filename = argv[++arg];
 		else if((!strcmp(argv[arg], "-f") || !strcmp(argv[arg], "--format")) && arg < argc)
 			format = argv[++arg];
-		else if((!strcmp(argv[arg], "-h") || !strcmp(argv[arg], "--help")) && arg < argc)
+		else if(!strcmp(argv[arg], "-O") || !strcmp(argv[arg], "--optimize"))
+			optimize = true;
+		else if(!strcmp(argv[arg], "-v"))
+			optimize = verbose;
+		else if(!strcmp(argv[arg], "-h") || !strcmp(argv[arg], "--help"))
 		{
 			print_usage(argv[0]);
 			return -1;
@@ -134,6 +147,14 @@ int main(int argc, char* argv[])
 		if(!out_filename.size())
 			out_filename = output_filename(in_filename.c_str(), format.c_str());
 
+		// Optimize data
+		if(optimize)
+		{
+			Optimizer opt(song, 1 + verbose);
+			opt.optimize();
+			printf("\n");
+		}
+
 		// Export data
 		std::vector<uint8_t> bytes = song.get_platform()->get_export_data(song, format_id);
 
@@ -150,10 +171,12 @@ int main(int argc, char* argv[])
 		std::cerr << error.what() << "\n";
 		return -1;
 	}
+#ifdef NDEBUG
 	catch (std::logic_error& error) // in case get_driver is not found
 	{
 		std::cerr << error.what() << "\n";
 		return -1;
 	}
+#endif
 }
 

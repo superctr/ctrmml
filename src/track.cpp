@@ -13,7 +13,8 @@
  *              and can also be used as a reference for input handlers.
  */
 Track::Track(uint16_t ppqn)
-	: flag(0)
+	: enabled(0)
+	, drum_mode(0)
 	, ch(0)
 	, last_note_pos(-1)
 	, octave(DEFAULT_OCTAVE)
@@ -66,6 +67,9 @@ void Track::add_note(int note, uint16_t duration)
 
 	if(!in_drum_mode())
 		note += octave * 12;
+	else
+		note += drum_mode;
+
 	push_echo_note(note);
 
 	last_note_pos = events.size();
@@ -354,10 +358,7 @@ void Track::set_early_release(uint16_t param)
  */
 void Track::set_drum_mode(uint16_t param)
 {
-	if(!param)
-		flag &= ~(0x01);
-	else
-		flag |= 0x01;
+	drum_mode = param;
 	add_event(Event::DRUM_MODE, param);
 }
 
@@ -411,7 +412,7 @@ unsigned long Track::get_event_count() const
  */
 bool Track::is_enabled() const
 {
-	return (flag & 0x80);
+	return enabled;
 }
 
 //! Returns the drum mode status.
@@ -421,7 +422,7 @@ bool Track::is_enabled() const
  */
 bool Track::in_drum_mode() const
 {
-	return (flag & 0x01);
+	return (drum_mode != 0);
 }
 
 //! Get the default duration.
@@ -477,7 +478,7 @@ int16_t Track::get_shuffle() const
  */
 void Track::enable()
 {
-	flag |= 0x80;
+	enabled = true;
 }
 
 //! Set the key signature

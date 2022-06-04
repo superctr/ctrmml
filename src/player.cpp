@@ -706,7 +706,7 @@ void Player::handle_drum_mode()
 	if(get_stack_type() != Player_Stack::DRUM_MODE)
 	{
 		// First note event enters subroutine
-		int offset = CH_STATE(Event::DRUM_MODE);
+		int offset = 0; //CH_STATE(Event::DRUM_MODE);
 		try
 		{
 			Track& new_track = song->get_track(offset + event.param);

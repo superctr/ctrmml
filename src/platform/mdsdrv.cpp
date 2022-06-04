@@ -568,12 +568,13 @@ std::string MDSDRV_Data::dump_data(uint16_t id, uint16_t mapped_id)
 MDSDRV_Track_Writer::MDSDRV_Track_Writer(MDSDRV_Converter& mdsdrv,
 		int id,
 		bool in_drum_mode,
+		bool drum_mode_enabled,
 		std::vector<MDSDRV_Event>& converted_events)
 	: Basic_Player(*mdsdrv.song, mdsdrv.song->get_track(id))
 	, mdsdrv(mdsdrv)
 	, converted_events(converted_events)
 	, in_drum_mode(in_drum_mode)
-	, drum_mode_offset(0)
+	, drum_mode_enabled(drum_mode_enabled)
 	, in_loop(0)
 	, rest_time(0)
 {
@@ -602,15 +603,15 @@ void MDSDRV_Track_Writer::event_hook()
 			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::TIE, on_time));
 			break;
 		case Event::NOTE:
-			if(drum_mode_offset)
+			if(drum_mode_enabled)
 			{
 				try
 				{
-					param = mdsdrv.get_subroutine(param + drum_mode_offset, 1);
+					param = mdsdrv.get_subroutine(param, 1, 0);
 				}
 				catch (std::out_of_range &)
 				{
-					error(stringf("MDSDRV: Drum mode subroutine *%d doesn't exist", param + drum_mode_offset).c_str());
+					error(stringf("MDSDRV: Drum mode subroutine *%d doesn't exist", param).c_str());
 				}
 			}
 			if(param < 0)
@@ -645,7 +646,7 @@ void MDSDRV_Track_Writer::event_hook()
 		case Event::JUMP:
 			try
 			{
-				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PAT,mdsdrv.get_subroutine(param, 0)));
+				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PAT,mdsdrv.get_subroutine(param, 0, drum_mode_enabled)));
 			}
 			catch (std::out_of_range &)
 			{
@@ -745,7 +746,7 @@ void MDSDRV_Track_Writer::event_hook()
 			converted_events.push_back(MDSDRV_Event(MDSDRV_Event::PTA,param));
 			break;
 		case Event::DRUM_MODE:
-			drum_mode_offset = param;
+			drum_mode_enabled = param;
 			if(param)
 				param = 0+8;
 			else
@@ -1004,7 +1005,7 @@ RIFF MDSDRV_Converter::get_mds()
 //! uses MDSDRV_Track_Writer to convert a track into an event stream
 void MDSDRV_Converter::parse_track(int track_id)
 {
-	auto writer = MDSDRV_Track_Writer(*this, track_id, 0, track_list[track_id]);
+	auto writer = MDSDRV_Track_Writer(*this, track_id, 0, 0, track_list[track_id]);
 	while(writer.is_enabled())
 	{
 		writer.step_event();
@@ -1379,9 +1380,9 @@ std::vector<uint8_t> MDSDRV_Converter::convert_macro_track(const std::vector<MDS
  * Note: if a subroutine is called from a drum mode jump, the drum mode offset
  * is not kept.
  */
-int MDSDRV_Converter::get_subroutine(int track_id, bool in_drum_mode)
+int MDSDRV_Converter::get_subroutine(int track_id, bool in_drum_mode, bool drum_mode_enabled)
 {
-	int mapped_id = (track_id << 1) | in_drum_mode;
+	int mapped_id = ((track_id << 2) | (in_drum_mode << 1) | (drum_mode_enabled));
 	auto search = subroutine_map.find(mapped_id);
 	if(search == subroutine_map.end())
 	{
@@ -1393,7 +1394,7 @@ int MDSDRV_Converter::get_subroutine(int track_id, bool in_drum_mode)
 		// function is recursively called (probably the push_back above this comment
 		// is to blame)
 		auto event_list = std::vector<MDSDRV_Event>();
-		auto writer = MDSDRV_Track_Writer(*this, track_id, in_drum_mode, event_list);
+		auto writer = MDSDRV_Track_Writer(*this, track_id, in_drum_mode, drum_mode_enabled, event_list);
 		while(writer.is_enabled())
 		{
 			writer.step_event();
@@ -1425,7 +1426,7 @@ int MDSDRV_Converter::get_macro_track(int track_id)
 		// function is recursively called (probably the push_back above this comment
 		// is to blame)
 		auto event_list = std::vector<MDSDRV_Event>();
-		auto writer = MDSDRV_Track_Writer(*this, track_id, 0, event_list);
+		auto writer = MDSDRV_Track_Writer(*this, track_id, 0, 0, event_list);
 		while(writer.is_enabled())
 		{
 			writer.step_event();

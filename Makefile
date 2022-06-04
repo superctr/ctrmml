@@ -20,7 +20,7 @@ CFLAGS += -g
 LIBCTRMML := $(LIBCTRMML)_debug.a
 else
 OBJ := $(OBJ)/release
-CFLAGS += -O2
+CFLAGS += -O2 -DNDEBUG
 LDFLAGS += -s
 LIBCTRMML := $(LIBCTRMML).a
 endif
@@ -42,6 +42,7 @@ CORE_OBJS = \
 	$(OBJ)/wave.o \
 	$(OBJ)/riff.o \
 	$(OBJ)/conf.o \
+	$(OBJ)/optimizer.o \
 	$(OBJ)/platform/md.o \
 	$(OBJ)/platform/mdsdrv.o
 
