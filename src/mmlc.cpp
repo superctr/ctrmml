@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
 		else if(!strcmp(argv[arg], "-O") || !strcmp(argv[arg], "--optimize"))
 			optimize = true;
 		else if(!strcmp(argv[arg], "-v"))
-			optimize = verbose;
+			verbose = true;
 		else if(!strcmp(argv[arg], "-h") || !strcmp(argv[arg], "--help"))
 		{
 			print_usage(argv[0]);
