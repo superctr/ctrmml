@@ -66,6 +66,7 @@ class Basic_Player
 		bool is_inside_loop() const;
 		bool is_inside_jump() const;
 		unsigned int get_play_time() const;
+		unsigned int get_loop_play_time() const;
 		int get_loop_count() const;
 		const Event& get_event() const;
 
@@ -98,6 +99,8 @@ class Basic_Player
 		std::shared_ptr<InputRef> reference;
 		//! Playing time
 		unsigned int play_time;
+		//! Playing time at loop point
+		int loop_play_time;
 		//! Keyon time from current event
 		unsigned int on_time;
 		//! Keyoff time from current event
@@ -211,7 +214,6 @@ class Track_Validator : public Basic_Player
 		bool loop_hook() override;
 		void end_hook() override;
 
-		int segno_time;
 		unsigned int loop_time;
 };
 

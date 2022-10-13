@@ -144,12 +144,12 @@ public:
 		CPPUNIT_ASSERT_EQUAL((int)2, (int)converter.subroutine_list.size());
 
 		// check that the subroutine map looks like what we expected
-		// map index is (id<<1 | drummode flag)
-		CPPUNIT_ASSERT_NO_THROW(converter.subroutine_map.at(40));
-		CPPUNIT_ASSERT_EQUAL((int)0, (int)converter.subroutine_map.at(40));
-		CPPUNIT_ASSERT_THROW(converter.subroutine_map.at(42), std::out_of_range);
-		CPPUNIT_ASSERT_NO_THROW(converter.subroutine_map.at(44));
-		CPPUNIT_ASSERT_EQUAL((int)1, (int)converter.subroutine_map.at(44));
+		// map index is (id<<2 | drummode flag)
+		CPPUNIT_ASSERT_NO_THROW(converter.subroutine_map.at(80));
+		CPPUNIT_ASSERT_EQUAL((int)0, (int)converter.subroutine_map.at(80));
+		CPPUNIT_ASSERT_THROW(converter.subroutine_map.at(84), std::out_of_range);
+		CPPUNIT_ASSERT_NO_THROW(converter.subroutine_map.at(88));
+		CPPUNIT_ASSERT_EQUAL((int)1, (int)converter.subroutine_map.at(88));
 
 		// check the contents of the subroutine
 		CPPUNIT_ASSERT_EQUAL((int)2, (int)converter.subroutine_list.size());
@@ -189,11 +189,11 @@ public:
 		CPPUNIT_ASSERT_EQUAL((int)2, (int)converter.subroutine_list.size());
 
 		// check that the subroutine map looks like what we expected
-		// map index is (id<<1 | drummode flag)
-		CPPUNIT_ASSERT_NO_THROW(converter.subroutine_map.at(41));
-		CPPUNIT_ASSERT_EQUAL((int)0, (int)converter.subroutine_map.at(41));
-		CPPUNIT_ASSERT_NO_THROW(converter.subroutine_map.at(43));
-		CPPUNIT_ASSERT_EQUAL((int)1, (int)converter.subroutine_map.at(43));
+		// map index is (id<<2 | drummode flag)
+		CPPUNIT_ASSERT_NO_THROW(converter.subroutine_map.at(82));
+		CPPUNIT_ASSERT_EQUAL((int)0, (int)converter.subroutine_map.at(82));
+		CPPUNIT_ASSERT_NO_THROW(converter.subroutine_map.at(86));
+		CPPUNIT_ASSERT_EQUAL((int)1, (int)converter.subroutine_map.at(86));
 
 		// check the contents of the subroutine
 		CPPUNIT_ASSERT_EQUAL((int)2, (int)converter.subroutine_list.size());

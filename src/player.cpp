@@ -15,6 +15,7 @@
  */
 Basic_Player::Basic_Player(Song& song, Track& track)
 	: play_time(0)
+	, loop_play_time(-1)
 	, on_time(0)
 	, off_time(0)
 	, song(&song)
@@ -117,6 +118,7 @@ void Basic_Player::step_event()
 			loop_reset_count = 0;
 			loop_position = position;
 			loop_reset_position = position;
+			loop_play_time = play_time;
 			event_hook();
 			break;
 		case Event::JUMP:
@@ -145,7 +147,7 @@ void Basic_Player::step_event()
 			}
 			else
 			{
-				if(loop_position != -1 && loop_hook())
+				if(loop_position != -1 && play_time != loop_play_time && loop_hook())
 				{
 					position = loop_position;
 					loop_count++;
@@ -217,6 +219,18 @@ bool Basic_Player::is_inside_jump() const
 unsigned int Basic_Player::get_play_time() const
 {
 	return play_time;
+}
+
+//! Gets the timestamp of the last loop command
+/*!
+ *  This can be used to verify that a loop at the end of the track
+ *  won't cause an infinite loop when converting.
+ *
+ *  Return -1 if there is no loop, or if it hasn't been reached.
+ */
+unsigned int Basic_Player::get_loop_play_time() const
+{
+	return loop_play_time;
 }
 
 //! Gets the current loop count.
@@ -477,6 +491,12 @@ void Player::play_tick()
 		off_time--;
 		play_time++;
 	}
+
+	// If the loop count increases twice in this loop it's most
+	// likely due to a bad segno command causing an infinite loop.
+	// TODO: Maybe an add error message when converting...
+	// (For playback we can still handle it gracefully)
+	int last_loop_count = loop_count;
 	while(is_enabled() && !on_time && !off_time)
 	{
 		step_event();
@@ -825,7 +845,7 @@ void Player::end_hook()
  * \exception InputError if any validation errors occur. These should be displayed to the user.
  */
 Track_Validator::Track_Validator(Song& song, Track& track)
-	: Basic_Player(song, track), segno_time(-1), loop_time(0)
+	: Basic_Player(song, track), loop_time(0)
 {
 	// step all the way to the end
 	while(is_enabled())
@@ -847,9 +867,7 @@ unsigned int Track_Validator::get_loop_length() const
 
 void Track_Validator::event_hook()
 {
-	// Record timestamp of segno event.
-	if(event.type == Event::SEGNO)
-		segno_time = get_play_time();
+	return;
 }
 
 bool Track_Validator::loop_hook()
@@ -860,8 +878,8 @@ bool Track_Validator::loop_hook()
 
 void Track_Validator::end_hook()
 {
-	if(segno_time >= 0)
-		loop_time = get_play_time() - segno_time;
+	if(loop_play_time >= 0)
+		loop_time = get_play_time() - loop_play_time;
 }
 
 //=====================================================================

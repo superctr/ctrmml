@@ -654,6 +654,9 @@ void MDSDRV_Track_Writer::event_hook()
 			}
 			break;
 		case Event::END:
+			// Gracefully handle infinite loop at the end of a track
+			if(get_play_time() == get_loop_play_time())
+				in_loop = false;
 			if(in_loop)
 				converted_events.push_back(MDSDRV_Event(MDSDRV_Event::JUMP,0));
 			else

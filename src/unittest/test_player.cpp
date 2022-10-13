@@ -15,6 +15,7 @@ class Player_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST(test_is_inside_loop);
 	CPPUNIT_TEST(test_is_inside_loop2);
 	CPPUNIT_TEST(test_loop_position);
+	CPPUNIT_TEST(test_infinite_loop);
 	CPPUNIT_TEST(test_jump);
 	CPPUNIT_TEST(test_play_tick);
 	CPPUNIT_TEST(test_quantize_play_tick);
@@ -245,6 +246,54 @@ public:
 			player.step_event();
 			CPPUNIT_ASSERT_EQUAL(Event::END, player.get_event().type);
 		}
+	}
+	void test_infinite_loop()
+	{
+		mml_input->read_line("A o4cd L M2");
+		auto player = Player(*song, song->get_track(0));
+		CPPUNIT_ASSERT_EQUAL(-1, player.get_loop_count());
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)36, player.get_event().param);
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)38, player.get_event().param);
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::SEGNO, player.get_event().type);
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::PITCH_ENVELOPE, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL(true, player.is_enabled());
+		player.step_event();
+		// Expecting END here because there were no notes or rests
+		CPPUNIT_ASSERT_EQUAL(Event::END, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL(false, player.is_enabled());
+		CPPUNIT_ASSERT_EQUAL(player.get_play_time(), player.get_loop_play_time());
+
+		// There shall be no infinite loop here
+		mml_input->read_line("*100 o4cd");
+		mml_input->read_line("B L *100");
+		player = Player(*song, song->get_track(1));
+		CPPUNIT_ASSERT_EQUAL(-1, player.get_loop_count());
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::SEGNO, player.get_event().type);
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::JUMP, player.get_event().type);
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)36, player.get_event().param);
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::NOTE, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL((int16_t)38, player.get_event().param);
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::END, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL(0, player.get_loop_count());
+		CPPUNIT_ASSERT_EQUAL(true, player.is_enabled());
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(Event::END, player.get_event().type);
+		CPPUNIT_ASSERT_EQUAL(true, player.is_enabled());
+		CPPUNIT_ASSERT(player.get_play_time() != player.get_loop_play_time());
+		player.step_event();
+		CPPUNIT_ASSERT_EQUAL(1, player.get_loop_count());
 	}
 	void test_jump()
 	{
