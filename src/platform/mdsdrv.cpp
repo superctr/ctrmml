@@ -1127,6 +1127,11 @@ std::vector<uint8_t> MDSDRV_Converter::convert_track(const std::vector<MDSDRV_Ev
 			switch(type)
 			{
 				case MDSDRV_Event::SEGNO:
+					// reset counters. TODO: can be optimized by checking what the
+					// values of the counters should be at the end of the loop and don't reset
+					// if they match.
+					last_rest = 0xffff;
+					last_note = 0xffff;
 					segno_pos = track_data.size();
 					break;
 				case MDSDRV_Event::SLR: // no argument
