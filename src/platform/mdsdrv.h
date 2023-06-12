@@ -170,6 +170,7 @@ class MDSDRV_Track_Writer : public Basic_Player
 
 		void parse_platform_event(const Tag& tag);
 		uint8_t bpm_to_delta(uint16_t bpm);
+		void check_instrument(int16_t param);
 
 		MDSDRV_Converter& mdsdrv;
 		std::vector<MDSDRV_Event>& converted_events;
@@ -177,6 +178,7 @@ class MDSDRV_Track_Writer : public Basic_Player
 		bool drum_mode_enabled; //! set to >0 to make note events call drum mode routines
 		bool in_loop;
 		uint16_t rest_time;
+		int track_id;
 };
 
 //! MDSDRV sequence converter

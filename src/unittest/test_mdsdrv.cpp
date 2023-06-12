@@ -315,12 +315,12 @@ public:
 			0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x00};
 */
 
-		mml_input->read_line("@1 psg 15>0");
-		mml_input->read_line("@2 fm 4 0");
+		mml_input->read_line("@1 fm 4 0");
 		mml_input->read_line("  31 0 19 5 0 23 0 0 0 0");
 		mml_input->read_line("  31 6 0 4 3 19 0 0 0 0");
 		mml_input->read_line("  31 15 0 5 4 38 0 4 0 0");
 		mml_input->read_line("  31 27 0 11 1 0 0 1 0 0");
+		mml_input->read_line("@2 psg 15>0");
 		mml_input->read_line("*20 o4l4 cdefgab>c");
 		mml_input->read_line("A @1v15 o4l4 p2 *20 p1 *20");
 		mml_input->read_line("G @2v15 o4l1 [r]8 *20 r:129 c:129");
@@ -358,8 +358,8 @@ public:
 			CPPUNIT_ASSERT_MESSAGE(stringf("mismatch at %02X, expected %02X != %02X found", i, a, b), a == b);
 		}
 
-		CPPUNIT_ASSERT_EQUAL(0, converter.used_data_map.at(1)); // PSG instrument @1 (envelope_id=0)
-		CPPUNIT_ASSERT_EQUAL(1, converter.used_data_map.at(2)); // FM instrument @2 (envelope_id=1)
+		CPPUNIT_ASSERT_EQUAL(0, converter.used_data_map.at(1)); // FM instrument @1 (envelope_id=0)
+		CPPUNIT_ASSERT_EQUAL(1, converter.used_data_map.at(2)); // PSG instrument @2 (envelope_id=1)
 	}
 };
 

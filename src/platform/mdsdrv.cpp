@@ -577,6 +577,7 @@ MDSDRV_Track_Writer::MDSDRV_Track_Writer(MDSDRV_Converter& mdsdrv,
 	, drum_mode_enabled(drum_mode_enabled)
 	, in_loop(0)
 	, rest_time(0)
+	, track_id(id)
 {
 }
 
@@ -586,6 +587,8 @@ void MDSDRV_Track_Writer::event_hook()
 	int16_t param;
 	if(is_inside_loop() || is_inside_jump())
 	{
+		if(event.type == Event::INS)
+			check_instrument(event.param);
 		return;
 	}
 	if(event.type != Event::REST && rest_time)
@@ -692,6 +695,7 @@ void MDSDRV_Track_Writer::event_hook()
 		case Event::INS:
 			try
 			{
+				check_instrument(param);
 				if(mdsdrv.data.ins_type.at(param) != MDSDRV_Data::INS_PCM)
 					converted_events.push_back(MDSDRV_Event(MDSDRV_Event::INS,
 								mdsdrv.get_envelope(mdsdrv.data.envelope_map.at(param))));
@@ -893,6 +897,36 @@ uint8_t MDSDRV_Track_Writer::bpm_to_delta(uint16_t bpm)
 	double fract = (bpm / base_tempo)*256.;
 	uint16_t new_tempo = (fract + 0.5) - 1;
 	return std::min<uint16_t>(0xff, new_tempo);
+}
+
+//! Checks if the instrument type is valid for the specified track.
+void MDSDRV_Track_Writer::check_instrument(int16_t param)
+{
+	if (mdsdrv.data.ins_type.count(param))
+	{
+		static const char* strings[4] = {"undefined", "psg", "fm", "pcm"};
+		MDSDRV_Data::InstrumentType type = mdsdrv.data.ins_type.at(param);
+		if (type < MDSDRV_Data::INS_UNDEFINED || type > MDSDRV_Data::INS_PCM)
+			type = MDSDRV_Data::INS_UNDEFINED;
+
+		if ((track_id >= 0 && track_id < 5 && type != MDSDRV_Data::INS_FM) || // FM instruments
+			(track_id == 5 && type != MDSDRV_Data::INS_FM && type != MDSDRV_Data::INS_PCM))
+		{
+			error(stringf("MDSDRV: instrument @%d has wrong type (%s) for FM track %c",
+						  param, strings[type], track_id + 'A').c_str());
+		}
+		else if (track_id >= 6 && track_id < 10 && type != MDSDRV_Data::INS_PSG) // PSG instruments
+		{
+			error(stringf("MDSDRV: instrument @%d has wrong type (%s) for PSG track %c",
+						  param, strings[type], track_id + 'A').c_str());
+		}
+		else if (track_id >= 10 && track_id < 12 && type != MDSDRV_Data::INS_PCM) // PCM instruments
+		{
+			error(stringf("MDSDRV: instrument @%d has wrong type (%s) for PCM track %c",
+						  param, strings[type], track_id + 'A').c_str());
+		}
+	}
+	return;
 }
 
 //=====================================================================
