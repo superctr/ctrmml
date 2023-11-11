@@ -65,7 +65,7 @@ const std::string& InputRef::get_line_contents() const
 //! Print a formatted InputRef.
 std::ostream& operator<<(std::ostream& os, const class InputRef& ref)
 {
-	os << ref.get_filename() << ":" << ref.get_line() << ":" << ref.get_column();
+	os << ref.get_filename() << ":" << ref.get_line()+1 << ":" << ref.get_column();
 	return os;
 }
 
