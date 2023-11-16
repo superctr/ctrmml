@@ -832,7 +832,10 @@ void MD_FM::v_set_vol()
 
 void MD_FM::v_key_on()
 {
-	driver->ym2612_w(bank, 0x28, id, 0, 15);
+	if(!pcm_channel_enable)
+	{
+		driver->ym2612_w(bank, 0x28, id, 0, 15);
+	}
 }
 
 void MD_FM::v_key_off()
