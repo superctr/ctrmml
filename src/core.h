@@ -9,6 +9,7 @@
 
 #define CTRMML_VERSION "0.3"
 
+#include <cstdint>
 #include <vector>
 #include <map>
 #include <memory>
