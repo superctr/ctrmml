@@ -2,7 +2,7 @@
 from math import log10
 from argparse import ArgumentParser
 
-from mido import MidiFile, tempo2bpm
+from mido import MidiFile, tempo2bpm, merge_tracks
 
 """
 MIDI to ctrmml converter.
@@ -95,7 +95,6 @@ def mid2mml(mid: mido.MidiFile,
 
     Limitations:
       - Type 1 files only.
-      - If multiple tracks use the same channel, it will mess up the conversion.
       - No polyphony.
       - Only program change, volume, pan and note on/off is converted.
       - Note velocity and expression is ignored.
@@ -110,12 +109,19 @@ def mid2mml(mid: mido.MidiFile,
     ticks_divider = mid.ticks_per_beat / 24
     mml_tracks = MMLTracks()
 
+    merged_tracks = {}
     for track in mid.tracks:
-        mml_track_id = 'A'
+        mml_track_id = channel_map[0]
         for msg in track:
             if msg.type in messages_with_channel:
                 mml_track_id = channel_map[msg.channel]
                 break
+        if mml_track_id in merged_tracks:
+            merged_tracks[mml_track_id] = merge_tracks([merged_tracks[mml_track_id], track])
+        else:
+            merged_tracks[mml_track_id] = track
+
+    for mml_track_id, track in merged_tracks.items():
         timeline = mml_tracks[mml_track_id]
         time = 0
         note = 'r'
