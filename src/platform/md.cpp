@@ -1339,6 +1339,15 @@ void MD_PCMDriver::key_off(int channel)
 		driver->ym2612_w(0, 0x2b, 0, 0, 0x00);
 }
 
+void MD_PCMDriver::silence_all()
+{
+	for(int i = 0; i < mode; i++)
+	{
+		if(channels[i].enabled)
+			key_off(i);
+	}
+}
+
 void MD_PCMDriver::update()
 {
 	if(!mode)
@@ -1359,7 +1368,22 @@ inline int8_t MD_PCMDriver::mix_channel(int16_t accumulator, int channel)
 	if(!ch.enabled)
 		return accumulator;
 
-	uint8_t sample = driver->data.wave_rom.get_rom_data()[ch.start + ch.position];
+	// Defensive bounds check against the ROM allocation. During live
+	// hot-reload the wave bank is rebuilt under an actively-sounding PCM
+	// channel; a stale/corrupt start+position can index past the ROM buffer,
+	// and an unchecked read there traps the whole wasm module ("memory access
+	// out of bounds"). Clamp to the allocation and stop the channel instead.
+	// (A stale offset that still lands inside the buffer reads the wrong, but
+	// in-bounds, sample data — brief garbage on the next relinked note, not a
+	// crash; that is acceptable and self-corrects on the next key-on.)
+	const std::vector<uint8_t>& rom = driver->data.wave_rom.get_rom_data();
+	if(ch.start + ch.position >= rom.size())
+	{
+		key_off(channel);
+		return accumulator;
+	}
+
+	uint8_t sample = rom[ch.start + ch.position];
 
 	ch.position += ch.update_phase();
 	if(ch.count && !(--ch.count))
@@ -1506,6 +1530,11 @@ void MD_Driver::relink_song(Song& new_song, uint32_t current_tick)
 {
 	song = &new_song;
 	data.read_song(new_song);
+
+	// read_song rebuilt the wave bank; any PCM channel still sounding holds a
+	// start/position into the OLD bank layout. Stop them so the next render
+	// can't read stale (or out-of-range) sample data.
+	pcm.silence_all();
 
 	const auto& track_map = new_song.get_track_map();
 	std::set<int> existing_ids;

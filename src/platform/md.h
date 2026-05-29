@@ -266,6 +266,12 @@ class MD_PCMDriver
 		void key_on(int channel);
 		void key_off(int channel);
 
+		//! Key off every active PCM channel. Called on live hot-reload: a
+		//! channel sounding across a relink holds a start/position into the
+		//! pre-reload wave bank, which read_song has just rebuilt, so its
+		//! sample data is stale — stop it cleanly rather than play garbage.
+		void silence_all();
+
 		void update();
 
 	protected:

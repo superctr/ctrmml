@@ -11,6 +11,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <deque>
 #include <utility>
 #include <memory>
 
@@ -66,7 +67,7 @@ class MDSDRV_Data
 
 		const std::map<uint16_t, InstrumentType>& get_ins_type_map() const { return ins_type; }
 		const std::map<uint16_t, int>& get_envelope_map_view() const { return envelope_map; }
-		const std::vector<std::vector<uint8_t>>& get_data_bank() const { return data_bank; }
+		const std::deque<std::vector<uint8_t>>& get_data_bank() const { return data_bank; }
 
 	private:
 		static const int data_count_max = 256;
@@ -85,8 +86,16 @@ class MDSDRV_Data
 		//! Allow extended pitch envelopes
 		bool use_extended_pitch;
 
-		//! Data bank, holds all instrument and envelope data
-		std::vector<std::vector<uint8_t>> data_bank;
+		//! Data bank, holds all instrument and envelope data.
+		//!
+		//! MUST be a deque, not a vector: MD_Channel / MD_PSG cache raw
+		//! pointers into these elements (pitch_env_data, env_data). During
+		//! live hot-reload (Driver::relink_song -> read_song) new entries are
+		//! appended for edited instruments/envelopes; a vector would
+		//! reallocate and leave every cached pointer dangling, crashing the
+		//! audio render with an out-of-bounds access. deque::push_back keeps
+		//! references/pointers to existing elements valid.
+		std::deque<std::vector<uint8_t>> data_bank;
 		//! Waverom bank, holds PCM samples.
 		Wave_Bank wave_rom;
 		//! Maps the current song instruments to data_bank entries.
