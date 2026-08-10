@@ -12,6 +12,8 @@ class MDSDRV_Converter_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST(test_track_writer);
 	CPPUNIT_TEST(test_track_writer_sequence_output);
 	CPPUNIT_TEST(test_subroutine_handling);
+	CPPUNIT_TEST(test_missing_subroutine_error);
+	CPPUNIT_TEST(test_subroutine_conversion_error);
 	CPPUNIT_TEST(test_drum_mode_handling);
 	CPPUNIT_TEST(test_loop_handling);
 	CPPUNIT_TEST(test_loop_handling_sequence_output);
@@ -164,6 +166,36 @@ public:
 
 		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::TRS, (uint16_t)converter.subroutine_list[1][0].type);
 		CPPUNIT_ASSERT_EQUAL((uint16_t)MDSDRV_Event::FINISH, (uint16_t)converter.subroutine_list[1][1].type);
+	}
+	void test_missing_subroutine_error()
+	{
+		mml_input->read_line("A *401", 0);
+		try
+		{
+			auto converter = MDSDRV_Converter(*song);
+			CPPUNIT_FAIL("missing subroutine did not throw");
+		}
+		catch(InputError& error)
+		{
+			CPPUNIT_ASSERT_EQUAL(std::string(":1:3: jump destination doesn't exist"), std::string(error.what()));
+		}
+	}
+	void test_subroutine_conversion_error()
+	{
+		mml_input->read_line("#platform megadrive", 0);
+		mml_input->read_line("A *401", 1);
+		mml_input->read_line("*401 o8 b", 2);
+		try
+		{
+			auto converter = MDSDRV_Converter(*song);
+			CPPUNIT_FAIL("out-of-range subroutine note did not throw");
+		}
+		catch(InputError& error)
+		{
+			CPPUNIT_ASSERT_EQUAL(std::string(":3:9: MDSDRV: note out of range (95 > 94)"), std::string(error.what()));
+			CPPUNIT_ASSERT_EQUAL((unsigned int)2, error.get_reference()->get_line());
+			CPPUNIT_ASSERT_EQUAL((unsigned int)8, error.get_reference()->get_column());
+		}
 	}
 	void test_drum_mode_handling()
 	{
@@ -389,4 +421,3 @@ public:
 
 CPPUNIT_TEST_SUITE_REGISTRATION(MDSDRV_Converter_Test);
 CPPUNIT_TEST_SUITE_REGISTRATION(MDSDRV_Platform_Test);
-

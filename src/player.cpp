@@ -156,22 +156,26 @@ void Basic_Player::step_event()
 			event_hook();
 			break;
 		case Event::JUMP:
+		{
+			Track* new_track = nullptr;
 			try
 			{
-				Track& new_track = song->get_track(event.param);
-				// Event hook should be sent before pushing the stack
-				event_hook();
-				// Push old position
-				stack_push({Player_Stack::JUMP, track, position, 0, 0});
-				// Set new position
-				track = &new_track;
-				position = 0;
+				new_track = &song->get_track(event.param);
 			}
-			catch(std::exception& ex)
+			catch(std::exception&)
 			{
 				error("jump destination doesn't exist");
+				return;
 			}
+			// Event hook should be sent before pushing the stack
+			event_hook();
+			// Push old position
+			stack_push({Player_Stack::JUMP, track, position, 0, 0});
+			// Set new position
+			track = new_track;
+			position = 0;
 			break;
+		}
 		case Event::END:
 			if(stack.size())
 			{
