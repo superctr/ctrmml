@@ -84,6 +84,7 @@ class Input
 
 		void parse_error(const char* msg);
 		void parse_warning(const char* msg);
+		void parse_warning(std::shared_ptr<InputRef> ref, const char* msg);
 		void include_file(const std::string filename);
 
 		//! Used by derived classes to open and parse a file.
@@ -157,4 +158,3 @@ class Line_Input: public Input, protected Line_Buffer
 };
 
 #endif
-

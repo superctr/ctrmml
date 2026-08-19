@@ -258,6 +258,7 @@ void MDSDRV_Data::add_ins_psg(uint16_t id, const Tag& tag)
 {
 	std::vector<uint8_t> env_data;
 	int loop_pos = -1, last_pos = 0, last = -1;
+	bool has_sustain = false;
 	unsigned int default_len = 1;
 	if(!tag.size())
 	{
@@ -268,9 +269,14 @@ void MDSDRV_Data::add_ins_psg(uint16_t id, const Tag& tag)
 	{
 		const char* s = it->c_str();
 		if(*s == '|')
+		{
 			loop_pos = env_data.size();
+			// prevent merging across the loop point
+			last = -1;
+		}
 		else if(*s == '/')
 		{
+			has_sustain = true;
 			// insert sustain
 			if(last == -1)
 			{
@@ -331,10 +337,14 @@ void MDSDRV_Data::add_ins_psg(uint16_t id, const Tag& tag)
 	{
 		// end command
 		env_data.push_back(0x00);
+		if(!has_sustain && last > 0)
+			message += "warning: PSG envelope ends without '/': note will cut when the envelope finishes\n";
 	}
 	else
 	{
 		// loop command
+		if(loop_pos >= (int)env_data.size() || env_data[loop_pos] < 0x10)
+			message += "warning: PSG envelope loop target is not a value\n";
 		env_data.push_back(0x02);
 		env_data.push_back(loop_pos);
 	}

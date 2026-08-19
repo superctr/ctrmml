@@ -132,8 +132,13 @@ void Input::parse_error(const char* msg)
  */
 void Input::parse_warning(const char* msg)
 {
-	std::cerr << *get_reference() << ": " << msg << "\n";
-	std::cerr << get_reference()->get_line_contents() << std::endl;
+	parse_warning(get_reference(), msg);
+}
+
+void Input::parse_warning(std::shared_ptr<InputRef> ref, const char* msg)
+{
+	std::cerr << *ref << ": " << msg << "\n";
+	std::cerr << ref->get_line_contents() << std::endl;
 }
 
 //=============================================================================

@@ -61,6 +61,7 @@ class MML_Input: public Line_Input
 		void parse_mml_track();
 		void parse_mml();
 		void parse_tag();
+		void finish_psg_instrument();
 
 		// Convert track id from character
 		int get_track_id();
@@ -75,6 +76,7 @@ class MML_Input: public Line_Input
 		std::vector<uint16_t> track_list;
 		void (MML_Input::*last_cmd)();
 		bool conditional_block;
+		std::string pending_psg_tag;
+		std::shared_ptr<InputRef> pending_psg_reference;
 };
 #endif
-

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cctype>
+#include <cstdlib>
 #include <stdexcept>
 #include "mml_input.h"
 #include "song.h"
@@ -417,6 +418,7 @@ void MML_Input::parse_mml()
 void MML_Input::parse_tag()
 {
 	//std::cout << "parse_tag() "<<tag_key<<":" << get_line() << "\n";
+	std::shared_ptr<InputRef> reference = get_reference();
 	if(tag_key[0] == '#')
 	{
 		// Special cases for "include" etc commands go here
@@ -431,7 +433,45 @@ void MML_Input::parse_tag()
 	else
 	{
 		get_song().add_tag_list(tag_key, get_line());
+		Tag& tag = get_song().get_tag(tag_key);
+		if(pending_psg_tag.empty() && tag.size() && iequal(tag.front(), "psg"))
+		{
+			pending_psg_tag = tag_key;
+			pending_psg_reference = reference;
+		}
 	}
+}
+
+//! Check a PSG instrument after all of its continuation lines have been read.
+void MML_Input::finish_psg_instrument()
+{
+	if(pending_psg_tag.empty())
+		return;
+
+	Tag& tag = get_song().get_tag(pending_psg_tag);
+	bool has_sustain = false;
+	bool has_loop = false;
+	int last = -1;
+	for(auto it = tag.begin() + 1; it != tag.end(); it++)
+	{
+		const char* s = it->c_str();
+		if(*s == '/')
+			has_sustain = true;
+		else if(*s == '|')
+			has_loop = true;
+		else if(std::isdigit(*s))
+		{
+			last = std::strtol(s, (char**)&s, 10);
+			if(*s == '>' && *++s)
+				last = std::strtol(s, (char**)&s, 10);
+			last = (last > 15) ? 15 : (last < 0) ? 0 : last;
+		}
+	}
+	if(!has_sustain && !has_loop && last > 0)
+		parse_warning(pending_psg_reference,
+				"PSG envelope ends without '/': note will cut when the envelope finishes");
+	pending_psg_tag.clear();
+	pending_psg_reference.reset();
 }
 
 // may throw std::invalid_argument
@@ -455,7 +495,9 @@ MML_Input::MML_Input(Song* song)
 	track_offset(0),
 	track_list(0),
 	last_cmd(nullptr),
-	conditional_block(0)
+	conditional_block(0),
+	pending_psg_tag(),
+	pending_psg_reference()
 {
 	// Perhaps the initial state of mml_input should be track A.
 	// Or maybe it can be initialized by a previous MML_Input during
@@ -464,6 +506,7 @@ MML_Input::MML_Input(Song* song)
 
 MML_Input::~MML_Input()
 {
+	finish_psg_instrument();
 }
 
 //! Get a list of tracks that were affected by the previous read_line()
@@ -491,6 +534,8 @@ void MML_Input::parse_line()
 {
 	int c = get_track_id();
 	if(c != -1)
+		finish_psg_instrument();
+	if(c != -1)
 	{
 		// Read track list
 		track_list.clear();
@@ -507,6 +552,7 @@ void MML_Input::parse_line()
 		c = get();
 		if(c == '#' || c == '@')
 		{
+			finish_psg_instrument();
 			// This could maybe be more efficient
 			tag_key.clear();
 			do
@@ -551,4 +597,3 @@ void MML_Input::parse_line()
 	}
 	return;
 }
-

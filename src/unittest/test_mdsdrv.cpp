@@ -1,8 +1,11 @@
 #include <stdexcept>
 #include <algorithm>
+#include <iostream>
+#include <sstream>
 #include <cppunit/extensions/HelperMacros.h>
 #include "../mml_input.h"
 #include "../song.h"
+#include "../platform/md.h"
 #include "../platform/mdsdrv.h"
 #include "../stringf.h"
 
@@ -19,6 +22,8 @@ class MDSDRV_Converter_Test : public CppUnit::TestFixture
 	CPPUNIT_TEST(test_loop_handling_sequence_output);
 	CPPUNIT_TEST(test_sequence_optimization);
 	CPPUNIT_TEST(test_data_output);
+	CPPUNIT_TEST(test_psg_envelope_end_warning);
+	CPPUNIT_TEST(test_psg_envelope_loop_merge_barrier);
 	CPPUNIT_TEST_SUITE_END();
 private:
 	Song *song;
@@ -393,12 +398,111 @@ public:
 		CPPUNIT_ASSERT_EQUAL(0, converter.used_data_map.at(1)); // FM instrument @1 (envelope_id=0)
 		CPPUNIT_ASSERT_EQUAL(1, converter.used_data_map.at(2)); // PSG instrument @2 (envelope_id=1)
 	}
+	void test_psg_envelope_end_warning()
+	{
+		const std::string warning = "warning: PSG envelope ends without '/': note will cut when the envelope finishes\n";
+		const std::string diagnostic = "PSG envelope ends without '/': note will cut when the envelope finishes";
+		{
+			MDSDRV_Data data;
+			data.add_instrument(2, {"psg", "15"});
+			int pos = data.get_envelope_map_view().at(2);
+			const std::vector<uint8_t>& envelope = data.get_data_bank().at(pos);
+			CPPUNIT_ASSERT_EQUAL((size_t)2, envelope.size());
+			CPPUNIT_ASSERT_EQUAL((uint8_t)0x10, envelope.at(0));
+			CPPUNIT_ASSERT_EQUAL((uint8_t)0x00, envelope.at(1));
+			CPPUNIT_ASSERT(data.message.find(warning) != std::string::npos);
+			CPPUNIT_ASSERT_EQUAL(data.message.find(warning), data.message.rfind(warning));
+		}
+		{
+			MDSDRV_Data data;
+			data.add_instrument(2, {"psg", "15", "/"});
+			CPPUNIT_ASSERT(data.message.find(warning) == std::string::npos);
+		}
+		{
+			MDSDRV_Data data;
+			data.add_instrument(2, {"psg", "15", "0"});
+			CPPUNIT_ASSERT(data.message.find(warning) == std::string::npos);
+		}
+		{
+			MDSDRV_Data data;
+			data.add_instrument(2, {"psg", "13>0:4"});
+			CPPUNIT_ASSERT(data.message.find(warning) == std::string::npos);
+		}
+		{
+			MDSDRV_Data data;
+			data.add_instrument(2, {"psg", "15", "|", "14", "15"});
+			CPPUNIT_ASSERT(data.message.find(warning) == std::string::npos);
+		}
+
+		std::ostringstream warning_output;
+		std::streambuf* stderr_buffer = std::cerr.rdbuf(warning_output.rdbuf());
+		{
+			Song warning_song;
+			MML_Input warning_input(&warning_song);
+			warning_input.read_line("@1 psg 15", 0);
+			warning_input.read_line("@2 psg 15 /", 1);
+			warning_input.read_line("@3 psg 15 0", 2);
+			warning_input.read_line("@4 psg 13>0:4", 3);
+			warning_input.read_line("@5 psg 15 | 14 15", 4);
+			warning_input.read_line("@6 psg 15", 5);
+			warning_input.read_line("  /", 6);
+			warning_input.read_line("G @1 o5 l4 c", 7);
+		}
+		std::cerr.rdbuf(stderr_buffer);
+		CPPUNIT_ASSERT(warning_output.str().find(diagnostic) != std::string::npos);
+		CPPUNIT_ASSERT_EQUAL(warning_output.str().find(diagnostic), warning_output.str().rfind(diagnostic));
+	}
+	void test_psg_envelope_loop_merge_barrier()
+	{
+		auto assert_envelope = [](const Tag& tag, const std::vector<uint8_t>& expected)
+		{
+			MDSDRV_Data data;
+			data.add_instrument(2, tag);
+			int pos = data.get_envelope_map_view().at(2);
+			const std::vector<uint8_t>& envelope = data.get_data_bank().at(pos);
+			CPPUNIT_ASSERT_EQUAL(expected.size(), envelope.size());
+			for(size_t i = 0; i < expected.size(); i++)
+				CPPUNIT_ASSERT_EQUAL(expected.at(i), envelope.at(i));
+		};
+
+		assert_envelope({"psg", "15", "|", "15"}, {0x10, 0x10, 0x02, 0x01});
+		assert_envelope({"psg", "15", "15"}, {0x20, 0x00});
+		assert_envelope({"psg", "15", "|", "14", "15"}, {0x10, 0x11, 0x10, 0x02, 0x01});
+
+		MDSDRV_Data data;
+		data.add_instrument(2, {"psg", "15", "|"});
+		CPPUNIT_ASSERT(data.message.find("warning: PSG envelope loop target is not a value\n") != std::string::npos);
+	}
+};
+
+class PSG_Write_Log : public VGM_Interface
+{
+	public:
+		std::vector<uint8_t> writes;
+
+		void write(uint8_t command, uint16_t, uint16_t, uint16_t data) override
+		{
+			if(command == 0x50)
+				writes.push_back(data);
+		}
+		void dac_setup(uint8_t, uint8_t, uint32_t, uint32_t, uint8_t) override {}
+		void dac_start(uint8_t, uint32_t, uint32_t, uint32_t) override {}
+		void dac_stop(uint8_t) override {}
+		void poke32(uint32_t, uint32_t) override {}
+		void poke16(uint32_t, uint16_t) override {}
+		void poke8(uint32_t, uint8_t) override {}
+		void datablock(uint8_t, uint32_t, const uint8_t*, uint32_t,
+				uint32_t, uint32_t, uint32_t) override {}
 };
 
 class MDSDRV_Platform_Test : public CppUnit::TestFixture
 {
 	CPPUNIT_TEST_SUITE(MDSDRV_Platform_Test);
 	CPPUNIT_TEST(test_export_list);
+	CPPUNIT_TEST(test_psg_envelope_end_cuts_held_note);
+	CPPUNIT_TEST(test_psg_envelope_sustain_waits_for_keyoff);
+	CPPUNIT_TEST(test_psg_envelope_loop_keeps_cycling);
+	CPPUNIT_TEST(test_psg_envelope_equal_loop_waits_for_keyoff);
 	CPPUNIT_TEST_SUITE_END();
 private:
 	MDSDRV_Platform *platform;
@@ -416,6 +520,76 @@ public:
 		auto export_list = platform->get_export_formats();
 		CPPUNIT_ASSERT_EQUAL(std::string("vgm"), export_list[0].first);
 		CPPUNIT_ASSERT_EQUAL(std::string("mds"), export_list[1].first);
+	}
+	void test_psg_envelope_end_cuts_held_note()
+	{
+		Song song;
+		MML_Input input(&song);
+		input.read_line("@2 psg 15");
+		input.read_line("G t120 @2 o5 v15 l1 c");
+		PSG_Write_Log log;
+		MD_Driver driver(44100, &log);
+		driver.play_song(song);
+		driver.play_step();
+		log.writes.clear();
+		play_until_tick(driver, 4);
+		CPPUNIT_ASSERT(std::find(log.writes.begin(), log.writes.end(), 0x9f) != log.writes.end());
+	}
+	void test_psg_envelope_sustain_waits_for_keyoff()
+	{
+		Song song;
+		MML_Input input(&song);
+		input.read_line("@2 psg 15 /");
+		input.read_line("G t120 @2 o5 v15 l1 c");
+		PSG_Write_Log log;
+		MD_Driver driver(44100, &log);
+		driver.play_song(song);
+		driver.play_step();
+		log.writes.clear();
+		play_until_tick(driver, 80);
+		CPPUNIT_ASSERT(std::find(log.writes.begin(), log.writes.end(), 0x9f) == log.writes.end());
+		play_until_tick(driver, 98);
+		CPPUNIT_ASSERT(std::find(log.writes.begin(), log.writes.end(), 0x9f) != log.writes.end());
+	}
+	void test_psg_envelope_loop_keeps_cycling()
+	{
+		Song song;
+		MML_Input input(&song);
+		input.read_line("@2 psg 15 | 14 15");
+		input.read_line("G t120 @2 o5 v15 l1 c");
+		PSG_Write_Log log;
+		MD_Driver driver(44100, &log);
+		driver.play_song(song);
+		driver.play_step();
+		log.writes.clear();
+		play_until_tick(driver, 80);
+		CPPUNIT_ASSERT(std::find(log.writes.begin(), log.writes.end(), 0x9f) == log.writes.end());
+		CPPUNIT_ASSERT(std::find(log.writes.begin(), log.writes.end(), 0x90) != log.writes.end());
+		CPPUNIT_ASSERT(std::find(log.writes.begin(), log.writes.end(), 0x91) != log.writes.end());
+	}
+	void test_psg_envelope_equal_loop_waits_for_keyoff()
+	{
+		Song song;
+		MML_Input input(&song);
+		input.read_line("@2 psg 15 | 15");
+		input.read_line("G t120 @2 o5 v15 l1 c");
+		PSG_Write_Log log;
+		MD_Driver driver(44100, &log);
+		driver.play_song(song);
+		driver.play_step();
+		log.writes.clear();
+		play_until_tick(driver, 80);
+		CPPUNIT_ASSERT(std::find(log.writes.begin(), log.writes.end(), 0x9f) == log.writes.end());
+		play_until_tick(driver, 98);
+		CPPUNIT_ASSERT(std::find(log.writes.begin(), log.writes.end(), 0x9f) != log.writes.end());
+	}
+
+private:
+	void play_until_tick(MD_Driver& driver, uint32_t target)
+	{
+		for(int i = 0; driver.get_player_ticks() < target && i < 1000; i++)
+			driver.play_step();
+		CPPUNIT_ASSERT(driver.get_player_ticks() >= target);
 	}
 };
 

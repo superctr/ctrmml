@@ -41,6 +41,7 @@ class MDSDRV_Data
 {
 	friend MDSDRV_Track_Writer;
 	friend MDSDRV_Converter;
+	friend class MDSDRV_Converter_Test;
 	friend MDSDRV_Linker;
 	friend class MD_PCMDriver;
 	friend class MD_Driver;
